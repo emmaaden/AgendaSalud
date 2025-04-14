@@ -74,7 +74,7 @@ exports.login = async (req, res) => {
         req.session.email = user.email;
         req.session.fullName = user.fullName;
         req.session.dni = user.dni;
-
+        req.session.area = user.area;
 
         res.status(200).json({ message: 'Inicio de sesión exitoso' });
     } catch (error) {
@@ -350,6 +350,8 @@ exports.getCalenID = async (req, res) => {
         res.status(500).json({ error: 'Error al obtener el calendarid' });
     }
 };
+
+// Foto Perfil
 
 exports.getImg = async (req, res) => {
   try {

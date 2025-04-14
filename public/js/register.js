@@ -10,7 +10,7 @@ async function addProfessional() {
     try {
       // Enviar datos a la API para agregar profesional
       const addProfessionalResponse = await fetch(
-        "https://agendasalud.onrender.com/add-professional",
+        `http://${host}/add-professional`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -54,7 +54,7 @@ async function populateAreaList(area) {
   const select = area;
 
   try {
-    const response = await fetch("https://agendasalud.onrender.com/professionals");
+    const response = await fetch(`http://${host}/professionals`);
     const professionals = await response.json();
 
     professionals.forEach((prof) => {

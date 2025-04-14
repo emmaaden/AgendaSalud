@@ -3,7 +3,7 @@ let CALENDAR_ID = ''; // Variable global para almacenar el ID del calendario sel
 // Función para cargar las áreas y profesionales desde la base de datos
 async function loadProfessionals() {
     try {
-        const response = await fetch('https://agendasalud.onrender.com/professionals');
+        const response = await fetch(`http://${host}/professionals`);
         const professionals = await response.json();
 
         const areaList = document.getElementById('areaList');
@@ -24,7 +24,7 @@ async function populateAreaList(area) {
     const select = area;
 
     try {
-        const response = await fetch('https://agendasalud.onrender.com/professionals');
+        const response = await fetch(`http://${host}/professionals`);
         const professionals = await response.json();
 
         professionals.forEach(prof => {
@@ -44,7 +44,7 @@ async function populateProfessionalList(area, selectProf) {
     select.innerHTML = ''; // Limpiar las opciones existentes
 
     try {
-        const response = await fetch('https://agendasalud.onrender.com/professionals');
+        const response = await fetch(`http://${host}/professionals`);
         const professionals = await response.json();
 
         // Filtrar el área seleccionada
@@ -85,9 +85,9 @@ async function updateCalendarId(professionalName) {
     } else {
         console.error('Error:', dataCalenID.error);
     }
-    //const newCalendarId = professionalCalendarIds[professionalName]; // Asegúrate de que `professionalCalendarIds` esté actualizado
+
     if (newCalendarId) {
-        fetch('https://agendasalud.onrender.com/set-calendar', {
+        fetch(`http://${host}/set-calendar`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

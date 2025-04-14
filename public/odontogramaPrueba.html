@@ -1,342 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Odontograma Interactivo</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- jsPDF Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@1.4.0/dist/svg2pdf.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 0;
-        }
-        h1 {
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(16, 40px);
+            gap: 5px;
+            justify-content: center;
             margin-top: 20px;
         }
-        svg {
-            border: 1px solid #ccc;
-            margin: 20px auto;
-            display: block;
-            background-color: #ffffff;
-        }
-        .tooth {
-            fill: white;
-            stroke: black;
+        .diente {
+            width: 40px;
+            height: 40px;
+            background: #e0e0e0;
+            border: 2px solid #aaa;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            transition: fill 0.2s ease;
+            position: relative;
+            flex-direction: column;
         }
-        .tooth:hover {
-            fill: #cce7ff;
-        }
-        text {
-            font-family: Arial, sans-serif;
+        .diente span {
             font-size: 12px;
-            fill: #555;
-            text-anchor: middle;
+            position: absolute;
+            top: -15px;
+            color: black;
         }
-        @media (max-width: 767px) {
-            svg {
-                width: 100%;
-                height: auto;
-            }
+        .diente.marcado-rojo::after {
+            content: '\25CF';
+            color: red;
+            font-size: 24px;
+            position: absolute;
+        }
+        .diente.marcado-azul::after {
+            content: '\25CF';
+            color: blue;
+            font-size: 24px;
+            position: absolute;
+        }
+        .diente.extraido {
+            background: #aaa;
+            text-decoration: line-through;
         }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1 class="mt-4">Odontograma Interactivo</h1>
-        <svg width="600" height="300">
-          <!-- Fila superior (dientes 18 a 11 y 21 a 28) -->
-        <g id="upper-teeth" transform="translate(0, 50)">
-            <!-- Dientes derecho -->
-            <circle id="tooth-18" class="tooth" cx="50" cy="50" r="20" />
-            <text x="50" y="80">18</text>
-            <circle id="tooth-17" class="tooth" cx="100" cy="50" r="20" />
-            <text x="100" y="80">17</text>
-            <circle id="tooth-16" class="tooth" cx="150" cy="50" r="20" />
-            <text x="150" y="80">16</text>
-            <circle id="tooth-15" class="tooth" cx="200" cy="50" r="20" />
-            <text x="200" y="80">15</text>
-            <circle id="tooth-14" class="tooth" cx="250" cy="50" r="20" />
-            <text x="250" y="80">14</text>
-            <circle id="tooth-13" class="tooth" cx="300" cy="50" r="20" />
-            <text x="300" y="80">13</text>
-            <circle id="tooth-12" class="tooth" cx="350" cy="50" r="20" />
-            <text x="350" y="80">12</text>
-            <circle id="tooth-11" class="tooth" cx="400" cy="50" r="20" />
-            <text x="400" y="80">11</text>
-            <!-- Dientes izquierdo -->
-            <circle id="tooth-21" class="tooth" cx="450" cy="50" r="20" />
-            <text x="450" y="80">21</text>
-            <circle id="tooth-22" class="tooth" cx="500" cy="50" r="20" />
-            <text x="500" y="80">22</text>
-            <circle id="tooth-23" class="tooth" cx="550" cy="50" r="20" />
-            <text x="550" y="80">23</text>
-        </g>
-
-        <!-- Fila inferior (dientes 48 a 41 y 31 a 38) -->
-        <g id="lower-teeth" transform="translate(0, 200)">
-            <!-- Dientes derecho -->
-            <circle id="tooth-48" class="tooth" cx="50" cy="50" r="20" />
-            <text x="50" y="80">48</text>
-            <circle id="tooth-47" class="tooth" cx="100" cy="50" r="20" />
-            <text x="100" y="80">47</text>
-            <circle id="tooth-46" class="tooth" cx="150" cy="50" r="20" />
-            <text x="150" y="80">46</text>
-            <circle id="tooth-45" class="tooth" cx="200" cy="50" r="20" />
-            <text x="200" y="80">45</text>
-            <circle id="tooth-44" class="tooth" cx="250" cy="50" r="20" />
-            <text x="250" y="80">44</text>
-            <circle id="tooth-43" class="tooth" cx="300" cy="50" r="20" />
-            <text x="300" y="80">43</text>
-            <circle id="tooth-42" class="tooth" cx="350" cy="50" r="20" />
-            <text x="350" y="80">42</text>
-            <circle id="tooth-41" class="tooth" cx="400" cy="50" r="20" />
-            <text x="400" y="80">41</text>
-            <!-- Dientes izquierdo -->
-            <circle id="tooth-31" class="tooth" cx="450" cy="50" r="20" />
-            <text x="450" y="80">31</text>
-            <circle id="tooth-32" class="tooth" cx="500" cy="50" r="20" />
-            <text x="500" y="80">32</text>
-            <circle id="tooth-33" class="tooth" cx="550" cy="50" r="20" />
-            <text x="550" y="80">33</text>
-        </g>
-        </svg>
-
-        <!-- Export PDF Button -->
-        <button id="export-pdf" class="btn btn-primary mt-3">Exportar a PDF</button>
+    <div class="grid" id="odontograma">
+        <!-- Se generarán los dientes dinámicamente con JavaScript -->
     </div>
-
-    <!-- Modal de Bootstrap -->
-    <div class="modal fade" id="toothModal" tabindex="-1" aria-labelledby="toothModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="toothModalLabel">Información del Diente</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p id="tooth-info"></p>
-                    <div class="mb-3">
-                        <label for="status" class="form-label">Estado:</label>
-                        <select id="status" class="form-select">
-                            <option value="sano">Sano</option>
-                            <option value="caries">Caries</option>
-                            <option value="tratado">Tratado</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notas:</label>
-                        <textarea id="notes" class="form-control" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="save-button">Guardar</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        const teeth = document.querySelectorAll(".tooth");
-        const modal = new bootstrap.Modal(document.getElementById("toothModal"));
-        const toothInfo = document.getElementById("tooth-info");
-        const statusSelect = document.getElementById("status");
-        const notesInput = document.getElementById("notes");
-        const saveButton = document.getElementById("save-button");
+        const odontograma = document.getElementById("odontograma");
 
-        let currentTooth = null;
+        for (let i = 1; i <= 32; i++) {
+            const diente = document.createElement("div");
+            diente.classList.add("diente");
+            diente.dataset.id = i;
 
-        // Abrir modal al hacer clic en un diente
-        teeth.forEach(tooth => {
-            tooth.addEventListener("click", () => {
-                currentTooth = tooth.id;
-                toothInfo.textContent = `Diente: ${currentTooth.split("-")[1]}`;
-                statusSelect.value = "sano"; // Por defecto
-                notesInput.value = ""; // Limpia las notas
-                modal.show();
-            });
-        });
+            const numero = document.createElement("span");
+            numero.textContent = i;
+            diente.appendChild(numero);
 
-        // Guardar información del diente
-        saveButton.addEventListener("click", () => {
-            const status = statusSelect.value;
-            const notes = notesInput.value;
-
-            // Cambiar el color del diente según el estado
-            if (currentTooth) {
-                const tooth = document.getElementById(currentTooth);
-                if (status === "sano") {
-                    tooth.style.fill = "green";
-                } else if (status === "caries") {
-                    tooth.style.fill = "red";
-                } else if (status === "tratado") {
-                    tooth.style.fill = "blue";
-                }
-            }
-
-            alert(`Diente ${currentTooth.split("-")[1]} actualizado con estado: ${status}`);
-            modal.hide();
-        });
-
-        function downloadSVGAsPDF(svgElement, pdfFilename = "odontograma.pdf") {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Verificar dimensiones del SVG
-            const svgWidth = svgElement.viewBox?.baseVal?.width || svgElement.getBoundingClientRect().width;
-            const svgHeight = svgElement.viewBox?.baseVal?.height || svgElement.getBoundingClientRect().height;
-
-            // Dimensiones del PDF
-            const pdfWidth = doc.internal.pageSize.getWidth();
-            const pdfHeight = doc.internal.pageSize.getHeight();
-
-            // Escalar SVG para ajustarlo al PDF con un tamaño reducido (factor adicional)
-            const scale = Math.min(pdfWidth / svgWidth, pdfHeight / svgHeight) * 0.5; // Ajusta 0.5 para hacerlo más pequeño
-
-            // Márgenes personalizados
-            const customXOffset = 50; // Márgenes desde el borde izquierdo (ajusta según sea necesario)
-            const customYOffset = 20; // Márgenes desde el borde superior (ajusta según sea necesario)
-
-            // Coordenadas ajustadas para el SVG en el PDF
-            const xOffset = customXOffset; // Usamos el margen en lugar de centrar
-            const yOffset = customYOffset;
-
-            // Agregar SVG al PDF
-            svg2pdf(svgElement, doc, {
-                xOffset,
-                yOffset,
-                scale
-            });
-
-            // Llamar a downloadPatientHistory para agregar los datos del paciente
-            downloadPatientHistory(doc, pdfFilename);
+            diente.addEventListener("click", () => marcarDiente(diente));
+            odontograma.appendChild(diente);
         }
 
-        async function downloadPatientHistory(doc, pdfFilename) {
-            const dni = '45715063';
-            const password = '123';
-
-            let data;
-            try {
-                const response = await fetch('/pacient/get-data-pacient', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ dni, password })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Error al obtener los datos del paciente');
-                }
-                data = await response.json(); // Aquí obtienes el JSON directamente
-            } catch (error) {
-                console.error("Error al obtener datos del paciente:", error);
-                alert("No se pudo obtener el historial clínico del paciente.");
-                return;
-            }
-
-            // Datos del paciente
-            const {
-                fullName = "N/A", telefono = "N/A", dni: pacienteDni = "N/A",
-                email = "N/A", sexo = "N/A", fechaNacimiento = "N/A",
-                edad = "N/A", direccion = "N/A", obraSocial = "N/A",
-                fechaApertura = "N/A", history = []
-            } = data;
-
-            // Información del paciente
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("Datos del Paciente", 10, 120);
-
-            const patientInfo = [
-                `Nombre: ${fullName}`,
-                `Teléfono: ${telefono}`,
-                `DNI: ${pacienteDni}`,
-                `Email: ${email}`,
-                `Sexo: ${sexo}`,
-                `Fecha de Nacimiento: ${fechaNacimiento}`,
-                `Edad: ${edad}`,
-                `Dirección: ${direccion}`,
-                `Obra Social: ${obraSocial}`,
-                `Fecha de Apertura: ${fechaApertura}`
-            ];
-
-            let yPosition = 130;
-            patientInfo.forEach(line => {
-                if (yPosition > 280) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                doc.setFont("helvetica", "normal");
-                doc.text(line, 10, yPosition);
-                yPosition += 10;
-            });
-
-            // Historial médico
-            if (history.length > 0) {
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.text("Historial Médico", 10, yPosition);
-                yPosition += 10;
-
-                history.forEach(entry => {
-                    const content = [
-                        `Profesional: ${entry.profesional}`,
-                        `Área: ${entry.area}`,
-                        `Fecha: ${entry.fecha}hs`,
-                        `Síntomas: ${entry.sintomas}`,
-                        `Diagnóstico: ${entry.diagnostico}`,
-                        `Tratamiento: ${entry.tratamiento}`
-                    ];
-
-                    content.forEach(line => {
-                        if (yPosition > 280) {
-                            doc.addPage();
-                            yPosition = 20;
-                        }
-                        doc.setFont("helvetica", "normal");
-                        doc.text(line, 10, yPosition);
-                        yPosition += 7;
-                    });
-
-                    if (yPosition > 280) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    doc.line(10, yPosition, 200, yPosition);
-                    yPosition += 10;
-                });
+        function marcarDiente(diente) {
+            if (diente.classList.contains("marcado-rojo")) {
+                diente.classList.remove("marcado-rojo");
+                diente.classList.add("marcado-azul");
+            } else if (diente.classList.contains("marcado-azul")) {
+                diente.classList.remove("marcado-azul");
+                diente.classList.add("extraido");
+            } else if (diente.classList.contains("extraido")) {
+                diente.classList.remove("extraido");
             } else {
-                doc.text("Sin historial médico disponible.", 10, yPosition);
+                diente.classList.add("marcado-rojo");
             }
-
-            doc.save(pdfFilename);
         }
-
-        document.getElementById("export-pdf").addEventListener("click", () => {
-            const svgElement = document.querySelector("svg");
-            if (!svgElement) {
-                alert("No se encontró ningún elemento SVG.");
-                return;
-            }
-            downloadSVGAsPDF(svgElement, "odontograma_interactivo.pdf");
-        });
-
     </script>
-    
 </body>
 </html>

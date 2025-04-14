@@ -31,7 +31,6 @@ exports.regisPacient = async (req, res) => {
     }
 ];
 
-
         const newPatients = new Patient({
             fullName,
             email,
@@ -57,7 +56,7 @@ exports.regisPacient = async (req, res) => {
 
 
 exports.saveData = async (req, res) => {
-    const { profesional, dni, sintomas, diagnostico, tratamiento, area, fecha, diente } = req.body;
+    const { profesional, dni, sintomas, diagnostico, tratamiento, area, fecha, dientes } = req.body;
 
     try {
         // Buscar paciente por DNI
@@ -65,7 +64,7 @@ exports.saveData = async (req, res) => {
         if (!pacient) {
             return res.status(404).json({ error: 'Paciente no encontrado' });
         }
-                
+
         // Crear un nuevo registro para el historial
         const nuevoHistorial = {
             fecha: fecha || new Date().toLocaleString("es-AR", {
@@ -76,19 +75,13 @@ exports.saveData = async (req, res) => {
                 minute: "numeric"
             }),
             area: area || "No especificado",
-            profesional: profesional || "No especificado", // Si necesitas recibir esto desde el frontend, cámbialo
+            profesional: profesional || "No especificado",
             sintomas: sintomas || "No especificado",
             diagnostico: diagnostico || "No especificado",
             tratamiento: tratamiento || "No especificado",
-            dientes: diente ? [
-                {
-                    numero: diente.numero || "No especificado",
-                    notas: diente.notas || "No especificado",
-                    estado: diente.estado || "No especificado"
-                }
-            ] : [] // Si no hay dientes, dejarlo como un array vacío
+            dientes: dientes ||  "No especificado"
         };
-
+        console.log(nuevoHistorial);
         // Agregar el nuevo historial al paciente
         pacient.historial.push(nuevoHistorial);
 

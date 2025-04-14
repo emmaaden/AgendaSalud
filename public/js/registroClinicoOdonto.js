@@ -27,7 +27,6 @@ async function addPacient() {
   const diagnostico = document.getElementById("diagnostico").value;
   const tratamiento = document.getElementById("tratamiento").value;
 
-
   const fecha = new Date();
   const password = generarContrasena(8)
   const user = await fetch('/api/user');
@@ -100,6 +99,31 @@ async function addPacient() {
   }
 };
 
+function cargarEstadosDientes(dientes) {
+    dientes.forEach(diente => {
+        const tooth = document.getElementById(diente.numero);
+        if (tooth) {
+            // Cambiar el color del diente según el estado
+            switch (diente.estado) {
+                case "sano":
+                    tooth.style.fill = "green";
+                    break;
+                case "caries":
+                    tooth.style.fill = "red";
+                    break;
+                case "tratado":
+                    tooth.style.fill = "blue";
+                    break;
+                case "falta":
+                    tooth.style.fill = "grey";
+                    break;
+                default:
+                    tooth.style.fill = "white"; // Estado desconocido
+            }
+        }
+    });
+}
+
 // Buscar paciente
 async function searchPaciente() {
   const dni = document.getElementById("dniBuscar").value;
@@ -122,6 +146,7 @@ async function searchPaciente() {
     document.getElementById('registrarPaciente').style.display = 'none';
     document.getElementById('buscarPaciente').style.display = 'none';
     document.getElementById('saveDataPacient').style.display = 'block';
+    odontogramaJS();
 
     document.getElementById('nombrePaciente').innerText = data.fullName;
     document.getElementById('telefonoPaciente').innerText = data.telefono;
@@ -133,6 +158,8 @@ async function searchPaciente() {
     document.getElementById('edadPaciente').innerHTML = data.edad;
     document.getElementById('osPaciente').innerHTML = data.obraSocial;
     document.getElementById('fechaAperturaPaciente').innerHTML = data.fechaApertura;
+    console.log(data.history[data.history.length-1].dientes);
+    cargarEstadosDientes(data.history[data.history.length-1].dientes)
 
     // Cargar datos en ventana modal
     document.getElementById("namePaciente").innerText = data.fullName;
@@ -203,7 +230,16 @@ async function saveDataPaciente() {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ dni, area, profesional, sintomas, diagnostico, tratamiento, fecha })
+    body: JSON.stringify({
+      dni,
+      area,
+      profesional,
+      sintomas,
+      diagnostico,
+      tratamiento,
+      fecha,
+      dientes,
+    })
   });
 
   if (response.ok) {
@@ -249,6 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('menu').style.display = 'none';
     document.getElementById('buscarPaciente').style.display = 'none';
     document.getElementById('registrarPaciente').style.display = 'block';
+    odontogramaJS();
   });
 
   document.getElementById('volver-reg').addEventListener('click', function () {
