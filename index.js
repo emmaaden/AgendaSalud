@@ -1,84 +1,28 @@
 const express = require('express');
 const cors = require('cors');
+const app = express();
+
+app.use(express.json());
+app.use(cors());
+
 const path = require('path');
 const { google } = require('googleapis');
 const bodyParser = require('body-parser');
 const session = require('express-session');
-const mongoose = require('./config/database');
 const fs = require('fs');
-const multer = require('multer');
-#hola
-const Professional = require('./models/Professional');
-const User = require('./models/User');
+
 const authRoutes = require('./routes/authRoutes');
 const horariosRoutes = require('./routes/horarios');
-const pacienteRoutes = require('./routes/pacienteRoutes');
-const MongoStore = require('connect-mongo');
+/* const pacienteRoutes = require('./routes/pacienteRoutes'); */
+const profesionalRoutes = require('./routes/profesionalRoutes');
+const avatarsRoutes = require('./routes/avatarsRoutes');
+const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 
-require('dotenv').config
+require('dotenv').config();
 
-const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(cors());
-app.use('/api', horariosRoutes);
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Configuración de Multer para guardar la imagen
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, './uploads/'); // Directorio donde se guardarán las imágenes
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Nombre único para la imagen
-  }
-});
-
-const upload = multer({ storage: storage });
-
-// Ruta para subir la imagen
-app.post('/upload-image/:dni', upload.single('image'), async (req, res) => {
-  try {
-    const { dni } = req.params;
-    const file = req.file;
-
-    if (!file) {
-      return res.status(400).json({ message: 'No se ha subido ninguna imagen.' });
-    }
-
-    // Genera la URL de la imagen
-    const imageUrl = `https://agendasalud.onrender.com/uploads/${file.filename}`;
-
-    // Actualizar la imagen del usuario en la base de datos
-    const updatedUser = await User.findOneAndUpdate(
-      { dni },
-      { $set: { image: imageUrl } }, // Guarda la URL de la imagen en el campo "image"
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'Usuario no encontrado.' });
-    }
-
-    res.json(updatedUser);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al subir la imagen.' });
-  }
-});
-
-// Servir imágenes estáticas
-app.use('/uploads', express.static('uploads'));
-
 app.use(session({
-    store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI,
-    }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -89,14 +33,22 @@ app.use(session({
     }
 }));
 
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use('/auth', authRoutes);
-app.use('/pacient', pacienteRoutes);
+app.use('/hour', horariosRoutes);
+/* app.use('/pacient', pacienteRoutes); */
+app.use('/profesional', profesionalRoutes);
+app.use('/avatars', avatarsRoutes);
+app.use('/ortodoncia', ortPacienteRoutes);
 
 app.get('/api/user', (req, res) => {
-    console.log('Sesión:', req.session);
+    /* console.log('Sesión api:', req.session); */
     if (req.session.isAuthenticated) {
-        res.json({ fullName: req.session.fullName, email: req.session.email, dni: req.session.dni, area: req.session.area});
+        res.json({ user: req.session.user.email, id: req.session.user.id, role: req.session.user.role });
     } else {
         res.status(401).json({ error: 'No autenticado' });
     }
@@ -106,28 +58,36 @@ const email_autorizado = process.env.EMAIL_AUTORIZADO;
 
 app.get('/dashboard', (req, res) => {
     if (req.session.isAuthenticated) {
-        if (req.session.email === email_autorizado) {
-            // Si admin es true, redirige a dashboard2.html
-            res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
-        } else {
-            app.use(express.static(path.join(__dirname, 'dashboard')));
+        app.use(express.static(path.join(__dirname, 'dashboard')));
+        res.sendFile(path.join(__dirname, 'dashboard', 'dashboard.html'));
 
-            // Si admin es false, redirige a dashboard.html
-            res.sendFile(path.join(__dirname, 'dashboard', 'dashboard.html'));
+        if (req.session.user.email === email_autorizado) {
+            // Si admin es true, redirige a dashboard2.html
+            console.log("es admin")
+            res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
         }
     } else {
         res.redirect('/login.html');
     }
 });
 
+app.get('/dashboardAutorizado', (req, res) => {
+    if (req.session.isAuthenticated && req.session.user.email === email_autorizado) {
+        console.log("es admin")
+        res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
+    } else {
+        res.redirect('/login.html');
+    }
+});
+
 app.get('/dashboardRegistroClinico', (req, res) => {
-  if (req.session.isAuthenticated && req.session.area === 'Dentista') {
-    res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinicoOdonto.html'));
-  } else if (req.session.isAuthenticated && req.session.area != 'Dentista') {
-      res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinico.html'));
-  } else {
-      res.redirect('/login.html');
-  }
+    if (req.session.isAuthenticated && req.session.area === 'Dentista') {
+        res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinicoOdonto.html'));
+    } else if (req.session.isAuthenticated && req.session.area != 'Dentista') {
+        res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinico.html'));
+    } else {
+        res.redirect('/login.html');
+    }
 });
 
 app.get('/dashboardConfig', (req, res) => {
@@ -162,8 +122,8 @@ const sendWhatsApp = (event, number, numberCode) => {
         from: 'whatsapp:+14155238886', // Número de WhatsApp de Twilio
         to: `whatsapp:${fullNumber}` // Número de WhatsApp del cliente
     })
-    .then(message => console.log('Mensaje enviado:', message.sid, fullNumber))
-    .catch(error => console.log('Error al enviar el mensaje:', error));
+        .then(message => console.log('Mensaje enviado:', message.sid, fullNumber))
+        .catch(error => console.log('Error al enviar el mensaje:', error));
 };
 
 
@@ -179,12 +139,12 @@ const jsonData = {
     auth_provider_x509_cert_url: process.env.AUTH_PROVIDER_X509_CERT_URL,
     client_x509_cert_url: process.env.CLIENT_X509_CERT_URL,
     universe_domain: process.env.UNIVERSE_DOMAIN,
-  };
+};
 
-  const jsonContent = JSON.stringify(jsonData, null, 2);
+const jsonContent = JSON.stringify(jsonData, null, 2);
 
-  fs.writeFileSync('calenderregistroclinico-8aedace47e68.json', jsonContent, 'utf8');
-  console.log("Archivo JSON creado con éxito: calenderregistroclinico-8aedace47e68.json");
+fs.writeFileSync('calenderregistroclinico-8aedace47e68.json', jsonContent, 'utf8');
+console.log("Archivo JSON creado con éxito: calenderregistroclinico-8aedace47e68.json");
 
 const SERVICE_ACCOUNT_KEY_FILE = path.join(__dirname, 'calenderregistroclinico-8aedace47e68.json');
 
@@ -211,7 +171,7 @@ app.post('/add-professional', async (req, res) => {
             // Si el área ya existe, agregar el profesional a la lista
             existingArea.professionals.push(professional);
             await existingArea.save();
-        } else{
+        } else {
             // Si el área no existe, crearla con el profesional
             const newArea = new Professional({ area, professionals: [professional] });
             await newArea.save();
@@ -305,7 +265,7 @@ app.get('/available-slots', async (req, res) => {
 
 // Endpoint para crear un evento
 app.post('/create-event', async (req, res) => {
-    const { summary, description, start, end, email, number, numberCode} = req.body;
+    const { summary, description, start, end, email, number, numberCode } = req.body;
 
     console.log('Start:', start);
     console.log('End:', end);
@@ -414,12 +374,12 @@ app.delete('/delete-appointment/:eventId', async (req, res) => {
 });
 
 authenticate()
-  .then(calendar => {
-    console.log('Conectado a Google Calendar');
-  })
-  .catch(error => {
-    console.error('Error al conectar a Google Calendar:', error.message);
-  });
+    .then(calendar => {
+        console.log('Conectado a Google Calendar');
+    })
+    .catch(error => {
+        console.error('Error al conectar a Google Calendar:', error.message);
+    });
 
 // Inicia el servidor
 app.listen(PORT, () => {

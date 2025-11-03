@@ -29,10 +29,13 @@
         <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fa-solid fa-house"></i> Home</a></li>
           <li class="nav-item"><a class="nav-link active" href=""><i class="fa-solid fa-gear"></i> Config</a></li>
-          <li class="nav-item"><a class="nav-link" href="/dashboardRegistroClinico"><i class="fa-solid fa-notes-medical"></i> Registro Clínico</a></li>
-          <li class="nav-item"><a class="nav-link" href="https://wa.me/2615930274"><i class="fa-solid fa-circle-info"></i> Ayuda</a></li>
+          <li class="nav-item"><a class="nav-link" href="/dashboardRegistroClinico"><i
+                class="fa-solid fa-notes-medical"></i> Registro Clínico</a></li>
+          <li class="nav-item"><a class="nav-link" href="https://wa.me/2615930274"><i
+                class="fa-solid fa-circle-info"></i> Ayuda</a></li>
           <li class="nav-item">
-            <button id="logout" class="nav-link text-danger"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
+            <button id="logout" class="nav-link text-danger"><i class="fa-solid fa-right-from-bracket"></i> Cerrar
+              Sesión</button>
           </li>
         </ul>
       </div>
@@ -42,35 +45,67 @@
 
   <!-- Editar Perfil -->
   <section class="container my-4" id="perfilProf">
-      <h2 class="text-azul-marino">Perfil Profesional</h2>
-      <div class="card p-4 shadow-sm my-4">
-        <div class="row">
-          <!-- Imagen del perfil -->
-          <div class="col-12 col-md-4 d-flex justify-content-center align-items-center">
-            <div class="position-relative">
-              <img id="profile-img"
-                   src="../img/img-face.png"
-                   class="img-fluid rounded-circle shadow-sm"
-                   alt="Imagen de perfil"
-                   style="width: 250px; height: 250px; object-fit: cover;"
-                   data-bs-toggle="modal" data-bs-target="#imageModal">
-            </div>
-          </div>
-          <!-- Información adicional -->
-          <div class="col-12 col-md-8">
-            <h3 class="card-title text-azul" id="name"></h3>
-            <p class="card-text" id="cont-descripcion" style="white-space: pre-wrap;"></p>
-            <ul class="list-unstyled mt-3">
-              <li><i class="fa-solid fa-user text-azul"></i> Area: <span id="Area"></span></li>
-              <li><i class="fa-solid fa-location-dot text-danger"></i> Dirección: <span id="cont-direccion"></span></li>
-              <li><i class="fa-solid fa-dollar-sign text-success"></i> Precio de la consulta: $<span id="cont-precio">0</span></li>
-              <li><i class="fa-solid fa-calendar-days text-azul"></i> Horarios de jornada: <span id="horarios"></span></li>
-            </ul>
+    <h2 class="text-azul-marino">Perfil Profesional</h2>
+    <div class="card p-4 shadow-sm my-4">
+      <div class="row">
+        <!-- Imagen del perfil -->
+        <div class="col-12 col-md-4 d-flex justify-content-center align-items-center">
+          <div class="position-relative">
+            <img id="profile-img" src="../img/img-face.png" class="img-fluid rounded-circle shadow-sm"
+              alt="Imagen de perfil" style="width: 250px; height: 250px; object-fit: cover;" data-bs-toggle="modal"
+              data-bs-target="#imageModal">
           </div>
         </div>
+        <!-- Información adicional -->
+        <div class="col-12 col-md-8">
+          <h3 class="card-title text-azul" id="name"></h3>
+          <p class="card-text" id="idDescripcion" style="white-space: pre-wrap;"></p>
+          <ul class="list-unstyled mt-3">
+            <li><i class="fa-solid fa-user text-azul"></i> Especialidad: <span id="idEspProf"></span></li>
+            <li><i class="fa-solid fa-location-dot text-danger"></i> Dirección: <span id="idDireccion"></span></li>
+            <li><i class="fa-solid fa-dollar-sign text-success"></i> Precio de la consulta: $<span
+                id="idPrecio">0</span></li>
+            <li><i class="fa-solid fa-calendar-days text-azul"></i> Horarios de jornada: <span id="idHorarios"
+                data-bs-toggle="modal" data-bs-target="#horarioModal" class="text-azul" style="cursor: pointer;">Ver
+                Mas</span>
+            </li>
+          </ul>
+        </div>
       </div>
-      <button class="btn btn-primary" id="editar"><i class="fa-solid fa-pencil"></i> Editar</button>
+    </div>
+    <button class="btn btn-primary" id="editar"><i class="fa-solid fa-pencil"></i> Editar</button>
   </section>
+
+  <!-- Modal Horarios -->
+  <div class="modal fade" id="horarioModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="exampleModalLabel">Horarios</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="p-4">
+            <table class="table table-striped" id="horariosTableProfile">
+              <thead>
+                <tr>
+                  <th>Día</th>
+                  <th>Hora Inicio</th>
+                  <th>Hora Fin</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Se cargarán los horarios -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Salir</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal para cambiar la imagen -->
   <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
@@ -81,7 +116,8 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body text-center">
-          <img id="modal-img" src="../img/img-face.png" class="img-fluid rounded-circle shadow-sm mb-3" style="width: 200px; height: 200px; object-fit: cover;">
+          <img id="modal-img" src="../img/img-face.png" class="img-fluid rounded-circle shadow-sm mb-3"
+            style="width: 200px; height: 200px; object-fit: cover;">
           <input type="file" id="img-upload" class="form-control" accept="image/*">
         </div>
         <div class="modal-footer">
@@ -99,9 +135,13 @@
     <div>
       Calendario actual: <span id="idCalendar" class="d-block text-truncate">No hay calendario seleccionado</span>
     </div>
+    <div id="linkCalender">
+      
+    </div>
     <label for="CalendarID" class="mb-2 text-azul-marino">CalendarID</label>
     <input type="text" name="CalendarID" id="save-calendarid" class="form-control mb-3">
-    <button type="button" name="button" class="btn btn-primary text-white" onclick="saveIdCalendar()"><i class="fa-regular fa-floppy-disk"></i> Guardar</button>
+    <button type="button" name="button" class="btn btn-primary text-white" onclick="saveIdCalendar()"><i
+        class="fa-regular fa-floppy-disk"></i> Guardar</button>
   </section>
 
   <!-- Editar Perfil -->
@@ -140,24 +180,58 @@
             <label for="direccion" class="mb-2 text-azul-marino">Dirección:</label>
             <input type="text" id="save-direccion" name="direccion" required class="form-control mb-3" /><br />
 
-            <button type="button" class="btn btn-primary" onclick="saveDireccion()"><i class="fa-regular fa-floppy-disk"></i> Guardar Dirección</button>
+            <button type="button" class="btn btn-primary" onclick="saveDireccion()"><i
+                class="fa-regular fa-floppy-disk"></i> Guardar Dirección</button>
             <button type="button" class="btn btn-danger ms-2" id="volver">Volver</button>
           </div>
         </div>
-
         <!-- Formulario de Horario -->
         <div class="carousel-item" id="horario">
-          <form id="professionalForm" class="p-4">
-            <label for="startHour" class="mb-2 text-azul-marino">Horario de Inicio jornada:</label>
-            <input type="time" id="startHour" name="startHour" required class="form-control mb-3" /><br />
+          <div class="p-4">
+            <h5>Horarios Disponibles</h5>
+            <table class="table table-striped" id="horariosTableEdit">
+              <thead>
+                <tr>
+                  <th>Día</th>
+                  <th>Hora Inicio</th>
+                  <th>Hora Fin</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Se cargarán los horarios -->
+              </tbody>
+            </table>
 
-            <label for="endHour" class="mb-2 text-azul-marino">Horario de Fin jornada:</label>
-            <input type="time" id="endHour" name="endHour" required class="form-control mb-3" /><br />
-
-            <button type="submit" class="btn btn-primary"><i class="fa-regular fa-floppy-disk"></i> Guardar Horarios</button>
+            <button class="btn btn-success mb-3" id="addHorarioBtn">Agregar Horario</button>
             <button type="button" class="btn btn-danger ms-2" id="volver2">Volver</button>
-          </form>
+
+            <!-- Formulario para agregar/editar -->
+            <form id="horarioForm" style="display: none;">
+              <label for="dia" class="mb-2 text-azul-marino">Día:</label>
+              <select id="dia" name="dia" class="form-select mb-3" required>
+                <option value="">Seleccionar día</option>
+                <option value="lunes">Lunes</option>
+                <option value="martes">Martes</option>
+                <option value="miércoles">Miércoles</option>
+                <option value="jueves">Jueves</option>
+                <option value="viernes">Viernes</option>
+                <option value="sábado">Sábado</option>
+                <option value="domingo">Domingo</option>
+              </select>
+
+              <label for="startHour" class="mb-2 text-azul-marino">Horario de Inicio:</label>
+              <input type="time" id="startHour" name="startHour" required class="form-control mb-3" />
+
+              <label for="endHour" class="mb-2 text-azul-marino">Horario de Fin:</label>
+              <input type="time" id="endHour" name="endHour" required class="form-control mb-3" />
+
+              <button type="submit" class="btn btn-primary" id="saveHorarioBtn">Guardar Horario</button>
+              <button type="button" class="btn btn-secondary ms-2" id="cancelHorarioBtn">Cancelar</button>
+            </form>
+          </div>
         </div>
+
 
         <!-- Formulario de Precio -->
         <div class="carousel-item" id="precio">
@@ -165,7 +239,8 @@
             <label for="precio" class="mb-2 text-azul-marino">Precio:</label>
             <input type="number" id="save-precio" name="precio" required class="form-control mb-3" /><br />
 
-            <button type="button" class="btn btn-primary" onclick="savePrecio()"><i class="fa-regular fa-floppy-disk"></i> Guardar Precio</button>
+            <button type="button" class="btn btn-primary" onclick="savePrecio()"><i
+                class="fa-regular fa-floppy-disk"></i> Guardar Precio</button>
             <button type="button" class="btn btn-danger ms-2" id="volver3">Volver</button>
           </div>
         </div>
@@ -174,9 +249,10 @@
         <div class="carousel-item" id="descripcion">
           <div class="p-4">
             <label for="descripcion" class="mb-2 text-azul-marino">Descripción:</label>
-            <textarea id="save-descripcion" required class="form-control mb-3" ></textarea><br />
+            <textarea id="save-descripcion" required class="form-control mb-3"></textarea><br />
 
-            <button type="button" class="btn btn-primary" onclick="saveDescripcion()"><i class="fa-regular fa-floppy-disk"></i> Guardar Descripción</button>
+            <button type="button" class="btn btn-primary" onclick="saveDescripcion()"><i
+                class="fa-regular fa-floppy-disk"></i> Guardar Descripción</button>
             <button type="button" class="btn btn-danger ms-2" id="volver4">Volver</button>
           </div>
         </div>
@@ -191,27 +267,28 @@
   <!-- Section Advertencia -->
   <section>
     <div class="container">
-        <hr class="mb-4">
+      <hr class="mb-4">
 
-        <div class="card card-color-celeste text-white mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Aviso Importante</h5>
-                <p class="card-text">
-                    Asegúrate de que toda la información ingresada sea precisa y esté actualizada. Los datos proporcionados serán clave para que los pacientes puedan tomar decisiones informadas al seleccionar a un profesional.
-                </p>
-            </div>
+      <div class="card card-color-celeste text-white mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Aviso Importante</h5>
+          <p class="card-text">
+            Asegúrate de que toda la información ingresada sea precisa y esté actualizada. Los datos proporcionados
+            serán clave para que los pacientes puedan tomar decisiones informadas al seleccionar a un profesional.
+          </p>
         </div>
+      </div>
     </div>
-</section>
+  </section>
 
 
   <footer class="footer text-center py-4 mt-5 border-top">
     <p>&copy; 2024 Agenda Salud. Todos los derechos reservados.</p>
     <div>
-        <a href="terminos.html">Términos de servicio</a> |
-        <a href="politicas.html">Política de privacidad</a>
+      <a href="terminos.html">Términos de servicio</a> |
+      <a href="politicas.html">Política de privacidad</a>
     </div>
-</footer>
+  </footer>
 
   <script src="js/imgchange.js"></script>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

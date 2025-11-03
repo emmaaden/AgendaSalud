@@ -16,3 +16,6 @@ Este proyecto está bajo la licencia MIT. Consulta el archivo `LICENSE` para má
 **Autor:** Emmanuel Denis
 **Correo:** emma26228@gmail.com
 **Teléfono:** 2615930274
+
+## Version
+- 1.0.1
