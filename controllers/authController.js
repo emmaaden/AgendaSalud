@@ -1,84 +1,133 @@
-const User = require('../models/User');
-const ActivationCode = require('../models/ActivationCode');
-const bcrypt = require('bcrypt');
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 exports.register = async (req, res) => {
-    const { fullName, email, dni, password, telefono, activationCode, area } = req.body;
+    const { email, password, activationCode, dni, nombre, apellido, fechaNacimiento, telefono, direccion, obraSocial, sexo, matricula, role, area } = req.body;
+
     try {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ error: 'El usuario ya existe' });
-        }
-
-        const codeEntry = await ActivationCode.findOne({ code: activationCode });
-        if (!codeEntry || codeEntry.used) {
-            return res.status(400).json({ error: 'Código de activación inválido o ya utilizado.' });
-        }
-
-        if (!area) {
-            return res.status(400).json({ error: 'El campo área es obligatorio.' });
-        }
-
-        let startHour = "00:00"
-        let endHour = "00:00"
-        codeEntry.used = true;
-        await codeEntry.save();
-
-        let descripcion = "Descripción completa del profesional, su experiencia en el campo de la salud, especialidades y los servicios que ofrece. Detalle de los años de trayectoria, certificaciones, y las instituciones en las que ha trabajado.";
-        let precio = 0;
-        let direccion = "Calle Muestra 123";
-        let calendarid = ""
-        let image = "img/img-face.png"
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({
-            fullName,
+        // Creamos usuairo en Supabase Auth
+        const { data, error } = await supabase.auth.signUp({
             email,
-            dni,
-            telefono,
-            password: hashedPassword,
-            activationCode,
-            startHour,
-            endHour,
-            area,
-            descripcion,
-            precio,
-            direccion,
-            calendarid,
-            image
-        });
+            password
+        })
+        if (error) { return res.status(400).json({ error: error.message }) };
 
-        await newUser.save();
+        const user = data.user
 
-        res.status(201).json({ message: 'Usuario registrado exitosamente' });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al registrar el usuario' });
+        if (!user) {
+            return res.status(200).json({
+                message: "Usuario registrado, pero falta confirmar el email antes de insertar en la tabla",
+            });
+        }
+
+        const userId = data.user.id
+
+        // Insertar en la tabla correspondiente
+        let insertError;
+        if (role === "PACIENTE") {
+            const { error: err } = await supabase
+                .from("paciente")
+                .insert([{ 
+                    user_id: userId,
+                    dni: dni,
+                    nombre: nombre,
+                    apellido: apellido,
+                    fecha_nacimiento: fechaNacimiento,
+                    telefono: telefono,
+                    direccion: direccion,
+                    obra_social: obraSocial,
+                    sexo: sexo
+                }]);
+            insertError = err;
+        } else if (role === "PROFESIONAL") {
+            const { error: err_prof } = await supabase
+                .from("profesional")
+                .insert([{ 
+                    user_id: userId,
+                    nombre: nombre,
+                    apellido: apellido,
+                    dni: dni,
+                    telefono: telefono,
+                    matricula: matricula
+                }]);
+            insertError = err_prof;
+            const { error: err_esp } = await supabase
+                .from("especialidad_profesional")
+                .insert([{ 
+                    id_profesional: userId,
+                    id_especialidad: area
+                }]);
+            insertError = err_esp;
+            
+        }
+
+        if (insertError) {
+            console.error("Error insertando en tabla:", insertError);
+            return res.status(400).json({ error: insertError.message });
+        }
+
+        res.json({ message: "Registro exitoso", user: { id: userId, email: user.email, role } });
+
+    } catch (err) {
+        res.status(500).json({ error: "Error en el registro" });
     }
 };
-
 
 exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ error: 'Usuario no encontrado' });
+        // 1. Autenticación con Supabase Auth
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            return res.status(401).json({ error: "Credenciales inválidas" });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ error: 'Contraseña incorrecta' });
+        const userId = data.user.id;
+        let role = null;
+
+        // 2. Buscar en tabla PACIENTE
+        const { data: paciente, error: pacienteError } = await supabase
+            .from("paciente")
+            .select("user_id, nombre")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+        if (paciente) {
+            role = "paciente";
         }
 
+        // 3. Buscar en tabla PROFESIONAL (solo si no es paciente)
+        if (!role) {
+            const { data: profesional, error: profesionalError } = await supabase
+                .from("profesional")
+                .select("user_id, nombre")
+                .eq("user_id", userId)
+                .maybeSingle();
+
+            if (profesional) {
+                role = "profesional";
+            }
+        }
+
+        // 4. Si no está en ninguna tabla
+        if (!role) {
+            return res.status(403).json({ error: "El usuario no tiene rol asignado" });
+        }
         req.session.isAuthenticated = true;
-        req.session.email = user.email;
-        req.session.fullName = user.fullName;
-        req.session.dni = user.dni;
-        req.session.area = user.area;
+        req.session.user = { id: userId, email: data.user.email, role };
 
-        res.status(200).json({ message: 'Inicio de sesión exitoso' });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al iniciar sesión' });
+        res.json({ message: "Login exitoso", user: req.session.user });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Error al iniciar sesión" });
     }
 };
 
@@ -89,286 +138,4 @@ exports.logout = (req, res) => {
         }
         res.status(200).json({ message: 'Sesión cerrada exitosamente' });
     });
-};
-
-// Area
-
-exports.saveArea = async (req, res) => {
-    const { email, area } = req.body;  // Suponiendo que el área y el correo se envían en el cuerpo de la solicitud
-
-    try {
-        // Busca al usuario por el correo electrónico
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        // Verificar si el valor del área es válido (puedes adaptar esto según tu lógica)
-        if (!area || typeof area !== 'string' || area.trim() === '') {
-            return res.status(400).json({ error: 'Área no válida' });
-        }
-
-        // Asignar el valor del área al usuario
-        user.area = area;
-        await user.save();  // Guardar los cambios en la base de datos
-
-        res.status(200).json({ message: 'Área asignada exitosamente', area });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al asignar el área', details: error.message });
-    }
-};
-
-exports.getArea = async (req, res) => {
-    try {
-        // Obtener el email desde el cuerpo de la solicitud o la sesión
-        const email = req.body.email || req.session.email;
-
-        if (!email) {
-            return res.status(400).json({ error: 'Email no proporcionado' });
-        }
-
-        // Buscar al usuario por email
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        // Devolver el área del usuario
-        res.status(200).json({ area: user.area });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener el área' });
-    }
-};
-
-// Descripcion
-
-exports.saveDesc = async (req, res) => {
-    const { email, descripcion } = req.body;
-
-    try {
-        // Verificar si el valor de la Descripcion es válido (puedes adaptar esto según tu lógica)
-        if (!descripcion || typeof descripcion !== 'string' || descripcion.trim() === '') {
-            return res.status(400).json({ error: 'Descripcion no válida' });
-        }
-
-        // Actualizar el campo descripcion del usuario
-        const user = await User.findOneAndUpdate(
-          { email },
-          { descripcion },
-          { new: true }
-        );
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        res.status(200).json({ message: 'Descripcion asignada exitosamente', descripcion });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al asignar la Descripcion', details: error.message });
-    }
-};
-
-exports.getDesc = async (req, res) => {
-    try {
-        // Obtener el email desde el cuerpo de la solicitud o la sesión
-        const email = req.body.email;
-
-        if (!email) {
-            return res.status(400).json({ error: 'Email no proporcionado' });
-        }
-
-        // Buscar al usuario por email
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        // Devolver la Descripcion del usuario
-        res.status(200).json({ descripcion: user.descripcion });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener la Descripcion' });
-    }
-};
-
-// Precio
-
-exports.savePrecio = async (req, res) => {
-    const { email, precio } = req.body;
-
-    try {
-        // Verificar si el valor del Precio es válido (puedes adaptar esto según tu lógica)
-        if (!precio || typeof precio !== 'string' || precio.trim() === '') {
-          return res.status(400).json({ error: 'Precio no válido' });
-        }
-
-
-        // Actualiza el campo Precio del usuario
-        const user = await User.findOneAndUpdate(
-          { email },
-          { precio },
-          { new: true }
-        );
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        res.status(200).json({ message: 'Precio asignado exitosamente', precio });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al asignar el Precio', details: error.message });
-    }
-};
-
-exports.getPrecio = async (req, res) => {
-    try {
-        // Obtener el email desde el cuerpo de la solicitud o la sesión
-        const email = req.body.email;
-
-        if (!email) {
-            return res.status(400).json({ error: 'Email no proporcionado' });
-        }
-
-        // Buscar al usuario por email
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        // Devolver el Precio del usuario
-        res.status(200).json({ precio: user.precio });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener el Precio' });
-    }
-};
-
-// Direccion
-exports.saveDirec = async (req, res) => {
-    const { email, direccion } = req.body;
-
-    try {
-        // Verificar si el valor de la direccion es válido
-        if (!direccion || typeof direccion !== 'string' || direccion.trim() === '') {
-            return res.status(400).json({ error: 'Direccion no válida' });
-        }
-
-        // Actualizar el campo direccion del usuario
-        const user = await User.findOneAndUpdate(
-            { email }, // Filtro para encontrar al usuario por email
-            { direccion }, // Campo a actualizar
-            { new: true } // Retorna el documento actualizado
-        );
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        res.status(200).json({ message: 'Direccion asignada exitosamente', user });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al asignar la Direccion', details: error.message });
-    }
-};
-
-
-exports.getDirec = async (req, res) => {
-    try {
-        // Obtener el email desde el cuerpo de la solicitud o la sesión
-        const email = req.body.email;
-
-        if (!email) {
-            return res.status(400).json({ error: 'Email no proporcionado' });
-        }
-
-        // Buscar al usuario por email
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        // Devolver la Direccion del usuario
-        res.status(200).json({ direccion: user.direccion });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener la Direccion' });
-    }
-};
-
-// CalendarID
-
-exports.saveCalenID = async (req, res) => {
-    const { email, calendarid } = req.body;
-
-    try {
-        // Verificar si el valor de el calendarid es válido (puedes adaptar esto según tu lógica)
-        if (!calendarid || typeof calendarid !== 'string' || calendarid.trim() === '') {
-            return res.status(400).json({ error: 'CalendarID no válida' });
-        }
-
-        // Actualiza el campo CalendarID del usuario
-        const user = await User.findOneAndUpdate(
-          { email },
-          { calendarid },
-          {new: true }
-        );
-
-        if (!user) {
-          return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        res.status(200).json({ message: 'Id calendar asignada exitosamente', calendarid });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al asignar el calendarid', details: error.message });
-    }
-};
-
-exports.getCalenID = async (req, res) => {
-    try {
-        // Obtener el email desde el cuerpo de la solicitud o la sesión
-        const fullName = req.body.fullName;
-
-        if (!fullName) {
-            return res.status(400).json({ error: 'Email no proporcionado' });
-        }
-
-        // Buscar al usuario por email
-        const user = await User.findOne({ fullName });
-
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        // Devolver el CalendarID del usuario
-        res.status(200).json({ calendarid: user.calendarid });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al obtener el calendarid' });
-    }
-};
-
-// Foto Perfil
-
-exports.getImg = async (req, res) => {
-  try {
-    const dni = req.body.dni;
-    if (!dni) {
-      return res.status(400).json({ error: 'dni no proporcionado.' });
-    }
-
-    const user = await User.findOne({ dni });
-
-    if (!user) {
-        return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    res.status(200).json({ image: user.image });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al obtener la imagen' });
-  }
 };

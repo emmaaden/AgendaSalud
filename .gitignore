@@ -1,6 +1,23 @@
-node_modules
-data/
+# Dependencias
+node_modules/
+
+# Variables de entorno
 .env
-calenderregistroclinico-8aedace47e68.json
-package-lock.json
+
+# Configuración del editor
 .vscode/
+
+# Archivos de servicio o claves privadas
+*.json
+
+# Logs y archivos temporales
+*.log
+*.tmp
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Carpeta de build (si algún día agregás React, Vite, etc.)
+dist/
+build/

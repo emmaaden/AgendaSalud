@@ -1,4 +1,3 @@
-const Patient = require('../models/Paciente');
 
 exports.regisPacient = async (req, res) => {
     const { fullName, email, password, dni, telefono, sexo, direccion, fechaNacimiento, edad, obraSocial, fecha, area, profesional, sintomas, diagnostico, tratamiento, dientes } = req.body;

@@ -82,14 +82,15 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   e.preventDefault();
 
   // Obtener los valores del formulario
-  const activationCode = document.getElementById("activationCode").value;
-  const fullName = document.getElementById("fullName").value;
   const email = document.getElementById("registerEmail").value;
-  const dni = document.getElementById("registerDNI").value;
-  const telefono = document.getElementById("registerPhone").value;
   const password = document.getElementById("registerPassword").value;
-  const area = document.getElementById("areaNameDash").value;
-
+  const activationCode = document.getElementById("activationCode").value;
+  const dni = document.getElementById("registerDNI").value;
+  const nombre = document.getElementById("registerNombre").value;
+  const apellido = document.getElementById("registerApellido").value;
+  const telefono = document.getElementById("registerPhone").value;
+  const matricula = document.getElementById("matricula").value;
+  const role = "PROFESIONAL"
 
   try {
     // Enviar datos para registrar al usuario
@@ -98,7 +99,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ fullName, email, dni, telefono, password, activationCode, area }),
+      body: JSON.stringify({ email, password, activationCode, dni, nombre, apellido, telefono, matricula, role  }),
     });
 
     if (!response.ok) {

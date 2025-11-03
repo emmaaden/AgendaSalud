@@ -1,12 +1,13 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const saveButton = document.getElementById('save-img');
-  const fileInput = document.getElementById('img-upload');
+  const fileInput = document.getElementById('img-upload');  
   const modalImg = document.getElementById('modal-img');
   const modal = new bootstrap.Modal(document.getElementById('imageModal'));
 
-  const responsedni = await fetch('/api/user');
-  const userDataDni = await responsedni.json();
-  const dni = userDataDni.dni;
+  // Traer datos del usuario para obtener su user_id
+    const responseUser = await fetch('/api/user');
+    const userData = await responseUser.json();
+    const user_id = userData.id;
 
   // Cuando se selecciona una nueva imagen, actualizar la vista en el modal
   fileInput.addEventListener('change', function () {
@@ -14,69 +15,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (file) {
       const reader = new FileReader();
       reader.onload = function (e) {
-        modalImg.src = e.target.result;  // Mostrar la imagen seleccionada en el modal
+        modalImg.src = e.target.result;
       };
       reader.readAsDataURL(file);
     }
   });
 
-  const responseImg = await fetch('/auth/get-img', {
+  // Traer la imagen actual del usuario desde Supabase
+  const responseImg = await fetch('/avatars/get-img', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ dni: dni }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id })
   });
   const data = await responseImg.json();
 
-  const direcElement = document.getElementById('profile-img');
-
-  if (responseImg.ok) {
-    if (direcElement) {
-      direcElement.src = data.image;
-      modalImg.src = data.image;
-    } else {
-        console.error('El elemento con el ID "profile-img" no se encontró en el DOM.');
-    }
-  }  else {
-      console.error('Error:', data.error);
+  const profileImg = document.getElementById('profile-img');
+  if (responseImg.ok && profileImg) {
+    profileImg.src = data.image;
+    modalImg.src = data.image;
   }
 
+  // Subir nueva imagen al hacer clic en "Guardar"
+  saveButton.addEventListener('click', async function () {
+    const file = fileInput.files[0];
+    if (!file) {
+      alert('Por favor selecciona una imagen');
+      return;
+    }
 
-    // Cuando se hace clic en "Guardar", enviar la imagen al servidor
-    saveButton.addEventListener('click', function () {
-      const file = fileInput.files[0];
-      if (!file) {
-        alert('Por favor selecciona una imagen');
-        return;
-      }
+    const formData = new FormData();
+    formData.append('avatar', file);   // <-- coincide con multer en backend
+    formData.append('user_id', user_id); // enviamos user_id
 
-      // Crear un FormData para enviar la imagen al servidor
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // Usar fetch para enviar la imagen al servidor
-      fetch(`/upload-image/${dni}`, {
+    try {
+      const uploadResponse = await fetch('/avatars/upload', {
         method: 'POST',
         body: formData
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.image) {
-          // Cerrar el modal
-          modal.hide();  // Cerrar el modal
-          // Actualizar la imagen en el frontend con la nueva URL
-          const imgElement = document.querySelector('img');
-          imgElement.src = data.image;  // Asume que "data.image" es la URL de la imagen
-
-        } else {
-          alert('Error al subir la imagen');
-        }
-      })
-      .catch(error => {
-        console.error('Error al subir la imagen:', error);
-        alert('Hubo un problema al intentar subir la imagen');
       });
-    });
 
+      const uploadData = await uploadResponse.json();
+
+      if (uploadData.url) {
+        modal.hide();
+        profileImg.src = uploadData.url;
+        modalImg.src = uploadData.url;
+      } else {
+        alert('Error al subir la imagen');
+        console.error(uploadData.error);
+      }
+    } catch (error) {
+      console.error('Error al subir la imagen:', error);
+      alert('Hubo un problema al intentar subir la imagen');
+    }
+  });
 });
