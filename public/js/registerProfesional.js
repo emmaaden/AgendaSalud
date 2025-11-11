@@ -1,10 +1,12 @@
+const host = "localhost:3000"
+/* 
 // Función para agregar un nuevo profesional y área
 async function addProfessional() {
-  const area = document.getElementById("areaNameDash").value;
-  const professional = document.getElementById("fullName").value;
-  const email = document.getElementById("registerEmail").value;
+  const especialidad = document.getElementById("registerEspecialidad").value;
+  const dni = document.getElementById("registerDNI").value;
 
-  if (area && professional && email) {
+  if (area && professional && email) {-[]
+
     const data = { area: area, professional: professional };
 
     try {
@@ -48,19 +50,24 @@ async function addProfessional() {
     return false;
   }
 }
-
+ */
 // Función para obtener áreas y profesionales desde la base de datos y llenar el menú desplegable de áreas
-async function populateAreaList(area) {
-  const select = area;
+async function populateAreaList(registerEspecialidad) {
+  const select = registerEspecialidad;
 
   try {
-    const response = await fetch(`http://${host}/professionals`);
-    const professionals = await response.json();
-
-    professionals.forEach((prof) => {
+    const response = await fetch("/especialidades/get-especialidades", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      }
+    });
+    const req = await response.json();
+    console.log(req.especialidades)
+    req.especialidades.forEach((esp) => {
       const option = document.createElement("option");
-      option.value = prof.area;
-      option.textContent = prof.area;
+      option.value = esp.id;
+      option.textContent = esp.nombre;
       select.appendChild(option);
     });
   } catch (error) {
@@ -69,12 +76,12 @@ async function populateAreaList(area) {
 }
 
 function test() {
-  const area = document.getElementById("areaNameDash").value;
+  const area = document.getElementById("registerEspecialidad").value;
 };
 
 document.addEventListener("DOMContentLoaded", function () {
-  area = document.getElementById("areaNameDash");
-  populateAreaList(area);
+  registerEspecialidad = document.getElementById("registerEspecialidad");
+  populateAreaList(registerEspecialidad);
 
 });
 
@@ -88,8 +95,11 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   const dni = document.getElementById("registerDNI").value;
   const nombre = document.getElementById("registerNombre").value;
   const apellido = document.getElementById("registerApellido").value;
-  const telefono = document.getElementById("registerPhone").value;
-  const matricula = document.getElementById("matricula").value;
+  const telefono = document.getElementById("registerTelefono").value;
+  const matricula = document.getElementById("registerMatricula").value;
+  const direccion = document.getElementById("registerDireccion").value;
+  const sexo = document.getElementById("registerSexo").value;
+  const especialidad = document.getElementById("registerEspecialidad").value;
   const role = "PROFESIONAL"
 
   try {
@@ -99,20 +109,16 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, activationCode, dni, nombre, apellido, telefono, matricula, role  }),
+      body: JSON.stringify({ email, password, activationCode, dni, nombre, apellido, telefono, especialidad, matricula, direccion, sexo, role }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || "Error en el registro.");
-    }
-
-    // Si el registro fue exitoso, agregar profesional
-    const addProfessionalSuccess = await addProfessional();
-    if (addProfessionalSuccess) {
-      // Redirigir si ambas operaciones fueron exitosas
+    } else if (response.ok) {
       window.location.href = "/dashboard";
     }
+
   } catch (error) {
     alert(error.message || "Ocurrió un error inesperado.");
   }

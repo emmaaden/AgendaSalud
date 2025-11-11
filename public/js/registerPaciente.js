@@ -11,6 +11,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   const fechaNacimiento = document.getElementById("registerNacimiento").value;
   const direccion = document.getElementById("registerDireccion").value;
   const obraSocial = document.getElementById("registerObraSocial").value;
+  const sexo = document.getElementById("registerSexo").value;
   const role = "PACIENTE"
 
   try {
@@ -20,7 +21,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, dni, nombre, apellido, telefono, fechaNacimiento, direccion, obraSocial, role  }),
+      body: JSON.stringify({ email, password, dni, nombre, apellido, telefono, fechaNacimiento, direccion, obraSocial, sexo, role  }),
     });
 
     if (!response.ok) {

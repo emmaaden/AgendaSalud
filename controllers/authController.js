@@ -4,7 +4,7 @@ require('dotenv').config();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 exports.register = async (req, res) => {
-    const { email, password, activationCode, dni, nombre, apellido, fechaNacimiento, telefono, direccion, obraSocial, sexo, matricula, role, area } = req.body;
+    const { email, password, activationCode, dni, nombre, apellido, fechaNacimiento, telefono, telefono_profesional, direccion, direccion_profesional, obraSocial, sexo, especialidad, matricula, role, area } = req.body;
 
     try {
         // Creamos usuairo en Supabase Auth
@@ -24,53 +24,70 @@ exports.register = async (req, res) => {
 
         const userId = data.user.id
 
+        const { data: persona_data, error: persona_error } = await supabase
+            .from("persona")
+            .insert([{
+                id_auth: userId,
+                dni,
+                nombre,
+                apellido,
+                fecha_nacimiento: fechaNacimiento,
+                telefono,
+                direccion,
+                sexo
+            }])
+            .select()
+            .single();
+
+        if (persona_error) throw persona_error;
+
+        const id_persona = persona_data.id;
+
+
         // Insertar en la tabla correspondiente
         let insertError;
         if (role === "PACIENTE") {
             const { error: err } = await supabase
                 .from("paciente")
-                .insert([{ 
-                    user_id: userId,
-                    dni: dni,
-                    nombre: nombre,
-                    apellido: apellido,
-                    fecha_nacimiento: fechaNacimiento,
-                    telefono: telefono,
-                    direccion: direccion,
-                    obra_social: obraSocial,
-                    sexo: sexo
+                .insert([{
+                    id_persona,
+                    obra_social: obraSocial
                 }]);
-            insertError = err;
-        } else if (role === "PROFESIONAL") {
-            const { error: err_prof } = await supabase
-                .from("profesional")
-                .insert([{ 
-                    user_id: userId,
-                    nombre: nombre,
-                    apellido: apellido,
-                    dni: dni,
-                    telefono: telefono,
-                    matricula: matricula
-                }]);
-            insertError = err_prof;
-            const { error: err_esp } = await supabase
-                .from("especialidad_profesional")
-                .insert([{ 
-                    id_profesional: userId,
-                    id_especialidad: area
-                }]);
-            insertError = err_esp;
-            
+            if (err) throw err;
         }
 
-        if (insertError) {
-            console.error("Error insertando en tabla:", insertError);
-            return res.status(400).json({ error: insertError.message });
+        if (role === "PROFESIONAL") {
+            const { data: data_prof, error: err_prof } = await supabase
+                .from("profesional")
+                .insert([{
+                    id_persona,
+                    telefono: telefono_profesional,
+                    direccion: direccion_profesional,
+                    matricula
+                }])
+                .select()
+                .single();
+            if (err_prof) throw err_prof;
+
+            const { error: err_esp } = await supabase
+                .from("especialidad_profesional")
+                .insert([{
+                    id_profesional: data_prof.id,
+                    id_especialidad: especialidad
+                }]);
+            if (err_esp) throw err_esp;
         }
+
+
+        /*  if (insertError) {
+             console.error("Error insertando en tabla:", insertError);
+             return res.status(400).json({ error: insertError.message });
+         } */
 
         res.json({ message: "Registro exitoso", user: { id: userId, email: user.email, role } });
 
     } catch (err) {
+        console.error("Error detallado en registro:", err);
         res.status(500).json({ error: "Error en el registro" });
     }
 };

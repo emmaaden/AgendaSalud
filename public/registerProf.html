@@ -8,60 +8,278 @@
   <link rel="icon" type="image/png" href="img/ico.png" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <style>
+    :root {
+      --card-max-width: 900px;
+      --card-gap: 1rem;
+      --accent: #007bff;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, #f5f8fb 0%, #e6f0ff 100%);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Centro perfecto */
+    .page-wrap {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      /* espacio en mobile para que no toque bordes */
+      box-sizing: border-box;
+    }
+
+    /* Tarjeta */
+    .register-card {
+      background: #ffffff;
+      width: min(95%, var(--card-max-width));
+      border-radius: 16px;
+      box-shadow: 0 12px 36px rgba(22, 52, 92, 0.12);
+      padding: 28px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      /* evita que la tarjeta se salga verticalmente en pantallas cortas */
+      max-height: calc(100vh - 80px);
+      overflow: auto;
+    }
+
+    .register-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+      flex-direction: column;
+      padding-bottom: 4px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      /* background: linear-gradient(135deg,var(--accent), #ffffff); */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1f2d3d;
+    }
+
+    .subtitle {
+      color: #556b82;
+      font-size: 0.95rem;
+    }
+
+    /* Grid responsiva: 2 columnas en >=768px, 1 columna en mobile */
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--card-gap);
+    }
+
+    /* Asegura que cada floating ocupe su espacio */
+    .form-floating {
+      min-width: 0;
+    }
+
+    /* Inputs y botones */
+    input.form-control,
+    select.form-select {
+      height: 48px;
+      padding: 0.75rem 0.75rem;
+      font-size: 0.95rem;
+      border-radius: 10px;
+    }
+
+    .btn-primary {
+      --bs-btn-padding-y: 0.6rem;
+      --bs-btn-padding-x: 1rem;
+      --bs-btn-font-size: 1rem;
+      border-radius: 10px;
+      background: var(--accent);
+      border: none;
+      box-shadow: 0 8px 20px rgba(0, 123, 255, 0.12);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+
+    .btn-primary:active {
+      transform: translateY(1px)
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(0, 123, 255, 0.14)
+    }
+
+    .extra-links {
+      text-align: center;
+      color: #5b6b7a;
+      font-size: 0.95rem;
+    }
+
+    /* Spacing final */
+    .form-actions {
+      margin-top: 6px;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 767.98px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .register-card {
+        padding: 18px;
+        gap: 12px;
+      }
+
+      .brand .logo {
+        width: 40px;
+        height: 40px;
+      }
+
+      h1 {
+        font-size: 1.05rem;
+      }
+    }
+
+    /* Evita que el placeholder/label se superponga visualmente en dispositivos viejos */
+    ::placeholder {
+      opacity: 0.6;
+    }
+  </style>
 </head>
 
 <body>
-  <div class="align-items-center d-flex py-4 h-100">
-    <main class="form-signin w-100 m-auto">
-      <form id="registerForm">
-        <h1 class="h3 mb-3 fw-normal">Registrarse</h1>
-        <div class="form-floating">
-          <input type="text" class="form-control" id="activationCode" placeholder="Codigo de Activacion" required />
-          <label for="activationCode">Codigo de Activacion</label>
+  <div class="page-wrap">
+    <section class="register-card" aria-labelledby="registroTitulo">
+      <header class="register-header">
+        <div class="brand">
+          <!-- <div class="logo" aria-hidden="true">C+</div> -->
+          <img src="img/ico.png" alt="" class="logo" aria-hidden="true">
+          <div style="text-align:left">
+            <div id="registroTitulo" style="font-weight:700; font-size:1rem; color:#213244;">Agenda Salud</div>
+            <div class="subtitle">Crear cuenta como Profesional</div>
+          </div>
         </div>
-        <div class="form-floating mt-3">
-          <select id="areaNameDash" name="areaNameDash" class="form-select">
-            <option value="">Selecciona un Area</option>
-          </select>
+      </header>
+
+      <form id="registerForm" novalidate>
+        <div class="form-row">
+          <div class="form-floating">
+            <input type="text" class="form-control" id="activationCode" placeholder="Codigo de Activacion" required />
+            <label for="activationCode">Codigo de Activacion</label>
+          </div>
+
+          <div class="form-floating">
+            <select id="registerEspecialidad" name="registerEspecialidad" class="form-select" required>
+              <option value="" selected disabled>Selecciona una Especialidad</option>
+            </select>
+            <label for="registerEspecialidad">Especialidad</label>
+          </div>
+
+
+          <div class="form-floating">
+            <input type="text" class="form-control" id="registerNombre" placeholder="Nombre" required />
+            <label for="registerNombre">Nombre</label>
+          </div>
+
+          <div class="form-floating">
+            <input type="text" class="form-control" id="registerApellido" placeholder="Apellido" required />
+            <label for="registerApellido">Apellido</label>
+          </div>
+
+          <div class="form-floating">
+            <input type="number" class="form-control" id="registerDNI" placeholder="14562435" required />
+            <label for="registerDNI">DNI</label>
+          </div>
+
+          <div class="form-floating">
+            <select id="registerSexo" name="registerSexo" class="form-select" required>
+              <option value="" selected disabled>Seleccione su sexo</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Otro">Otro</option>
+            </select>
+            <label for="registerSexo">Sexo</label>
+          </div>
+
+          <div class="form-floating">
+            <input type="text" class="form-control" id="registerMatricula" placeholder="Matricula" required />
+            <label for="registerMatricula">Matricula</label>
+          </div>
+
+          <div class="form-floating">
+            <input type="number" class="form-control" id="registerTelefono" placeholder="2614562345" required />
+            <label for="registerTelefono">Telefono</label>
+          </div>
+
+          <div class="form-floating">
+            <input type="text" class="form-control" id="registerDireccion" placeholder="San Jose 1234, Buenos Aires"
+              required />
+            <label for="registerDireccion">Direccion</label>
+          </div>
+
+          <div class="form-floating">
+            <input type="email" class="form-control" id="registerEmail" placeholder="name@example.com" required />
+            <label for="registerEmail">Email</label>
+          </div>
+
+          <div class="form-floating">
+            <input type="password" class="form-control" id="registerPassword" placeholder="Password" required />
+            <label for="registerPassword">Contraseña</label>
+          </div>
         </div>
-        <div class="form-floating mt-3 text-center">
-          <input type="text" class="form-control" id="registerNombre" placeholder="Nombre" required />
-          <label for="nombre">Nombre</label>
+
+        <div class="form-actions mt-3">
+          <button type="submit" class="btn btn-primary w-100">Registrarse</button>
         </div>
-        <div class="form-floating mt-3 text-center">
-          <input type="text" class="form-control" id="registerApellido" placeholder="Apellido" required />
-          <label for="apellido">Apellido</label>
-        </div>
-        <div class="form-floating mt-3">
-          <input type="number" class="form-control" id="registerDNI" placeholder="14562435" required />
-          <label for="registerDNI">DNI</label>
-        </div>
-        <div class="form-floating mt-3 text-center">
-          <input type="text" class="form-control" id="matricula" placeholder="Matricula" required />
-          <label for="matricula">Matricula</label>
-        </div>
-        <div class="form-floating mt-3">
-          <input type="number" class="form-control" id="registerPhone" placeholder="2614562345" required />
-          <label for="registerPhone">Telefono</label>
-        </div>
-        <div class="form-floating mt-3">
-          <input type="email" class="form-control" id="registerEmail" placeholder="name@example.com" required />
-          <label for="registerEmail">Email</label>
-        </div>
-        <div class="form-floating mt-3">
-          <input type="password" class="form-control" id="registerPassword" placeholder="Password" required />
-          <label for="registerPassword">Password</label>
-        </div>
-        <button class="btn btn-primary w-100 py-2 mt-3 mb-3" type="submit">
-          Registrarse
-        </button>
       </form>
-      <span>Ya tienes cuenta?
-        <a href="login.html" class="text-decoration-none">Iniciar Sesión</a></span>
-    </main>
+
+      <div class="extra-links">
+        ¿Ya tienes cuenta? <a href="login.html">Iniciar sesión</a>
+      </div>
+    </section>
   </div>
 
-  <script src="js/register.js"></script>
+  <script src="js/registerProfesional.js"></script>
+  <script>
+    // Pequeña validación para que no se envíe si faltan campos (mejorable según backend)
+    document.getElementById('registerForm').addEventListener('submit', function (e) {
+      const form = e.target;
+      if (!form.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Simple feedback visual: marcar controles inválidos
+        form.classList.add('was-validated');
+        // scroll al primer error en pantallas pequeñas
+        const firstInvalid = form.querySelector(':invalid');
+        if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  </script>
 </body>
 
 </html>

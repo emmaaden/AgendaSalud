@@ -14,6 +14,7 @@ const fs = require('fs');
 const authRoutes = require('./routes/authRoutes');
 const horariosRoutes = require('./routes/horarios');
 /* const pacienteRoutes = require('./routes/pacienteRoutes'); */
+const especialidadesRoutes = require('./routes/especialidadesRoutes');
 const profesionalRoutes = require('./routes/profesionalRoutes');
 const avatarsRoutes = require('./routes/avatarsRoutes');
 const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
@@ -41,6 +42,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/auth', authRoutes);
 app.use('/hour', horariosRoutes);
 /* app.use('/pacient', pacienteRoutes); */
+app.use('/especialidades', especialidadesRoutes);
 app.use('/profesional', profesionalRoutes);
 app.use('/avatars', avatarsRoutes);
 app.use('/ortodoncia', ortPacienteRoutes);
