@@ -2,7 +2,7 @@
 async function saveDireccion() {
     const response = await fetch('/api/user');
     const userData = await response.json();
-    const user_id = userData.id;
+    const user_id = userData.idRole;
     const direccion = document.getElementById("save-direccion").value;
 
 
@@ -34,7 +34,7 @@ async function saveDireccion() {
 async function savePrecio() {
     const response = await fetch('/api/user');
     const userData = await response.json();
-    const user_id = userData.id;
+    const user_id = userData.idRole;
     const precio = document.getElementById("save-precio").value;
 
 
@@ -66,7 +66,7 @@ async function savePrecio() {
 async function saveDescripcion() {
     const response = await fetch('/api/user');
     const userData = await response.json();
-    const user_id = userData.id;
+    const user_id = userData.idRole;
     const descripcion = document.getElementById("save-descripcion").value;
 
 
@@ -100,7 +100,7 @@ async function saveDescripcion() {
 async function saveIdCalendar() {
     const response = await fetch('/api/user');
     const userData = await response.json();
-    const user_id = userData.id;
+    const user_id = userData.idRole;
     const calendarid = document.getElementById("save-calendarid").value;
 
 
@@ -128,11 +128,11 @@ async function saveIdCalendar() {
     }
 };
 
-async function fetchAndSetElement(url, elementId, field) {
+async function fetchAndSetElement(url, elementId, field, id) {
     try {
         const responseUser = await fetch('/api/user');
         const userData = await responseUser.json();
-        const user_id = userData.id;
+        const user_id = userData[id];
 
         const response = await fetch(url, {
             method: 'POST',
@@ -150,6 +150,7 @@ async function fetchAndSetElement(url, elementId, field) {
                 console.error(`El elemento con id "${elementId}" no existe en el DOM.`);
             }
         } else {
+            console.log(url, elementId, field, id, "userID", user_id, data)
             console.error('Error en la petición:', data.error);
         }
     } catch (err) {
@@ -184,11 +185,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     nameElement.textContent = `${nombre}  ${apellido}`;
 
     //async function fetchAndSetElement(url, elementId, field) {
-    await fetchAndSetElement('/profesional/get-datos-prof', 'idCalendar', 'id_calendario');
-    await fetchAndSetElement('/profesional/get-datos-prof', 'idDireccion', 'direccion');
-    await fetchAndSetElement('/profesional/get-datos-prof', 'idDescripcion', 'descripcion');
-    await fetchAndSetElement('/profesional/get-datos-prof', 'idPrecio', 'precio');
-    await fetchAndSetElement('/profesional/get-esp-prof', 'idEspProf', 'especialidad_profesional');
+    await fetchAndSetElement('/profesional/get-datos-prof', 'idCalendar', 'id_calendario', 'id');
+    await fetchAndSetElement('/profesional/get-datos-prof', 'idDireccion', 'direccion', 'id');
+    await fetchAndSetElement('/profesional/get-datos-prof', 'idDescripcion', 'descripcion', 'id');
+    await fetchAndSetElement('/profesional/get-datos-prof', 'idPrecio', 'precio', 'id');
+    await fetchAndSetElement('/profesional/get-esp-prof', 'idEspProf', 'especialidad_profesional', 'idRole');
 
     const responseCalen = await fetch('/profesional/get-datos-prof', {
         method: 'POST',
@@ -271,7 +272,7 @@ async function loadHorarios(opcion, id) {
     // 1. Obtener user_id
     const responseUser = await fetch('/api/user');
     const userData = await responseUser.json();
-    const user_id = userData.id;
+    const user_id = userData.idRole;
 
     // 2. Llamar al backend (GET con query param)
     const response = await fetch(`/hour/get-horarios?user_id=${user_id}`);
@@ -327,7 +328,7 @@ horarioForm.addEventListener('submit', async e => {
 
     const responseUser = await fetch('/api/user');
     const userData = await responseUser.json();
-    const user_id = userData.id;
+    const user_id = userData.idRole;
 
     const dia = document.getElementById('dia').value;
     const startHour = document.getElementById('startHour').value;
@@ -361,7 +362,7 @@ async function deleteHorario(id) {
 
     const responseUser = await fetch('/api/user');
     const userData = await responseUser.json();
-    const user_id = userData.id;
+    const user_id = userData.idRole;
 
     const response = await fetch('/hour/delete-hours', {
         method: 'POST',

@@ -2,14 +2,29 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// Datos del profesional
 exports.getDatosProf = async (req, res) => {
     try {
         const { user_id } = req.body;
+
         const { data, error } = await supabase
-            .from("profesional")
-            .select("nombre, apellido, direccion, descripcion, id_calendario, precio")
-            .eq('user_id', user_id)
+            .from("persona")
+            .select(`
+                nombre,
+                apellido,
+                dni,
+                profesional (
+                    direccion,
+                    telefono,
+                    matricula,
+                    id_calendario,
+                    descripcion,
+                    precio
+                )
+            `)
+            .eq("id_auth", user_id)
             .maybeSingle();
+
         if (error) {
             console.error("Error obteniendo el profesional:", error);
             return res.status(400).json({ error: error.message });
@@ -18,17 +33,17 @@ exports.getDatosProf = async (req, res) => {
         if (!data) {
             return res.status(404).json({ error: "Profesional no encontrado" });
         }
-
         return res.json({
             nombre: data.nombre,
             apellido: data.apellido,
-            descripcion: data.descripcion,
-            precio: data.precio,
-            direccion: data.direccion,
-            id_calendario: data.id_calendario
+            dni: data.dni,
+            descripcion: data.profesional[0].descripcion,
+            precio: data.profesional[0].precio,
+            direccion: data.profesional[0].direccion,
+            id_calendario: data.profesional[0].id_calendario,
         });
     } catch (err) {
-        console.error(err);
+        console.error("Error interno del servidor:", err);
         return res.status(500).json({ error: "Error interno del servidor" });
     }
 };
@@ -69,7 +84,7 @@ exports.saveDesc = async (req, res) => {
         const { data, error } = await supabase
             .from("profesional")
             .update({ descripcion: descripcion })
-            .eq("user_id", user_id)
+            .eq("id", user_id)
             .select();
 
         if (error) {
@@ -92,7 +107,7 @@ exports.savePrecio = async (req, res) => {
         const { data, error } = await supabase
             .from("profesional")
             .update({ precio: precio })
-            .eq("user_id", user_id)
+            .eq("id", user_id)
             .select();
 
         if (error) {
@@ -115,7 +130,7 @@ exports.saveDirec = async (req, res) => {
         const { data, error } = await supabase
             .from("profesional")
             .update({ direccion: direccion })
-            .eq("user_id", user_id)
+            .eq("id", user_id)
             .select();
 
         if (error) {
@@ -138,7 +153,7 @@ exports.saveCalenID = async (req, res) => {
         const { data, error } = await supabase
             .from('profesional')
             .update({ id_calendario: calendarid })
-            .eq('user_id', user_id)
+            .eq('id', user_id)
             .select();
 
         if (error) {

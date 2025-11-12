@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { glob } = require('fs');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -93,7 +94,7 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     try {
         // 1. Autenticación con Supabase Auth
@@ -107,38 +108,52 @@ exports.login = async (req, res) => {
         }
 
         const userId = data.user.id;
-        let role = null;
 
-        // 2. Buscar en tabla PACIENTE
-        const { data: paciente, error: pacienteError } = await supabase
-            .from("paciente")
-            .select("user_id, nombre")
-            .eq("user_id", userId)
-            .maybeSingle();
-
-        if (paciente) {
-            role = "paciente";
-        }
-
+        let idRole = null;
         // 3. Buscar en tabla PROFESIONAL (solo si no es paciente)
-        if (!role) {
+        if (role == "profesional") {
             const { data: profesional, error: profesionalError } = await supabase
-                .from("profesional")
-                .select("user_id, nombre")
-                .eq("user_id", userId)
+                .from("persona")
+                .select(`
+                    id, profesional(id)
+                    `)
+                .eq("id_auth", userId)
                 .maybeSingle();
 
-            if (profesional) {
-                role = "profesional";
+            if (profesionalError) {
+                console.error("Error al buscar profesional:", error);
             }
-        }
+
+            if (profesional && profesional.profesional) {
+                console.log("✅ Usuario es profesional:", profesional.profesional[0].id);
+                idRole = profesional.profesional[0].id;
+            }
+        } else if (rol == "paciente") {
+            const { data: paciente, error: pacienteError } = await supabase
+                .from("persona")
+                .select(`
+                    id, paciente(id)
+                    `)
+                .eq("id_auth", userId)
+                .maybeSingle();
+
+            if (pacienteError) {
+                console.error("Error al buscar paciente:", error);
+            }
+
+            if (paciente && paciente.paciente) {
+                console.log("✅ Usuario es paciente:", paciente.paciente[0].id);
+                idRole = paciente.paciente[0].id;
+            }
+        };
 
         // 4. Si no está en ninguna tabla
         if (!role) {
             return res.status(403).json({ error: "El usuario no tiene rol asignado" });
         }
         req.session.isAuthenticated = true;
-        req.session.user = { id: userId, email: data.user.email, role };
+        req.session.user = { idRole: idRole ,id: userId, email: data.user.email, role };
+        console.log(req.session.user)
 
         res.json({ message: "Login exitoso", user: req.session.user });
 

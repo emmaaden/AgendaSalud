@@ -100,6 +100,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   const direccion = document.getElementById("registerDireccion").value;
   const sexo = document.getElementById("registerSexo").value;
   const especialidad = document.getElementById("registerEspecialidad").value;
+  const fechaNacimiento = document.getElementById("registerFechaNacimiento").value;
   const role = "PROFESIONAL"
 
   try {
@@ -109,7 +110,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, activationCode, dni, nombre, apellido, telefono, especialidad, matricula, direccion, sexo, role }),
+      body: JSON.stringify({ email, password, activationCode, dni, nombre, apellido, fechaNacimiento, telefono, especialidad, matricula, direccion, sexo, role }),
     });
 
     if (!response.ok) {

@@ -50,7 +50,7 @@ app.use('/ortodoncia', ortPacienteRoutes);
 app.get('/api/user', (req, res) => {
     /* console.log('Sesión api:', req.session); */
     if (req.session.isAuthenticated) {
-        res.json({ user: req.session.user.email, id: req.session.user.id, role: req.session.user.role });
+        res.json({ user: req.session.user.email, idRole: req.session.user.idRole , id: req.session.user.id, role: req.session.user.role });
     } else {
         res.status(401).json({ error: 'No autenticado' });
     }
