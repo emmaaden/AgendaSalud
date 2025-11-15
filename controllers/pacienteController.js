@@ -4,31 +4,31 @@ exports.regisPacient = async (req, res) => {
     console.log(req.body);
 
     try {
-      if (!fullName || !email || !password || !dni || !telefono) {
-          return res.status(400).json({ error: 'Faltan datos obligatorios' });
-      }
+        if (!fullName || !email || !password || !dni || !telefono) {
+            return res.status(400).json({ error: 'Faltan datos obligatorios' });
+        }
 
-      const fechaApertura = new Date(fecha).toLocaleString("es-AR", {
-          day: "numeric",
-          month: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "numeric"
-      });
+        const fechaApertura = new Date(fecha).toLocaleString("es-AR", {
+            day: "numeric",
+            month: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "numeric"
+        });
 
         // Array Historial
 
         const historial = [
-    {
-        fecha: fecha,
-        area: area,
-        profesional: profesional,
-        sintomas: sintomas,
-        diagnostico: diagnostico,
-        tratamiento: tratamiento,
-        dientes: dientes
-    }
-];
+            {
+                fecha: fecha,
+                area: area,
+                profesional: profesional,
+                sintomas: sintomas,
+                diagnostico: diagnostico,
+                tratamiento: tratamiento,
+                dientes: dientes
+            }
+        ];
 
         const newPatients = new Patient({
             fullName,
@@ -78,7 +78,7 @@ exports.saveData = async (req, res) => {
             sintomas: sintomas || "No especificado",
             diagnostico: diagnostico || "No especificado",
             tratamiento: tratamiento || "No especificado",
-            dientes: dientes ||  "No especificado"
+            dientes: dientes || "No especificado"
         };
         console.log(nuevoHistorial);
         // Agregar el nuevo historial al paciente
@@ -108,19 +108,19 @@ exports.data = async (req, res) => {
         }
         // Suponiendo que 'pacient' es un objeto que se obtiene de la base de datos
         const formattedHistory = pacient.historial.map(registro => ({
-          fecha: new Date(registro.fecha).toLocaleString("es-AR", {
-            day: "numeric",
-            month: "numeric",
-            year: "numeric",
-            hour: "numeric",
-            minute: "numeric"
-          }),
-          sintomas: registro.sintomas,
-          diagnostico: registro.diagnostico,
-          tratamiento: registro.tratamiento,
-          area: registro.area,
-          profesional: registro.profesional,
-          dientes: registro.dientes
+            fecha: new Date(registro.fecha).toLocaleString("es-AR", {
+                day: "numeric",
+                month: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "numeric"
+            }),
+            sintomas: registro.sintomas,
+            diagnostico: registro.diagnostico,
+            tratamiento: registro.tratamiento,
+            area: registro.area,
+            profesional: registro.profesional,
+            dientes: registro.dientes
         }));
 
         res.status(200).json({

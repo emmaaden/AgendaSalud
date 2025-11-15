@@ -16,9 +16,15 @@ exports.data = async (req, res) => {
             .select(`
                 valor,
                 aumento,
-                paciente!inner(dni, nombre, apellido)
+                paciente(
+                    persona(
+                        dni,
+                        nombre,
+                        apellido
+                    )
+                )
                 `)
-            .eq('paciente.dni', dni)
+            .eq('paciente.persona.dni', dni)
             .single();
 
         if (error || !data) {
@@ -29,8 +35,8 @@ exports.data = async (req, res) => {
         return res.status(200).json({
             valor: data.valor,
             aumento: data.aumento,
-            nombre: data.paciente.nombre,
-            apellido: data.paciente.apellido
+            nombre: data.paciente.persona.nombre,
+            apellido: data.paciente.persona.apellido
         });
 
 
