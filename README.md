@@ -14,6 +14,7 @@ Este proyecto está bajo la licencia MIT. Consulta el archivo `LICENSE` para má
 
 ## Contacto
 **Autor:** Emmanuel Denis
+**Colaboradores:** Gino Reginato
 **Correo:** emma26228@gmail.com
 **Teléfono:** 2615930274
 
