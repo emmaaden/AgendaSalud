@@ -5,7 +5,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 // Datos del profesional
 exports.getDatosProf = async (req, res) => {
     try {
-        const { user_id } = req.body;
+        const user_id = req.session.user.id; // id de auth.users (persona.id_auth)
 
         const { data, error } = await supabase
             .from("persona")
@@ -51,7 +51,7 @@ exports.getDatosProf = async (req, res) => {
 // Especialidad Profesioanl
 exports.getEspProf = async (req, res) => {
     try {
-        const { user_id } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
         const { data, error } = await supabase
             .from('especialidad_profesional')
             .select(`
@@ -80,7 +80,8 @@ exports.getEspProf = async (req, res) => {
 // Descripcion
 exports.saveDesc = async (req, res) => {
     try {
-        const { user_id, descripcion } = req.body;
+        const { descripcion } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
         const { data, error } = await supabase
             .from("profesional")
             .update({ descripcion: descripcion })
@@ -103,7 +104,8 @@ exports.saveDesc = async (req, res) => {
 // Precio
 exports.savePrecio = async (req, res) => {
     try {
-        const { user_id, precio } = req.body;
+        const { precio } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
         const { data, error } = await supabase
             .from("profesional")
             .update({ precio: precio })
@@ -126,7 +128,8 @@ exports.savePrecio = async (req, res) => {
 // Direccion
 exports.saveDirec = async (req, res) => {
     try {
-        const { user_id, direccion } = req.body;
+        const { direccion } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
         const { data, error } = await supabase
             .from("profesional")
             .update({ direccion: direccion })
@@ -149,7 +152,8 @@ exports.saveDirec = async (req, res) => {
 // CalendarID
 exports.saveCalenID = async (req, res) => {
     try {
-        const { user_id, calendarid } = req.body;
+        const { calendarid } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
         const { data, error } = await supabase
             .from('profesional')
             .update({ id_calendario: calendarid })

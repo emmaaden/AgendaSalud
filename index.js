@@ -1,56 +1,115 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
-const app = express();
-
-app.use(express.json());
-app.use(cors());
-
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
-const { google } = require('googleapis');
-const bodyParser = require('body-parser');
 const session = require('express-session');
-const fs = require('fs');
+const { google } = require('googleapis');
 
 const authRoutes = require('./routes/authRoutes');
 const horariosRoutes = require('./routes/horarios');
-/* const pacienteRoutes = require('./routes/pacienteRoutes'); */
+/* const pacienteRoutes = require('./routes/pacienteRoutes'); */ // Fase 1: historia clínica en Supabase
 const especialidadesRoutes = require('./routes/especialidadesRoutes');
 const profesionalRoutes = require('./routes/profesionalRoutes');
 const avatarsRoutes = require('./routes/avatarsRoutes');
 const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
+const { requireAuth, requireAdmin } = require('./middleware/auth');
 
-require('dotenv').config();
-
+const app = express();
 const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
+
+// ---------------------------------------------------------------------------
+// Seguridad base
+// ---------------------------------------------------------------------------
+if (isProd) {
+    app.set('trust proxy', 1); // necesario para cookies 'secure' detrás de un proxy/https
+}
+
+// CSP se deja desactivada por ahora porque el frontend usa CDNs e inline scripts.
+// TODO (Fase 3): definir una Content-Security-Policy explícita.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// CORS con lista blanca de orígenes (ALLOWED_ORIGINS separados por coma).
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, cb) => {
+        // Sin origin = same-origin / herramientas locales.
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            return cb(null, true);
+        }
+        return cb(new Error('Origen no permitido por CORS'));
+    },
+    credentials: true
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting: general + más estricto en autenticación.
+const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+app.use(generalLimiter);
+
+// ---------------------------------------------------------------------------
+// Sesiones
+// ---------------------------------------------------------------------------
+if (!process.env.SESSION_SECRET) {
+    console.warn('⚠️  SESSION_SECRET no está definido en .env');
+}
+
+let sessionStore; // undefined => MemoryStore (solo desarrollo)
+if (process.env.DATABASE_URL) {
+    const pgSession = require('connect-pg-simple')(session);
+    sessionStore = new pgSession({
+        conString: process.env.DATABASE_URL,
+        createTableIfMissing: true
+    });
+} else {
+    console.warn('⚠️  DATABASE_URL no configurada: usando MemoryStore (no apto para producción).');
+}
 
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'cambia-esto-en-produccion',
     resave: false,
     saveUninitialized: false,
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // 24 horas
-        secure: false,
-        httpOnly: true
+        secure: isProd,              // solo por HTTPS en producción
+        httpOnly: true,
+        sameSite: 'lax'
     }
 }));
 
+// ---------------------------------------------------------------------------
+// Estáticos y rutas
+// ---------------------------------------------------------------------------
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-app.use('/auth', authRoutes);
+app.use('/auth', authLimiter, authRoutes);
 app.use('/hour', horariosRoutes);
-/* app.use('/pacient', pacienteRoutes); */
-app.use('/especialidades', especialidadesRoutes);
+/* app.use('/pacient', pacienteRoutes); */ // Fase 1
+app.use('/especialidades', especialidadesRoutes); // público: usado en el registro
 app.use('/profesional', profesionalRoutes);
 app.use('/avatars', avatarsRoutes);
 app.use('/ortodoncia', ortPacienteRoutes);
 
 app.get('/api/user', (req, res) => {
-    /* console.log('Sesión api:', req.session); */
     if (req.session.isAuthenticated) {
-        res.json({ user: req.session.user.email, idRole: req.session.user.idRole , id: req.session.user.id, role: req.session.user.role });
+        res.json({
+            user: req.session.user.email,
+            idRole: req.session.user.idRole,
+            id: req.session.user.id,
+            role: req.session.user.role
+        });
     } else {
         res.status(401).json({ error: 'No autenticado' });
     }
@@ -58,82 +117,40 @@ app.get('/api/user', (req, res) => {
 
 const email_autorizado = process.env.EMAIL_AUTORIZADO;
 
-app.get('/dashboard', (req, res) => {
-    if (req.session.isAuthenticated) {
-        app.use(express.static(path.join(__dirname, 'dashboard')));
-        res.sendFile(path.join(__dirname, 'dashboard', 'dashboard.html'));
-
-        if (req.session.user.email === email_autorizado) {
-            // Si admin es true, redirige a dashboard2.html
-            console.log("es admin")
-            res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
-        }
-    } else {
-        res.redirect('/login.html');
+app.get('/dashboard', requireAuth, (req, res) => {
+    if (req.session.user.email === email_autorizado) {
+        return res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
     }
+    return res.sendFile(path.join(__dirname, 'dashboard', 'dashboard.html'));
 });
 
-app.get('/dashboardAutorizado', (req, res) => {
-    if (req.session.isAuthenticated && req.session.user.email === email_autorizado) {
-        console.log("es admin")
-        res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
-    } else {
-        res.redirect('/login.html');
-    }
+app.get('/dashboardAutorizado', requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
 });
 
-app.get('/dashboardRegistroClinico', (req, res) => {
-    if (req.session.isAuthenticated && req.session.area === 'Dentista') {
+app.get('/dashboardRegistroClinico', requireAuth, (req, res) => {
+    if (req.session.area === 'Dentista') {
         res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinicoOdonto.html'));
-    } else if (req.session.isAuthenticated && req.session.area != 'Dentista') {
+    } else {
         res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinico.html'));
-    } else {
-        res.redirect('/login.html');
     }
 });
 
-app.get('/dashboardConfig', (req, res) => {
-    if (req.session.isAuthenticated) {
-        res.sendFile(path.join(__dirname, 'dashboard', 'dashboardConfig.html'));
-    } else {
-        res.redirect('/login.html');
-    }
-
+app.get('/dashboardConfig', requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard', 'dashboardConfig.html'));
 });
 
-//const twilio = require('twilio');
-//const { format } = require('date-fns');
-
-// Configuración de Twilio
-//const accountSid = process.env.TWILIO_ACCOUNT_SID;
-//const authToken = process.env.TWILIO_AUTH_TOKEN;
-//const client = new twilio(accountSid, authToken);
-
-
-// Función para enviar el mensaje de WhatsApp
-const sendWhatsApp = (event, number, numberCode) => {
-    const formattedDate = format(new Date(event.start.dateTime), 'dd/MM/yyyy HH:mm');
-    const fullNumber = `${numberCode}9${number}`;
-
-    client.messages.create({
-        body: `Hola, tu turno ha sido agendado con éxito.
-        Detalles del turno:
-        - Resumen: ${event.summary}
-        - Descripción: ${event.description}
-        - Inicio: ${formattedDate}hs`,
-        from: 'whatsapp:+14155238886', // Número de WhatsApp de Twilio
-        to: `whatsapp:${fullNumber}` // Número de WhatsApp del cliente
-    })
-        .then(message => console.log('Mensaje enviado:', message.sid, fullNumber))
-        .catch(error => console.log('Error al enviar el mensaje:', error));
-};
-
-
-const jsonData = {
+// ---------------------------------------------------------------------------
+// Google Calendar
+// Credenciales cargadas desde memoria (no se escribe archivo en disco).
+// El calendarId viaja EN CADA request (se eliminó la variable global mutable).
+// ---------------------------------------------------------------------------
+const googleCredentials = {
     type: process.env.TYPE,
     project_id: process.env.PROJECT_ID,
     private_key_id: process.env.PRIVATE_KEY_ID,
-    private_key: process.env.PRIVATE_KEY,
+    // Las claves privadas en .env suelen venir con '\n' escapados.
+    private_key: process.env.PRIVATE_KEY ? process.env.PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
     client_email: process.env.CLIENT_EMAIL,
     client_id: process.env.CLIENT_ID,
     auth_uri: process.env.AUTH_URI,
@@ -143,68 +160,21 @@ const jsonData = {
     universe_domain: process.env.UNIVERSE_DOMAIN,
 };
 
-const jsonContent = JSON.stringify(jsonData, null, 2);
-
-fs.writeFileSync('calenderregistroclinico-8aedace47e68.json', jsonContent, 'utf8');
-console.log("Archivo JSON creado con éxito: calenderregistroclinico-8aedace47e68.json");
-
-const SERVICE_ACCOUNT_KEY_FILE = path.join(__dirname, 'calenderregistroclinico-8aedace47e68.json');
-
-let CALENDAR_ID = '';
-
 async function authenticate() {
     const auth = new google.auth.GoogleAuth({
-        keyFile: SERVICE_ACCOUNT_KEY_FILE,
+        credentials: googleCredentials,
         scopes: ['https://www.googleapis.com/auth/calendar'],
     });
-
     const client = await auth.getClient();
     return google.calendar({ version: 'v3', auth: client });
 }
 
-// Ruta para agregar un área y un profesional
-app.post('/add-professional', async (req, res) => {
-    const { area, professional } = req.body;
-
-    try {
-        let existingArea = await Professional.findOne({ area });
-
-        if (existingArea) {
-            // Si el área ya existe, agregar el profesional a la lista
-            existingArea.professionals.push(professional);
-            await existingArea.save();
-        } else {
-            // Si el área no existe, crearla con el profesional
-            const newArea = new Professional({ area, professionals: [professional] });
-            await newArea.save();
-        };
-
-        res.status(200).send('Área y profesional agregados exitosamente');
-    } catch (error) {
-        console.error('Error al guardar en la base de datos:', error);
-        res.status(500).send('Error al agregar el área y profesional');
-    }
-});
-
-// Ruta para obtener todas las áreas y profesionales
-app.get('/professionals', async (req, res) => {
-    try {
-        const professionals = await Professional.find({});
-        res.status(200).json(professionals);
-    } catch (error) {
-        console.error('Error al obtener los datos:', error);
-        res.status(500).send('Error al obtener los datos');
-    }
-});
-
-
-// Endpoint para obtener franjas horarias disponibles
+// Franjas horarias disponibles para un calendario y fecha dados.
 app.get('/available-slots', async (req, res) => {
-    const date = req.query.date;
+    const { date, calendarId } = req.query;
 
-    if (!date) {
-        return res.status(400).json({ error: 'Fecha no proporcionada' });
-    }
+    if (!date) return res.status(400).json({ error: 'Fecha no proporcionada' });
+    if (!calendarId) return res.status(400).json({ error: 'calendarId no proporcionado' });
 
     try {
         const calendar = await authenticate();
@@ -214,7 +184,7 @@ app.get('/available-slots', async (req, res) => {
         timeMax.setUTCHours(23, 59, 59, 999);
 
         const response = await calendar.events.list({
-            calendarId: CALENDAR_ID,
+            calendarId,
             timeMin: timeMin.toISOString(),
             timeMax: timeMax.toISOString(),
             showDeleted: false,
@@ -223,11 +193,11 @@ app.get('/available-slots', async (req, res) => {
         });
 
         const events = response.data.items;
-
         const slots = [];
-        const startHour = 0o0; // Hora de inicio de la jornada
-        const endHour = 23; // Hora de fin de la jornada
-        const interval = 30; // Intervalo de tiempo en minutos
+        // TODO (Fase 1): respetar horario_profesional en vez de 8-20 fijo.
+        const startHour = 8;
+        const endHour = 20;
+        const interval = 30; // minutos
 
         const startOfDay = new Date(date);
         startOfDay.setUTCHours(startHour, 0, 0, 0);
@@ -235,26 +205,18 @@ app.get('/available-slots', async (req, res) => {
         endOfDay.setUTCHours(endHour, 0, 0, 0);
 
         let currentSlot = startOfDay;
-
         while (currentSlot < endOfDay) {
-            let slotEnd = new Date(currentSlot.getTime() + interval * 60000);
-
-            // Verifica si el slot está ocupado
+            const slotEnd = new Date(currentSlot.getTime() + interval * 60000);
             let isAvailable = true;
             for (const event of events) {
                 const eventStart = new Date(event.start.dateTime);
                 const eventEnd = new Date(event.end.dateTime);
-
-                if ((eventStart < slotEnd && eventEnd > currentSlot)) {
+                if (eventStart < slotEnd && eventEnd > currentSlot) {
                     isAvailable = false;
                     break;
                 }
             }
-
-            if (isAvailable) {
-                slots.push(currentSlot.toISOString());
-            }
-
+            if (isAvailable) slots.push(currentSlot.toISOString());
             currentSlot = slotEnd;
         }
 
@@ -265,42 +227,24 @@ app.get('/available-slots', async (req, res) => {
     }
 });
 
-// Endpoint para crear un evento
+// Crear un turno (evento) en el calendario indicado.
 app.post('/create-event', async (req, res) => {
-    const { summary, description, start, end, email, number, numberCode } = req.body;
+    const { summary, description, start, end, email, number, calendarId } = req.body;
 
-    console.log('Start:', start);
-    console.log('End:', end);
-
-
-    if (!summary || !start || !end || !email || !number) {
+    if (!summary || !start || !end || !email || !number || !calendarId) {
         return res.status(400).json({ error: 'Datos de evento incompletos' });
     }
 
     try {
         const calendar = await authenticate();
-
         const event = {
             summary,
             description,
-            start: {
-                dateTime: start.dateTime,
-                timeZone: 'America/Argentina/Buenos_Aires',
-            },
-            end: {
-                dateTime: end.dateTime,
-                timeZone: 'America/Argentina/Buenos_Aires',
-            }
+            start: { dateTime: start.dateTime, timeZone: 'America/Argentina/Buenos_Aires' },
+            end: { dateTime: end.dateTime, timeZone: 'America/Argentina/Buenos_Aires' }
         };
 
-        const response = await calendar.events.insert({
-            calendarId: CALENDAR_ID,
-            resource: event,
-        });
-
-        // Enviar mensaje de WhatsApp con los datos del evento
-        //sendWhatsApp(event, number, numberCode);
-
+        const response = await calendar.events.insert({ calendarId, resource: event });
         res.json({ success: true, event: response.data });
     } catch (error) {
         console.error('Error creando evento:', error.message);
@@ -308,42 +252,25 @@ app.post('/create-event', async (req, res) => {
     }
 });
 
-// Cambia el ID del calendario en función del profesional seleccionado
-app.post('/set-calendar', (req, res) => {
-    const calendarId = req.body.calendarId;
-    if (calendarId) {
-        CALENDAR_ID = calendarId;
-        res.json({ success: true });
-    } else {
-        res.status(400).json({ error: 'ID de calendario no proporcionado' });
-    }
-});
-
-// Endpoint para buscar turnos solo por correo
+// Buscar turnos por email en un calendario.
 app.get('/search-appointment', async (req, res) => {
-    const { email } = req.query;
+    const { email, calendarId } = req.query;
 
-    // Verificar que el correo esté presente
-    if (!email) {
-        return res.status(400).json({ error: 'El correo es obligatorio para la búsqueda' });
-    }
+    if (!email) return res.status(400).json({ error: 'El correo es obligatorio para la búsqueda' });
+    if (!calendarId) return res.status(400).json({ error: 'calendarId no proporcionado' });
 
     try {
         const calendar = await authenticate();
-
-        const params = {
-            calendarId: CALENDAR_ID,
+        const response = await calendar.events.list({
+            calendarId,
             showDeleted: false,
             singleEvents: true,
             orderBy: 'startTime',
-        };
+        });
 
-        const response = await calendar.events.list(params);
-        const events = response.data.items;
-
-        // Filtrar eventos por correo electrónico (si está presente en la descripción)
+        const events = response.data.items || [];
         const filteredEvents = events.filter(event =>
-            event.description.includes(email)
+            event.description && event.description.includes(email)
         );
 
         if (filteredEvents.length > 0) {
@@ -357,17 +284,16 @@ app.get('/search-appointment', async (req, res) => {
     }
 });
 
-
-// Endpoint para eliminar un turno por ID de evento
+// Eliminar un turno por ID de evento.
 app.delete('/delete-appointment/:eventId', async (req, res) => {
     const { eventId } = req.params;
+    const calendarId = req.query.calendarId || req.body.calendarId;
+
+    if (!calendarId) return res.status(400).json({ error: 'calendarId no proporcionado' });
 
     try {
         const calendar = await authenticate();
-        await calendar.events.delete({
-            calendarId: CALENDAR_ID,
-            eventId: eventId,
-        });
+        await calendar.events.delete({ calendarId, eventId });
         res.json({ message: 'Turno eliminado exitosamente' });
     } catch (error) {
         console.error('Error eliminando el turno:', error.message);
@@ -375,15 +301,17 @@ app.delete('/delete-appointment/:eventId', async (req, res) => {
     }
 });
 
-authenticate()
-    .then(calendar => {
-        console.log('Conectado a Google Calendar');
-    })
-    .catch(error => {
-        console.error('Error al conectar a Google Calendar:', error.message);
-    });
+// ---------------------------------------------------------------------------
+// Arranque
+// ---------------------------------------------------------------------------
+if (googleCredentials.client_email) {
+    authenticate()
+        .then(() => console.log('Conectado a Google Calendar'))
+        .catch(error => console.error('Error al conectar a Google Calendar:', error.message));
+} else {
+    console.warn('⚠️  Credenciales de Google no configuradas: los turnos por calendario no funcionarán.');
+}
 
-// Inicia el servidor
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

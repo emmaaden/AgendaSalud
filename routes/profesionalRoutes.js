@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const profesionalController = require('../controllers/profesionalController');
+const { requireRole } = require('../middleware/auth');
+
+// Todas las rutas del profesional requieren sesión y rol 'profesional'.
+router.use(requireRole('profesional'));
 
 router.post('/get-esp-prof', profesionalController.getEspProf);
 router.post('/get-datos-prof', profesionalController.getDatosProf);

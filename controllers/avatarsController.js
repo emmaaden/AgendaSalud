@@ -3,7 +3,7 @@ require('dotenv').config();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 exports.uploadAvatar = async (req, res) => {
-  const { user_id } = req.body;
+  const user_id = req.session.user.id; // id de auth.users
   const file = req.file;
 
   if (!file) return res.status(400).json({ error: 'No se subió ninguna imagen' });
@@ -32,7 +32,7 @@ exports.uploadAvatar = async (req, res) => {
 };
 
 exports.getAvatar = async (req, res) => {
-  const { user_id } = req.body;
+  const user_id = req.session.user.id; // id de auth.users
 
   if (!user_id) return res.status(400).json({ error: 'Falta user_id' });
 

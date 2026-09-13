@@ -4,7 +4,8 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 
 exports.saveHours = async (req, res) => {
     try {
-        const { id, user_id, dia, startHour, endHour } = req.body;
+        const { id, dia, startHour, endHour } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
 
         if (!id || !user_id || !dia || !startHour || !endHour) {
             return res.status(400).json({ error: 'Datos incompletos' });
@@ -42,7 +43,8 @@ exports.saveHours = async (req, res) => {
 
 exports.insertHours = async (req, res) => {
     try {
-        const { user_id, dia, startHour, endHour } = req.body;
+        const { dia, startHour, endHour } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
 
         if (!user_id || !dia || !startHour || !endHour) {
             return res.status(400).json({ error: 'Datos incompletos' });
@@ -76,7 +78,7 @@ exports.insertHours = async (req, res) => {
 // Obtener horarios del profesional
 exports.getHours = async (req, res) => {
     try {
-        const { user_id } = req.query;  // 🔹 Cambiado a query params porque lo llamás con GET
+        const user_id = req.session.user.idRole; // profesional.id
         if (!user_id) {
             return res.status(400).json({ error: "Falta el user_id" });
         }
@@ -104,7 +106,8 @@ exports.getHours = async (req, res) => {
 
 exports.deleteHours = async (req, res) => {
     try {
-        const { id, user_id } = req.body;
+        const { id } = req.body;
+        const user_id = req.session.user.idRole; // profesional.id
         const { error } = await supabase
             .from('horario_profesional')
             .delete()
