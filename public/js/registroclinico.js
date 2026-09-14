@@ -92,7 +92,7 @@ async function searchPaciente() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ dni, password })
+      body: JSON.stringify({ dni })
     });
 
     if (!response.ok) {
@@ -261,7 +261,7 @@ async function downloadPatientHistory() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ dni, password })
+      body: JSON.stringify({ dni })
     });
 
     if (!response.ok) {

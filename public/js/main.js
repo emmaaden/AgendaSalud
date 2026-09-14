@@ -1,15 +1,16 @@
-const host = '192.168.100.23:3000';
-
+// Nota: se usan rutas relativas (mismo origen). El calendarId del profesional
+// elegido lo publica select-prof.js en window.CALENDAR_ID.
 document.getElementById('enviar').addEventListener('click', handleFormSubmit);
 document.getElementById('appointmentDate').addEventListener('change', updateAvailableSlots);
 
 let professionalWorkHours = {};
 
-fetch(`http://${host}/api/get-hours`)
+fetch(`/api/get-hours`)
     .then(response => response.json())
     .then(data => {
-        professionalWorkHours = data.reduce((acc, { fullName, startHour, endHour }) => {
-            acc[fullName] = { start: startHour, end: endHour };
+        // Indexado por id de profesional (el <select> de profesionales usa el id como value).
+        professionalWorkHours = data.reduce((acc, { id, startHour, endHour }) => {
+            acc[id] = { start: startHour, end: endHour };
             return acc;
         }, {});
     })
@@ -33,6 +34,16 @@ function handleFormSubmit(event) {
     const numberCode = document.getElementById('number-code').value;
     const selectedSlot = document.getElementById('available-slots').value;
     const date = new Date(selectedSlot);
+
+    const calendarId = window.CALENDAR_ID;
+    if (!calendarId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Elegí un profesional",
+        text: "Seleccioná un profesional antes de agendar el turno.",
+      });
+      return;
+    }
 
     const now = new Date();
 
@@ -59,10 +70,11 @@ function handleFormSubmit(event) {
         },
         email: email, // Añadir el correo del cliente
         number: number, // Añadir el número de teléfono del cliente
-        numberCode: numberCode // Añadir el area de país del teléfono del cliente
+        numberCode: numberCode, // Añadir el area de país del teléfono del cliente
+        calendarId: calendarId // Calendario del profesional elegido
     };
 
-    fetch(`http://${host}/create-event`, {
+    fetch(`/create-event`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -174,8 +186,9 @@ function findNearestSlot(availableSlots) {
 }
 
 // Función para buscar turnos en fechas futuras si no hay en la fecha seleccionada
-function searchForNearestSlot(professionalName) {
-    const workHours = professionalWorkHours[professionalName];
+// professionalId = value del <select> de profesionales (profesional.id)
+function searchForNearestSlot(professionalId) {
+    const workHours = professionalWorkHours[professionalId];
     let currentDate = new Date();
 
     // Buscar hasta encontrar el turno más cercano, avanzando un día cada vez
@@ -190,7 +203,7 @@ function searchForNearestSlot(professionalName) {
             return; // Salir de la función
         }
 
-        fetch(`http://${host}/available-slots?date=${encodeURIComponent(formattedDate)}`)
+        fetch(`/available-slots?date=${encodeURIComponent(formattedDate)}&calendarId=${encodeURIComponent(window.CALENDAR_ID || '')}`)
             .then(response => response.json())
             .then(occupiedSlots => {
                 const availableSlots = getAvailableSlots(occupiedSlots, formattedDate, workHours);
@@ -238,6 +251,11 @@ function updateAvailableSlots() {
             return;
         }
 
+        if (!window.CALENDAR_ID) {
+            document.getElementById('nearest-slot').textContent = 'Seleccioná un profesional para ver los turnos.';
+            return;
+        }
+
         // Crear un objeto Date a partir de la fecha seleccionada
         const date = new Date(selectedDate);
         const dayOfWeek = date.getDay();  // Obtener el día de la semana (0 = Domingo, 6 = Sábado)
@@ -250,7 +268,7 @@ function updateAvailableSlots() {
         }
 
         // Hacer la petición al servidor para obtener los horarios disponibles
-        fetch(`http://${host}/available-slots?date=${encodeURIComponent(selectedDate)}`)
+        fetch(`/available-slots?date=${encodeURIComponent(selectedDate)}&calendarId=${encodeURIComponent(window.CALENDAR_ID)}`)
             .then(response => response.json())
             .then(occupiedSlots => {
                 const availableSlots = getAvailableSlots(occupiedSlots, selectedDate, workHours);
@@ -318,8 +336,17 @@ document.getElementById('searchAppointmentForm').addEventListener('submit', func
         return;
     }
 
-    // Realizar la búsqueda solo con el email
-    fetch(`http://${host}/search-appointment?email=${email}`)
+    if (!window.CALENDAR_ID) {
+        Swal.fire({
+            icon: "warning",
+            title: "Elegí un profesional",
+            text: "Seleccioná el profesional para buscar tus turnos con él.",
+        });
+        return;
+    }
+
+    // Realizar la búsqueda con el email en el calendario del profesional elegido
+    fetch(`/search-appointment?email=${encodeURIComponent(email)}&calendarId=${encodeURIComponent(window.CALENDAR_ID)}`)
         .then(response => response.json())
         .then(data => {
             const appointmentsDiv = document.getElementById('appointments');
@@ -368,7 +395,7 @@ document.getElementById('searchAppointmentForm').addEventListener('submit', func
 });
 
 function deleteAppointment(eventId) {
-    fetch(`http://${host}/delete-appointment/${eventId}`, { method: 'DELETE' })
+    fetch(`/delete-appointment/${eventId}?calendarId=${encodeURIComponent(window.CALENDAR_ID || '')}`, { method: 'DELETE' })
         .then(response => response.json())
         .then(data => {
           Swal.fire({

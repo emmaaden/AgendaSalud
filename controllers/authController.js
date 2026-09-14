@@ -128,7 +128,7 @@ exports.login = async (req, res) => {
                 console.log("✅ Usuario es profesional:", profesional.profesional[0].id);
                 idRole = profesional.profesional[0].id;
             }
-        } else if (rol == "paciente") {
+        } else if (role == "paciente") {
             const { data: paciente, error: pacienteError } = await supabase
                 .from("persona")
                 .select(`
@@ -170,4 +170,88 @@ exports.logout = (req, res) => {
         }
         res.status(200).json({ message: 'Sesión cerrada exitosamente' });
     });
+};
+
+// Área/especialidad del profesional AUTENTICADO (se deriva de la sesión, no del body).
+// Usado por la historia clínica y los dashboards. Requiere sesión (ver authRoutes).
+exports.getArea = async (req, res) => {
+    try {
+        const idRole = req.session.user.idRole; // profesional.id
+        let area = null;
+        if (idRole) {
+            const { data, error } = await supabase
+                .from('especialidad_profesional')
+                .select('id_especialidad ( nombre )')
+                .eq('id_profesional', idRole)
+                .limit(1);
+            if (error) {
+                console.error('Error obteniendo el área:', error);
+                return res.status(400).json({ error: error.message });
+            }
+            if (data && data[0] && data[0].id_especialidad) area = data[0].id_especialidad.nombre;
+        }
+        return res.json({ area });
+    } catch (err) {
+        console.error('Error en get-area:', err);
+        return res.status(500).json({ error: 'Error al obtener el área' });
+    }
+};
+
+// id_calendario de un profesional a partir de su id (público: lo usa la página de turnos).
+exports.getCalenID = async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'id de profesional no proporcionado' });
+
+        const { data, error } = await supabase
+            .from('profesional')
+            .select('id_calendario')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (error) return res.status(400).json({ error: error.message });
+        if (!data) return res.status(404).json({ error: 'Profesional no encontrado' });
+
+        return res.json({ calendarid: data.id_calendario });
+    } catch (err) {
+        console.error('Error en get-calenID:', err);
+        return res.status(500).json({ error: 'Error al obtener el calendario' });
+    }
+};
+
+// Asigna una especialidad al profesional AUTENTICADO (se deriva de la sesión).
+// Acepta id numérico o nombre de especialidad. Requiere rol profesional (ver authRoutes).
+exports.saveArea = async (req, res) => {
+    try {
+        const idRole = req.session.user.idRole; // profesional.id
+        let { especialidad } = req.body;
+
+        if (!idRole) return res.status(400).json({ error: 'Profesional no identificado en la sesión' });
+        if (especialidad === undefined || especialidad === null || especialidad === '') {
+            return res.status(400).json({ error: 'Debe indicar una especialidad' });
+        }
+
+        // Resolver a id si viene un nombre.
+        let idEspecialidad = especialidad;
+        if (isNaN(Number(especialidad))) {
+            const { data, error } = await supabase
+                .from('especialidad')
+                .select('id')
+                .eq('nombre', especialidad)
+                .maybeSingle();
+            if (error) return res.status(400).json({ error: error.message });
+            if (!data) return res.status(404).json({ error: 'Especialidad no encontrada' });
+            idEspecialidad = data.id;
+        }
+
+        const { error } = await supabase
+            .from('especialidad_profesional')
+            .upsert({ id_profesional: idRole, id_especialidad: idEspecialidad });
+        if (error) return res.status(400).json({ error: error.message });
+
+        return res.json({ message: 'Área asignada correctamente', especialidad: idEspecialidad });
+    } catch (err) {
+        console.error('Error en save-area:', err);
+        return res.status(500).json({ error: 'Error al guardar el área' });
+    }
 };

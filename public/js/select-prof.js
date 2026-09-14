@@ -1,17 +1,22 @@
-let CALENDAR_ID = ''; // Variable global para almacenar el ID del calendario seleccionado
+// Selección de profesional para reservar turno.
+// El calendarId del profesional elegido se publica en window.CALENDAR_ID,
+// que main.js usa en cada request (ya no existe /set-calendar).
+window.CALENDAR_ID = window.CALENDAR_ID || '';
 
 // Función para cargar las áreas y profesionales desde la base de datos
 async function loadProfessionals() {
     try {
-        const response = await fetch(`http://${host}/professionals`);
+        const response = await fetch(`/professionals`);
         const professionals = await response.json();
 
         const areaList = document.getElementById('areaList');
+        if (!areaList) return;
         areaList.innerHTML = ''; // Limpiar la lista
 
         professionals.forEach(prof => {
             const li = document.createElement('li');
-            li.textContent = `${prof.area}: ${prof.professionals.join(', ')}`;
+            const nombres = prof.professionals.map(p => p.nombre).join(', ');
+            li.textContent = `${prof.area}: ${nombres}`;
             areaList.appendChild(li);
         });
     } catch (error) {
@@ -19,12 +24,12 @@ async function loadProfessionals() {
     }
 }
 
-// Función para obtener áreas y profesionales desde la base de datos y llenar el menú desplegable de áreas
+// Llenar el menú desplegable de áreas
 async function populateAreaList(area) {
     const select = area;
 
     try {
-        const response = await fetch(`http://${host}/professionals`);
+        const response = await fetch(`/professionals`);
         const professionals = await response.json();
 
         professionals.forEach(prof => {
@@ -38,22 +43,22 @@ async function populateAreaList(area) {
     }
 }
 
-// Función para llenar el menú desplegable de profesionales basado en el área seleccionada
+// Llenar el menú de profesionales según el área seleccionada.
+// El value de cada opción es el id del profesional (no el nombre).
 async function populateProfessionalList(area, selectProf) {
     const select = selectProf;
     select.innerHTML = ''; // Limpiar las opciones existentes
 
     try {
-        const response = await fetch(`http://${host}/professionals`);
+        const response = await fetch(`/professionals`);
         const professionals = await response.json();
 
-        // Filtrar el área seleccionada
         const selectedArea = professionals.find(prof => prof.area === area);
         if (selectedArea && selectedArea.professionals.length > 0) {
             selectedArea.professionals.forEach(professional => {
                 const option = document.createElement('option');
-                option.value = professional;
-                option.textContent = professional;
+                option.value = professional.id;          // id del profesional
+                option.textContent = professional.nombre; // nombre visible
                 select.appendChild(option);
             });
         } else {
@@ -67,52 +72,37 @@ async function populateProfessionalList(area, selectProf) {
     }
 }
 
-// Función para actualizar el ID del calendario basado en el profesional seleccionado
-async function updateCalendarId(professionalName) {
-    const responseCalenID = await fetch('/auth/get-calenID', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fullName: professionalName }),
-    });
-    const dataCalenID = await responseCalenID.json();
-
-    let newCalendarId = "";
-
-    if (responseCalenID.ok) {
-        newCalendarId = dataCalenID.calendarid;
-    } else {
-        console.error('Error:', dataCalenID.error);
-    }
-
-    if (newCalendarId) {
-        fetch(`http://${host}/set-calendar`, {
+// Obtener el id_calendario del profesional (por id) y publicarlo en window.CALENDAR_ID.
+async function updateCalendarId(professionalId) {
+    try {
+        const responseCalenID = await fetch('/auth/get-calenID', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ calendarId: newCalendarId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('ID del calendario actualizado.');
-            } else {
-                console.error('Error al actualizar el ID del calendario.');
-            }
-        })
-        .catch(error => {
-            console.error('Error en la solicitud de actualización del calendario:', error);
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: professionalId }),
         });
-    } else {
-        console.error('Nombre de profesional no válido');
+        const dataCalenID = await responseCalenID.json();
+
+        if (!responseCalenID.ok) {
+            console.error('Error:', dataCalenID.error);
+            window.CALENDAR_ID = '';
+            return;
+        }
+
+        window.CALENDAR_ID = dataCalenID.calendarid || '';
+        if (window.CALENDAR_ID) {
+            console.log('Calendario del profesional seleccionado.');
+        } else {
+            console.warn('El profesional no tiene un calendario configurado.');
+        }
+    } catch (error) {
+        console.error('Error al obtener el calendario del profesional:', error);
+        window.CALENDAR_ID = '';
     }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    area =  document.getElementById('areaName');
-    selectProf = document.getElementById('profName');
+    const area = document.getElementById('areaName');
+    const selectProf = document.getElementById('profName');
     populateAreaList(area);
 
     document.getElementById('areaName').addEventListener('change', function() {
@@ -122,9 +112,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('select-prof-form').addEventListener('submit', function(event) {
         event.preventDefault();
-        const professionalName = document.getElementById('profName').value;
-        if (professionalName) {
-            updateCalendarId(professionalName);
+        const professionalId = document.getElementById('profName').value;
+        if (professionalId) {
+            updateCalendarId(professionalId);
         } else {
             alert('Por favor, selecciona un profesional.');
         }

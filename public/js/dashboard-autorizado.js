@@ -38,7 +38,7 @@ async function addProfessional() {
 // Función para cargar las áreas y profesionales desde la base de datos
 async function loadProfessionals() {
     try {
-        const response = await fetch('https://agendasalud.onrender.com/professionals');
+        const response = await fetch('/professionals');
         const professionals = await response.json();
 
         const areaList = document.getElementById('areaList');
@@ -46,7 +46,8 @@ async function loadProfessionals() {
 
         professionals.forEach(prof => {
             const li = document.createElement('li');
-            li.textContent = `${prof.area}: ${prof.professionals.join(', ')}`;
+            const nombres = prof.professionals.map(p => p.nombre).join(', ');
+            li.textContent = `${prof.area}: ${nombres}`;
             areaList.appendChild(li);
         });
     } catch (error) {

@@ -3,14 +3,15 @@
 > Referencia técnica para llevar AgendaSalud a un producto vendible a clínicas y
 > profesionales de la salud.
 >
-> **Autor:** Emmanuel Denis · **Rama:** `dev` · **Actualizado:** 2026-09-13
+> **Autor:** Emmanuel Denis · **Rama:** `dev` · **Actualizado:** 2026-09-14
 
 > ## 📌 Estado
 > - **Consolidado en Supabase**, MongoDB eliminado. ✅
 > - Modelo de datos central: tabla **`persona`** + roles `paciente` / `profesional`.
 > - Modelo de venta objetivo: **SaaS multi-clínica** (Fase 2).
 > - **Fase 0 (seguridad) aplicada sobre `dev`.** Ver §7 (changelog).
-> - **Fase 1 pendiente:** reconstruir historia clínica y flujo de reservas (§6).
+> - **Fase 1 aplicada sobre `dev`:** historia clínica reconstruida en Supabase + endpoints de reservas. Ver §7.
+> - ⚠️ **Requiere correr en Supabase** la Sección B de `db/esquema_supabase.sql` (tablas `registro_clinico`, `registro_diente` y `ALTER persona ADD email`) antes de usar historia clínica.
 
 ---
 
@@ -49,11 +50,11 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - ⏳ **Pendiente:** validación de entrada (`zod`/`express-validator`); RLS por clínica (Fase 2);
   confirmar que `SUPABASE_KEY` sea `service_role` solo en servidor.
 
-## 5. Bugs conocidos de `dev` (heredados, a corregir en Fase 1)
-- `authController.login`: la rama de paciente usa `rol` (typo, debería ser `role`) → el
-  `idRole` del paciente nunca se setea. Además el login web fuerza `role = "profesional"`.
-- `pacienteController` era Mongo y **se eliminó**; hay que reescribirlo sobre Supabase.
-- `main.js` tiene la IP **hardcodeada** `192.168.100.23:3000`.
+## 5. Bugs conocidos de `dev`
+- ✅ `authController.login`: typo `rol`→`role` corregido (Fase 1). El login web sigue forzando
+  `role = "profesional"` (por diseño actual: los pacientes no inician sesión en la web).
+- ✅ `pacienteController` reescrito sobre Supabase (Fase 1).
+- ✅ `main.js` ya no tiene IP hardcodeada: usa rutas relativas (Fase 1).
 
 ## 6. Fase 1 — Plan (reconstrucción sobre Supabase)
 
@@ -80,6 +81,21 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - Recordatorios Twilio/Nodemailer (confirmación + 24 h antes).
 
 ## 7. Changelog
+
+### 2026-09-14 — Fase 1 sobre `dev`
+- **Historia clínica en Supabase:** nuevo `controllers/pacienteController.js` + `routes/pacienteRoutes.js`
+  (rol profesional): `/pacient/regis-pacient`, `/pacient/save-data-pacient`, `/pacient/get-data-pacient`.
+  El profesional (id, nombre, área) se deriva de la **sesión**, no del body; snapshot en `registro_clinico`.
+  Se guarda el odontograma en `registro_diente`. Ya **no** se usa `dni + password` para leer la historia.
+- **Reservas:** nuevos `controllers/publicController.js` + `routes/publicRoutes.js` (públicos):
+  `GET /professionals` (agrupado por área, con `id` e `id_calendario`) y `GET /api/get-hours`.
+- **Auth:** `authController.getArea` (por sesión), `getCalenID` (por **id**, público), `saveArea`;
+  corregido el typo `rol`→`role` en `login` (§5). El rate-limit estricto pasó a login/register.
+- **`/api/user`** ahora devuelve también `fullName` y `email`.
+- **Frontend:** `main.js` sin IP hardcodeada (rutas relativas) y el `calendarId` viaja por request
+  (`window.CALENDAR_ID`, publicado por `select-prof.js`); se eliminó `/set-calendar`. El `<select>` de
+  profesionales usa el `id` como value. Historia clínica dejó de enviar `password`.
+- **DB:** `ALTER TABLE persona ADD COLUMN IF NOT EXISTS email` (aditivo) + Sección B (historia clínica).
 
 ### 2026-09-13 — Fase 0 sobre `dev`
 - Eliminado MongoDB (`models/`, `config/database.js`, `pacienteController`, `pacienteRoutes`,

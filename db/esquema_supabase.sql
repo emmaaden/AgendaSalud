@@ -93,6 +93,10 @@ CREATE TABLE IF NOT EXISTS pacientes_ortodoncia (
 -- Un registro por consulta; el odontograma se guarda por consulta.
 -- ===========================================================================
 
+-- Email de contacto de la persona (aditivo). Los pacientes cargados desde la
+-- historia clínica no son usuarios de auth, así que su email se guarda acá.
+ALTER TABLE persona ADD COLUMN IF NOT EXISTS email text;
+
 CREATE TABLE IF NOT EXISTS registro_clinico (
     id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     id_paciente        bigint NOT NULL REFERENCES paciente(id) ON DELETE CASCADE,

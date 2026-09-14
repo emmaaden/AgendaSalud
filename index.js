@@ -10,12 +10,14 @@ const { google } = require('googleapis');
 
 const authRoutes = require('./routes/authRoutes');
 const horariosRoutes = require('./routes/horarios');
-/* const pacienteRoutes = require('./routes/pacienteRoutes'); */ // Fase 1: historia clínica en Supabase
+const pacienteRoutes = require('./routes/pacienteRoutes'); // Fase 1: historia clínica en Supabase
 const especialidadesRoutes = require('./routes/especialidadesRoutes');
 const profesionalRoutes = require('./routes/profesionalRoutes');
 const avatarsRoutes = require('./routes/avatarsRoutes');
 const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
+const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
 const { requireAuth, requireAdmin } = require('./middleware/auth');
+const { supabase } = require('./config/supabaseClient');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,9 +55,8 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting: general + más estricto en autenticación.
+// Rate limiting general. El limiter estricto de login/register vive en routes/authRoutes.js.
 const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 app.use(generalLimiter);
 
 // ---------------------------------------------------------------------------
@@ -94,25 +95,42 @@ app.use(session({
 // ---------------------------------------------------------------------------
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/auth', authLimiter, authRoutes);
+app.use('/auth', authRoutes);
 app.use('/hour', horariosRoutes);
-/* app.use('/pacient', pacienteRoutes); */ // Fase 1
+app.use('/pacient', pacienteRoutes); // Fase 1: historia clínica (rol profesional)
 app.use('/especialidades', especialidadesRoutes); // público: usado en el registro
 app.use('/profesional', profesionalRoutes);
 app.use('/avatars', avatarsRoutes);
 app.use('/ortodoncia', ortPacienteRoutes);
+app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
 
-app.get('/api/user', (req, res) => {
-    if (req.session.isAuthenticated) {
-        res.json({
-            user: req.session.user.email,
-            idRole: req.session.user.idRole,
-            id: req.session.user.id,
-            role: req.session.user.role
-        });
-    } else {
-        res.status(401).json({ error: 'No autenticado' });
+app.get('/api/user', async (req, res) => {
+    if (!req.session.isAuthenticated) {
+        return res.status(401).json({ error: 'No autenticado' });
     }
+    const u = req.session.user;
+
+    // Nombre completo desde persona (para dashboards). Best-effort: no bloquea si falla.
+    let fullName = null;
+    try {
+        const { data } = await supabase
+            .from('persona')
+            .select('nombre, apellido')
+            .eq('id_auth', u.id)
+            .maybeSingle();
+        if (data) fullName = [data.nombre, data.apellido].filter(Boolean).join(' ');
+    } catch (err) {
+        console.error('Error obteniendo nombre en /api/user:', err.message);
+    }
+
+    res.json({
+        user: u.email,
+        email: u.email,
+        fullName,
+        idRole: u.idRole,
+        id: u.id,
+        role: u.role
+    });
 });
 
 const email_autorizado = process.env.EMAIL_AUTORIZADO;
