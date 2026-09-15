@@ -1,10 +1,8 @@
 // Gestión de la clínica (Fase 2). La clínica se toma de la sesión del profesional.
 // Generar/listar códigos de activación es exclusivo del admin de la clínica.
 
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+// Fase 2c: opera con el cliente por-JWT (RLS por clinica_id a nivel Postgres).
+const { getUserSupabase } = require('../middleware/userSupabase');
 
 // Código legible sin caracteres ambiguos (0/O, 1/I).
 function generarCodigoAleatorio() {
@@ -20,7 +18,10 @@ exports.info = async (req, res) => {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.json({ clinica: null, esAdmin: false });
 
-        const { data, error } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.' });
+
+        const { data, error } = await db
             .from('clinica')
             .select('nombre, plan, slug')
             .eq('id', clinicaId)
@@ -40,10 +41,13 @@ exports.generarCodigo = async (req, res) => {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica asignada.' });
 
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.' });
+
         let inserted = null;
         for (let intentos = 0; intentos < 5 && !inserted; intentos++) {
             const codigo = generarCodigoAleatorio();
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('codigo_activacion')
                 .insert({ codigo, clinica_id: clinicaId })
                 .select('codigo, usado, creado_en')
@@ -68,7 +72,10 @@ exports.listarCodigos = async (req, res) => {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica asignada.' });
 
-        const { data, error } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.' });
+
+        const { data, error } = await db
             .from('codigo_activacion')
             .select('codigo, usado, creado_en')
             .eq('clinica_id', clinicaId)

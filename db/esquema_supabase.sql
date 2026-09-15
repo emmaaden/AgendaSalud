@@ -89,8 +89,7 @@ CREATE TABLE IF NOT EXISTS pacientes_ortodoncia (
 -- ===========================================================================
 -- SECCIÓN B — TABLAS NUEVAS: HISTORIA CLÍNICA (Fase 1) — EJECUTAR
 -- ---------------------------------------------------------------------------
--- Reemplazan al modelo Mongo eliminado (Paciente.historial + dientes).
--- Un registro por consulta; el odontograma se guarda por consulta.
+-- Historia clínica: un registro por consulta; el odontograma se guarda por consulta.
 -- ===========================================================================
 
 -- Email de contacto de la persona (aditivo). Los pacientes cargados desde la

@@ -50,11 +50,12 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - ✅ Validación de entrada con **zod** (`middleware/validate.js` + `validators/schemas.js`) en
   auth, historia clínica, profesional, horarios, ortodoncia y endpoints de calendario.
 - ✅ **RLS real por JWT (Fase 2c):** políticas por `clinica_id` en Postgres, aplicadas al
-  operar con el JWT del usuario (rol `authenticated`). Piloto: historia clínica
-  (`pacienteController`). Resto de controllers aún en `service_role` (rollout pendiente).
-- ⏳ **Pendiente:** migrar el resto de los controllers autenticados al cliente por-JWT
-  (ortodoncia, profesional, horarios, clínica); confirmar que `SUPABASE_KEY` sea
-  `service_role` solo en servidor.
+  operar con el JWT del usuario (rol `authenticated`). Migrados: historia clínica
+  (`pacienteController`), **ortodoncia** (`ortPacienteController`) y **clínica**
+  (`clinicaController` + `codigo_activacion`).
+- ⏳ **Pendiente:** migrar los controllers autenticados restantes al cliente por-JWT
+  (`profesionalController`, `horarioController`, `avatarsController`); confirmar que
+  `SUPABASE_KEY` sea `service_role` solo en servidor.
 
 ## 5. Bugs conocidos de `dev`
 - ✅ `authController.login`: typo `rol`→`role` corregido (Fase 1). El login web sigue forzando
@@ -91,6 +92,19 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   WhatsApp (Twilio) sigue inactivo.
 
 ## 7. Changelog
+
+### 2026-09-15 — Fase 2c (parte 2): RLS por JWT en ortodoncia y clínica + limpieza Mongo
+- **Rollout RLS:** `ortPacienteController` (consulta de ortodoncia) y `clinicaController`
+  (`info`, `generar-codigo`, `codigos`) ahora operan con el cliente por-JWT.
+- **DB:** `db/fase2c2_rls_ortodoncia_clinica.sql` — políticas por `clinica_id` en
+  `pacientes_ortodoncia`, `clinica` (lectura de la propia) y `codigo_activacion`
+  (fase2 las había dejado con RLS activa pero sin políticas). Idempotente. **Requiere correrlo.**
+- **Limpieza Mongo:** eliminada la línea `MONGODB_URI` del `.env` (tenía credenciales de un
+  cluster Mongo — conviene rotarlas en Atlas); comentarios residuales saneados. No quedan
+  dependencias ni código de Mongo en el repo.
+- **Verificado** con JWTs reales en 2 clínicas: ortodoncia, códigos de activación y clínica
+  aislados por tenant, INSERT cross-tenant rechazado (WITH CHECK, 42501), y flujo de la app
+  (info/generar/listar códigos + consulta de ortodoncia) correcto por el stack completo.
 
 ### 2026-09-15 — Fase 2c: RLS real por JWT de usuario
 - **El aislamiento por clínica ahora lo garantiza Postgres**, no solo la app. Para las

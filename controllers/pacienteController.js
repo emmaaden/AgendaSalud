@@ -1,5 +1,4 @@
 // Historia clínica sobre Supabase (Fase 1).
-// Reemplaza al antiguo pacienteController de Mongo (eliminado en Fase 0).
 //
 // SEGURIDAD: la identidad del profesional SIEMPRE se toma de la sesión, nunca del body.
 //   - req.session.user.id     -> persona.id_auth (auth.users)

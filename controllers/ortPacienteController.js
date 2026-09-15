@@ -1,7 +1,5 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+// Fase 2c: opera con el cliente por-JWT (RLS por clinica_id a nivel Postgres).
+const { getUserSupabase } = require('../middleware/userSupabase');
 
 exports.data = async (req, res) => {
     try {
@@ -16,7 +14,10 @@ exports.data = async (req, res) => {
             return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
         }
 
-        const { data, error } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.' });
+
+        const { data, error } = await db
             .from('pacientes_ortodoncia')
             .select(`
                 valor,
