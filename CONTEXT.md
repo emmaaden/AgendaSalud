@@ -100,8 +100,8 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - `googleapis` ^144 → ^181 y `nodemailer` ^7 → ^10 (majors). Uso verificado sin cambios de
   API: `google.auth.GoogleAuth` + `google.calendar('v3')` (create-event probado en vivo) y
   `nodemailer.createTransport`/`sendMail` (API SMTP estable). Node 24 cumple los engines.
-- Nota: `google-auth-library` (^9) quedó como dep directo **vestigial** (no se importa; el auth
-  de Calendar usa el que trae `googleapis`). Candidato a eliminar en una limpieza aparte.
+- Eliminado el dep directo **vestigial** `google-auth-library` (^9): no se importaba; el auth de
+  Calendar usa el que trae `googleapis` (v11 anidado). Boot sigue conectando a Google Calendar.
 
 ### 2026-09-15 — Verificación de claves Supabase
 - `SUPABASE_KEY` decodificada: `role=service_role`; `SUPABASE_KEY_PUBLIC`: `role=anon` (mismo proyecto).
