@@ -96,6 +96,23 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 
 ## 7. Changelog
 
+### 2026-09-15 — Fase 2d: revisión y saneamiento de la base
+- **Revisión completa** (advisors seguridad/performance + 10 chequeos de integridad, todos en 0).
+  Consistencia impecable: sin huérfanos, sin mismatch registro↔clínica, sin duplicados.
+- **CRÍTICO resuelto:** las tablas legacy `turno`, `historia_clinica`, `consulta` (modelo viejo,
+  vacías, sin uso en el código) tenían **RLS desactivada y expuestas al `anon`**. Se **eliminaron**
+  (cierra el agujero y de-normaliza: queda solo `registro_clinico`/`registro_diente`).
+- **Seguridad:** `REVOKE EXECUTE app_current_clinica_id() FROM anon, public` (solo `authenticated` la usa).
+- **Integridad:** `registro_clinico.clinica_id` → NOT NULL; `especialidad_profesional.id_profesional`
+  → NOT NULL + `UNIQUE(id_profesional, id_especialidad)`. `authController.saveArea` ahora hace upsert
+  con `onConflict` sobre ese par (idempotente).
+- **Performance:** índices sobre las FKs de las tablas activas.
+- Aplicado con `db/fase2d_saneamiento.sql` (vía Supabase MCP).
+- **Pendiente/decisión:** `persona.clinica_id` NOT NULL — hoy el auto-registro de PACIENTE inserta
+  clínica NULL; definir cómo se asigna (o quitar ese flujo) antes de forzarlo. **Dashboard:** activar
+  leaked-password protection y aplicar el upgrade de Postgres. **Opcional:** `REVOKE SELECT ... FROM anon`
+  en las tablas de datos (la RLS ya bloquea filas; esto solo las saca del schema GraphQL público).
+
 ### 2026-09-15 — Bump de dependencias (googleapis, nodemailer)
 - `googleapis` ^144 → ^181 y `nodemailer` ^7 → ^10 (majors). Uso verificado sin cambios de
   API: `google.auth.GoogleAuth` + `google.calendar('v3')` (create-event probado en vivo) y

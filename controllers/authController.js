@@ -336,9 +336,14 @@ exports.saveArea = async (req, res) => {
             idEspecialidad = data.id;
         }
 
+        // onConflict sobre el par (id_profesional, id_especialidad): con la UNIQUE
+        // de fase2d, reasignar la misma especialidad es idempotente (no duplica).
         const { error } = await supabase
             .from('especialidad_profesional')
-            .upsert({ id_profesional: idRole, id_especialidad: idEspecialidad });
+            .upsert(
+                { id_profesional: idRole, id_especialidad: idEspecialidad },
+                { onConflict: 'id_profesional,id_especialidad' }
+            );
         if (error) return res.status(400).json({ error: error.message });
 
         return res.json({ message: 'Área asignada correctamente', especialidad: idEspecialidad });
