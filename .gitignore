@@ -9,6 +9,8 @@ node_modules/
 
 # Archivos de servicio o claves privadas
 *.json
+# Excepcion: los JSON de configuracion del frontend si se versionan
+!frontend/**/*.json
 
 # Logs y archivos temporales
 *.log
