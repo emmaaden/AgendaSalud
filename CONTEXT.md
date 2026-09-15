@@ -56,7 +56,9 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   (`profesionalController`), horarios (`horarioController`) y avatars (`avatarsController`,
   política de storage). El `service_role` queda solo para lo público/sistema: registro,
   página de turnos, recordatorios (cron) y `/api/user`.
-- ⏳ **Pendiente:** confirmar que `SUPABASE_KEY` sea `service_role` solo en servidor.
+- ✅ **`SUPABASE_KEY` = `service_role`, no expuesta:** verificado (2026-09-15) — la clave secreta
+  solo se usa en backend; `/api/public-config` expone únicamente `SUPABASE_KEY_PUBLIC` (anon);
+  `.env` gitignoreado y nunca commiteado; sin tokens JWT hardcodeados en el repo.
 
 ## 5. Bugs conocidos de `dev`
 - ✅ `authController.login`: typo `rol`→`role` corregido (Fase 1). El login web sigue forzando
@@ -93,6 +95,11 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   WhatsApp (Twilio) sigue inactivo.
 
 ## 7. Changelog
+
+### 2026-09-15 — Verificación de claves Supabase
+- `SUPABASE_KEY` decodificada: `role=service_role`; `SUPABASE_KEY_PUBLIC`: `role=anon` (mismo proyecto).
+- La `service_role` solo se usa en backend; `/api/public-config` expone únicamente la anon.
+  `.env` gitignoreado y ausente de toda la historia; sin JWT hardcodeados en el repo.
 
 ### 2026-09-15 — Fase 2c (parte 3): RLS por JWT en horarios, profesional y avatars (rollout completo)
 - **Rollout RLS completo:** `profesionalController` (datos + ajustes), `horarioController`
