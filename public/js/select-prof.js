@@ -108,6 +108,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('areaName').addEventListener('change', function() {
         const selectedArea = this.value;
         populateProfessionalList(selectedArea, selectProf); // Cargar profesionales según área
+        window.CALENDAR_ID = ''; // se limpia hasta elegir profesional
+    });
+
+    // Al elegir profesional, se fija su calendario para poder reservar.
+    selectProf.addEventListener('change', function() {
+        if (this.value) updateCalendarId(this.value);
     });
 
     document.getElementById('select-prof-form').addEventListener('submit', function(event) {

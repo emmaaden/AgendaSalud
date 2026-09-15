@@ -196,61 +196,80 @@ async function authenticate() {
     return google.calendar({ version: 'v3', auth: client });
 }
 
-// Franjas horarias disponibles para un calendario y fecha dados.
+// Normaliza un nombre de día (minúsculas, sin acentos) para comparar.
+function normalizarDia(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+// Argentina es UTC-3 (sin horario de verano): se usa el offset fijo -03:00.
+const AR_OFFSET = '-03:00';
+const SLOT_MINUTOS = 30;
+
+// Franjas horarias disponibles de un profesional para una fecha dada.
+// Respeta horario_profesional (por día de la semana) y excluye los eventos ya
+// agendados en su Google Calendar. El calendario se deriva del profesional.
 app.get('/available-slots', async (req, res) => {
-    const { date, calendarId } = req.query;
+    const { date, profId } = req.query;
 
     if (!date) return res.status(400).json({ error: 'Fecha no proporcionada' });
-    if (!calendarId) return res.status(400).json({ error: 'calendarId no proporcionado' });
+    if (!profId) return res.status(400).json({ error: 'profId no proporcionado' });
 
     try {
-        const calendar = await authenticate();
-        const timeMin = new Date(date);
-        timeMin.setUTCHours(0, 0, 0, 0);
-        const timeMax = new Date(date);
-        timeMax.setUTCHours(23, 59, 59, 999);
+        // 1. Profesional -> calendario + horarios.
+        const { data: prof, error: profError } = await supabase
+            .from('profesional')
+            .select('id_calendario, horario_profesional ( dia, horario_inicio, horario_fin )')
+            .eq('id', profId)
+            .maybeSingle();
 
+        if (profError) throw profError;
+        if (!prof) return res.status(404).json({ error: 'Profesional no encontrado' });
+        if (!prof.id_calendario) return res.json([]); // sin calendario configurado
+
+        // 2. Horarios del día de la semana pedido.
+        const diaSemana = normalizarDia(
+            new Date(`${date}T12:00:00${AR_OFFSET}`)
+                .toLocaleDateString('es-AR', { weekday: 'long', timeZone: 'America/Argentina/Buenos_Aires' })
+        );
+        const franjas = (prof.horario_profesional || []).filter(h => normalizarDia(h.dia) === diaSemana);
+        if (franjas.length === 0) return res.json([]); // no atiende ese día
+
+        // 3. Eventos ya agendados ese día.
+        const calendar = await authenticate();
+        const timeMin = new Date(`${date}T00:00:00${AR_OFFSET}`);
+        const timeMax = new Date(`${date}T23:59:59${AR_OFFSET}`);
         const response = await calendar.events.list({
-            calendarId,
+            calendarId: prof.id_calendario,
             timeMin: timeMin.toISOString(),
             timeMax: timeMax.toISOString(),
             showDeleted: false,
             singleEvents: true,
             orderBy: 'startTime',
         });
+        const events = response.data.items || [];
 
-        const events = response.data.items;
+        // 4. Generar slots de 30' dentro de cada franja, excluyendo ocupados y pasados.
+        const ahora = new Date();
         const slots = [];
-        // TODO (Fase 1): respetar horario_profesional en vez de 8-20 fijo.
-        const startHour = 8;
-        const endHour = 20;
-        const interval = 30; // minutos
-
-        const startOfDay = new Date(date);
-        startOfDay.setUTCHours(startHour, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setUTCHours(endHour, 0, 0, 0);
-
-        let currentSlot = startOfDay;
-        while (currentSlot < endOfDay) {
-            const slotEnd = new Date(currentSlot.getTime() + interval * 60000);
-            let isAvailable = true;
-            for (const event of events) {
-                const eventStart = new Date(event.start.dateTime);
-                const eventEnd = new Date(event.end.dateTime);
-                if (eventStart < slotEnd && eventEnd > currentSlot) {
-                    isAvailable = false;
-                    break;
-                }
+        for (const franja of franjas) {
+            let actual = new Date(`${date}T${franja.horario_inicio}${AR_OFFSET}`);
+            const fin = new Date(`${date}T${franja.horario_fin}${AR_OFFSET}`);
+            while (actual < fin) {
+                const slotFin = new Date(actual.getTime() + SLOT_MINUTOS * 60000);
+                const ocupado = events.some(ev => {
+                    const es = new Date(ev.start.dateTime || ev.start.date);
+                    const ee = new Date(ev.end.dateTime || ev.end.date);
+                    return es < slotFin && ee > actual;
+                });
+                if (!ocupado && actual > ahora) slots.push(actual.toISOString());
+                actual = slotFin;
             }
-            if (isAvailable) slots.push(currentSlot.toISOString());
-            currentSlot = slotEnd;
         }
 
         res.json(slots);
     } catch (error) {
-        console.error('Error obteniendo eventos:', error.message);
-        res.status(500).json({ error: 'Error al obtener eventos', details: error.message });
+        console.error('Error obteniendo slots disponibles:', error.message);
+        res.status(500).json({ error: 'Error al obtener los turnos disponibles', details: error.message });
     }
 });
 

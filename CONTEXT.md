@@ -77,10 +77,20 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 4. Historia clínica: dejar de usar `dni + password`.
 
 ### 6.3 Otros
-- `/available-slots` debe respetar `horario_profesional` (hoy usa 8–20 fijo como placeholder).
-- Recordatorios Twilio/Nodemailer (confirmación + 24 h antes).
+- ✅ `/available-slots` respeta `horario_profesional` por día (recibe `profId`, deriva el
+  calendario y genera slots de 30' en la franja del día, excluyendo eventos). Fase reservas.
+- ⏳ Recordatorios Twilio/Nodemailer (confirmación + 24 h antes). *(pendiente: falta SMTP)*.
 
 ## 7. Changelog
+
+### 2026-09-14 — Reservas: slots según horario del profesional (§6.3)
+- `/available-slots` ahora recibe `profId` (no `calendarId`): deriva el `id_calendario` y el
+  `horario_profesional` del día pedido, genera franjas de 30' dentro del horario real y excluye
+  los eventos ya agendados. Devuelve solo turnos futuros. Días sin atención → `[]`.
+- Zona horaria fija AR (UTC-3) con offset `-03:00`; se eliminó el hack de `+3` del cliente.
+- `main.js`: se sacó la dependencia de `/api/get-hours` y todo el cálculo cliente de slots;
+  ahora solo muestra lo que devuelve el servidor. Al cambiar profesional/fecha se refresca.
+- `select-prof.js`: al elegir profesional se fija `window.CALENDAR_ID` (para crear el turno).
 
 ### 2026-09-14 — Fase 1 sobre `dev`
 - **Historia clínica en Supabase:** nuevo `controllers/pacienteController.js` + `routes/pacienteRoutes.js`
