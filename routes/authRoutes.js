@@ -12,6 +12,9 @@ router.post('/register', authLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
 router.post('/logout', authController.logout);
 
+// Recuperación de contraseña (envía el email de recuperación de Supabase).
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+
 // Área del profesional autenticado (usa la sesión, no el body).
 router.post('/get-area', requireAuth, authController.getArea);
 

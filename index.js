@@ -104,6 +104,15 @@ app.use('/avatars', avatarsRoutes);
 app.use('/ortodoncia', ortPacienteRoutes);
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
 
+// Config pública para el cliente (solo datos NO sensibles).
+// La anon/public key de Supabase es segura de exponer; la service_role NUNCA se envía.
+app.get('/api/public-config', (req, res) => {
+    res.json({
+        supabaseUrl: process.env.SUPABASE_URL || null,
+        supabaseAnonKey: process.env.SUPABASE_KEY_PUBLIC || null,
+    });
+});
+
 app.get('/api/user', async (req, res) => {
     if (!req.session.isAuthenticated) {
         return res.status(401).json({ error: 'No autenticado' });

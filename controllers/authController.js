@@ -197,6 +197,35 @@ exports.getArea = async (req, res) => {
     }
 };
 
+// Solicitud de recuperación de contraseña.
+// Dispara el email de recuperación de Supabase Auth (mismo mecanismo que el botón
+// "Send recovery" del dashboard). El enlace del email redirige a /reset-password.html,
+// donde el usuario define su nueva contraseña.
+// Respuesta genérica siempre: no se revela si el email existe (anti-enumeración).
+exports.forgotPassword = async (req, res) => {
+    const respuestaGenerica = {
+        message: 'Si el email está registrado, te enviamos un enlace para restablecer tu contraseña.'
+    };
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Debe indicar un email.' });
+
+        const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+        const redirectTo = `${baseUrl}/reset-password.html`;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) {
+            // Se loguea pero no se expone al cliente.
+            console.error('Error en resetPasswordForEmail:', error.message);
+        }
+
+        return res.json(respuestaGenerica);
+    } catch (err) {
+        console.error('Error en forgot-password:', err);
+        return res.json(respuestaGenerica);
+    }
+};
+
 // id_calendario de un profesional a partir de su id (público: lo usa la página de turnos).
 exports.getCalenID = async (req, res) => {
     try {
