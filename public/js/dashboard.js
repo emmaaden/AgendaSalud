@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (info.esAdmin) {
                 document.getElementById('clinicaAdmin').style.display = '';
                 document.getElementById('clinicaNombre').textContent = info.clinica ? info.clinica.nombre : '—';
+                mostrarLinkPublico(info.clinica && info.clinica.slug);
                 await cargarCodigos();
                 document.getElementById('btnGenerarCodigo').addEventListener('click', generarCodigo);
             }
@@ -40,6 +41,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error cargando gestión de clínica:', e);
     }
 });
+
+// Muestra el link público de turnos de la clínica (turnos.html?clinica=<slug>).
+function mostrarLinkPublico(slug) {
+    const box = document.getElementById('clinicaLinkBox');
+    const input = document.getElementById('clinicaLink');
+    const btn = document.getElementById('btnCopiarLink');
+    if (!box || !input || !slug) return;
+
+    const url = `${window.location.origin}/turnos.html?clinica=${encodeURIComponent(slug)}`;
+    input.value = url;
+    box.style.display = '';
+
+    if (btn) {
+        btn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(url);
+            } catch (e) {
+                input.select(); // fallback si no hay permiso de clipboard
+                document.execCommand('copy');
+            }
+            if (window.Swal) {
+                Swal.fire({ icon: 'success', title: 'Link copiado', timer: 1200, showConfirmButton: false });
+            }
+        });
+    }
+}
 
 async function cargarCodigos() {
     const lista = document.getElementById('listaCodigos');

@@ -3,10 +3,40 @@
 // que main.js usa en cada request (ya no existe /set-calendar).
 window.CALENDAR_ID = window.CALENDAR_ID || '';
 
+// Fase 2 (aislamiento por tenant): la clínica se toma de la URL (?clinica=<slug>).
+// Con slug, el listado se filtra a los profesionales de esa clínica; sin slug se
+// mantiene el comportamiento anterior (listar todo).
+const CLINICA_SLUG = new URLSearchParams(window.location.search).get('clinica') || '';
+
+// URL de /professionals con el filtro de clínica cuando corresponde.
+function professionalsUrl() {
+    return CLINICA_SLUG
+        ? `/professionals?clinica=${encodeURIComponent(CLINICA_SLUG)}`
+        : '/professionals';
+}
+
+// Muestra el nombre de la clínica en el encabezado (si la página es de una clínica).
+async function loadClinicaPublica() {
+    if (!CLINICA_SLUG) return;
+    const el = document.getElementById('clinicaPublicaNombre');
+    try {
+        const resp = await fetch(`/clinica-publica?clinica=${encodeURIComponent(CLINICA_SLUG)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (el && data && data.nombre) {
+            el.textContent = data.nombre;
+            el.style.display = '';
+            document.title = `Turnos — ${data.nombre}`;
+        }
+    } catch (error) {
+        console.error('Error al cargar la clínica:', error);
+    }
+}
+
 // Función para cargar las áreas y profesionales desde la base de datos
 async function loadProfessionals() {
     try {
-        const response = await fetch(`/professionals`);
+        const response = await fetch(professionalsUrl());
         const professionals = await response.json();
 
         const areaList = document.getElementById('areaList');
@@ -29,7 +59,7 @@ async function populateAreaList(area) {
     const select = area;
 
     try {
-        const response = await fetch(`/professionals`);
+        const response = await fetch(professionalsUrl());
         const professionals = await response.json();
 
         professionals.forEach(prof => {
@@ -50,7 +80,7 @@ async function populateProfessionalList(area, selectProf) {
     select.innerHTML = ''; // Limpiar las opciones existentes
 
     try {
-        const response = await fetch(`/professionals`);
+        const response = await fetch(professionalsUrl());
         const professionals = await response.json();
 
         const selectedArea = professionals.find(prof => prof.area === area);
@@ -103,6 +133,7 @@ async function updateCalendarId(professionalId) {
 document.addEventListener('DOMContentLoaded', function() {
     const area = document.getElementById('areaName');
     const selectProf = document.getElementById('profName');
+    loadClinicaPublica();
     populateAreaList(area);
 
     document.getElementById('areaName').addEventListener('change', function() {

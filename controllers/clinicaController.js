@@ -22,7 +22,7 @@ exports.info = async (req, res) => {
 
         const { data, error } = await supabase
             .from('clinica')
-            .select('nombre, plan')
+            .select('nombre, plan, slug')
             .eq('id', clinicaId)
             .maybeSingle();
         if (error) return res.status(400).json({ error: error.message });

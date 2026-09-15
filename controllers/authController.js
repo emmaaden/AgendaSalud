@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { glob } = require('fs');
+const { slugify } = require('../utils/slug');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -55,12 +56,23 @@ exports.register = async (req, res) => {
 
         // Crear la clínica nueva (vía b) una vez confirmado el usuario.
         if (role === "PROFESIONAL" && !clinicaId && tieneNombreClinica) {
-            const { data: cli, error: cliErr } = await supabase
-                .from("clinica")
-                .insert([{ nombre: String(nombreClinica).trim() }])
-                .select("id")
-                .single();
-            if (cliErr) throw cliErr;
+            const nombreLimpio = String(nombreClinica).trim();
+            const base = slugify(nombreLimpio);
+            let slug = base;
+            let cli = null, cliErr = null;
+            // Reintentar con sufijo aleatorio si el slug ya existe (unique).
+            for (let intento = 0; intento < 5; intento++) {
+                ({ data: cli, error: cliErr } = await supabase
+                    .from("clinica")
+                    .insert([{ nombre: nombreLimpio, slug }])
+                    .select("id")
+                    .single());
+                if (!cliErr) break;
+                if (cliErr.code !== '23505') throw cliErr; // 23505 = unique_violation
+                slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+                cli = null;
+            }
+            if (!cli) throw cliErr || new Error('No se pudo crear la clínica');
             clinicaId = cli.id;
             esAdmin = true;
         }

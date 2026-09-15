@@ -81,6 +81,16 @@
     <div class="card">
       <div class="card-body p-4">
         <p class="mb-3"><strong>Clínica:</strong> <span id="clinicaNombre">—</span></p>
+        <div class="mb-4" id="clinicaLinkBox" style="display:none;">
+          <label class="form-label mb-1"><strong>Link público de turnos</strong></label>
+          <p class="as-text-muted mb-2">Compartí este enlace con tus pacientes para que reserven turnos en tu clínica.</p>
+          <div class="input-group">
+            <input type="text" class="form-control" id="clinicaLink" readonly>
+            <button class="as-btn as-btn-secondary" id="btnCopiarLink" type="button">
+              <i class="fa-solid fa-copy"></i> Copiar
+            </button>
+          </div>
+        </div>
         <button id="btnGenerarCodigo" class="as-btn as-btn-primary mb-2">
           <i class="fa-solid fa-key"></i> Generar código de activación
         </button>

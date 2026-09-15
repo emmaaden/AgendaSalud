@@ -87,6 +87,23 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 
 ## 7. Changelog
 
+### 2026-09-15 — Fase 2b: turnos públicos por clínica (aislamiento por tenant)
+- **Cierra el aislamiento del lado público:** antes `/professionals` mezclaba los
+  profesionales de todas las clínicas. Ahora cada clínica tiene su URL de reservas
+  `turnos.html?clinica=<slug>` y el listado se filtra a sus profesionales.
+- **DB:** `db/fase2b_turnos_publicos.sql` — columna `clinica.slug` (única) + backfill
+  de slugs para las clínicas existentes. **Requiere correrlo en Supabase** después de
+  `fase2_multiclinica.sql`.
+- **Backend:** `publicController` resuelve `?clinica=<slug>` → `clinica_id` y filtra
+  `/professionals` y `/api/get-hours`; nuevo `GET /clinica-publica` para el encabezado.
+  Sin slug se mantiene el listado completo (despliegue de una sola clínica).
+  `authController.register` genera el slug al crear una clínica; `/clinica/info` lo devuelve.
+- **Frontend:** `select-prof.js` lee el slug de la URL y muestra el nombre de la clínica;
+  `dashboard.js` muestra al admin su link público de turnos con botón de copiar.
+- ⏳ **Pendiente (endurecimiento):** validar en `/create-event` que el profesional
+  pertenezca a la clínica del slug (hoy el aislamiento del listado ya evita elegir
+  profesionales de otra clínica desde la UI).
+
 ### 2026-09-14 — Validación de entrada (zod)
 - `middleware/validate.js`: gate que valida `req.body/query/params` con zod y responde 400 con
   el detalle de campos inválidos (no muta el request, para no descartar campos dinámicos).
