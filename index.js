@@ -18,6 +18,7 @@ const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
 const { requireAuth, requireAdmin } = require('./middleware/auth');
 const { supabase } = require('./config/supabaseClient');
+const { sendMail } = require('./utils/mailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -291,6 +292,20 @@ app.post('/create-event', async (req, res) => {
         };
 
         const response = await calendar.events.insert({ calendarId, resource: event });
+
+        // Email de confirmación al paciente (best-effort: no bloquea la reserva).
+        const fechaLocal = new Date(start.dateTime).toLocaleString('es-AR', {
+            timeZone: 'America/Argentina/Buenos_Aires',
+            dateStyle: 'full',
+            timeStyle: 'short',
+        });
+        sendMail({
+            to: email,
+            subject: 'Confirmación de tu turno - Agenda Salud',
+            text: `Hola,\n\nTu turno fue agendado para el ${fechaLocal} hs.\n${summary || ''}\n\nGracias por usar Agenda Salud.`,
+            html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${summary || ''}</p><p>Gracias por usar Agenda Salud.</p>`,
+        }).catch(err => console.error('Error enviando email de confirmación:', err.message));
+
         res.json({ success: true, event: response.data });
     } catch (error) {
         console.error('Error creando evento:', error.message);
