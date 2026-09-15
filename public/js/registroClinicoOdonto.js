@@ -17,9 +17,8 @@ async function addPacient() {
   const sexo = document.getElementById("sexo").value;
   const direccion = document.getElementById("direccion").value;
 
-  const selectedSlot = document.getElementById("fechaNacimiento").value;
-  const date = new Date(selectedSlot);
-  const fechaNacimiento = date.toLocaleDateString('es-AR');
+  // Se envía el valor crudo del input date (YYYY-MM-DD) para no correr el día por zona horaria.
+  const fechaNacimiento = document.getElementById("fechaNacimiento").value;
   const edad = document.getElementById("edad").value;
   const obraSocial = document.getElementById("obraSocial").value;
 

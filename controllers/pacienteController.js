@@ -68,8 +68,13 @@ function fmtFechaHora(iso) {
 // Fecha (sin hora) legible.
 function fmtFecha(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return String(iso);
+    const s = String(iso);
+    // Fecha pura 'YYYY-MM-DD' (ej: fecha_nacimiento): reformatear SIN conversión de
+    // zona horaria, para no correr el día. Los timestamptz (con 'T') sí usan tz.
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s;
     return d.toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 }
 
