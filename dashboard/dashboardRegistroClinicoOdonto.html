@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prof - Agenda Salud</title>
+  <title>Registro clínico odontológico — Agenda Salud</title>
   <link rel="icon" type="image/png" href="../img/ico.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="../theme.css">
   <script src="https://apis.google.com/js/api.js" async defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://kit.fontawesome.com/b1ae749c97.js" crossorigin="anonymous"></script>
@@ -45,38 +47,50 @@
 </head>
 
 <body>
-  <nav class="navbar navbar-expand-lg p-3 mb-5 border-bottom shadow">
-    <div class="container-fluid">
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTogglerDemo01"
-        aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
+  <nav class="navbar navbar-expand-lg as-navbar py-2">
+    <div class="container">
+      <a class="as-brand" href="/dashboard">
+        <img src="../img/ico.png" alt="" class="as-brand__mark"> Agenda Salud
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashNav"
+        aria-controls="dashNav" aria-expanded="false" aria-label="Abrir menú">
         <span class="navbar-toggler-icon"></span>
       </button>
-
-      <div class="collapse navbar-collapse" id="navbarTogglerDemo01">
-        <a class="navbar-brand" href="index.html">Agenda Salud</a>
-
-        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-          <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fa-solid fa-house"></i> Home</a></li>
-          <li class="nav-item"><a class="nav-link" href="/dashboardConfig"><i class="fa-solid fa-gear"></i> Config</a></li>
-          <li class="nav-item"><a class="nav-link active" href=""><i class="fa-solid fa-notes-medical"></i> Registro Clínico</a></li>
-          <li class="nav-item"><a class="nav-link" href="https://wa.me/2615930274"><i class="fa-solid fa-circle-info"></i> Ayuda</a></li>
-          <li class="nav-item">
-            <button id="logout" class="nav-link text-danger"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
-          </li>
+      <div class="collapse navbar-collapse" id="dashNav">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 mt-3 mt-lg-0">
+          <li class="nav-item"><a class="as-nav-link" href="/dashboard"><i class="fa-solid fa-house"></i> Inicio</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="/dashboardConfig"><i class="fa-solid fa-gear"></i> Configuración</a></li>
+          <li class="nav-item"><a class="as-nav-link active" href="/dashboardRegistroClinico"><i class="fa-solid fa-notes-medical"></i> Registro clínico</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="https://wa.me/2615930274"><i class="fa-brands fa-whatsapp"></i> Ayuda</a></li>
+          <li class="nav-item"><button id="logout" class="as-nav-link as-nav-link--danger border-0 bg-transparent"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</button></li>
         </ul>
       </div>
     </div>
   </nav>
 
-  <div class="container" id="menu">
-    <div class="text-center container" id="title">
-      <h2 class="text-azul mb-4">Registro Clínico</h2>
-      <hr class="mb-4">
+  <div class="as-dash-head">
+    <div class="container">
+      <h1 class="as-page-title">Registro clínico</h1>
+      <p class="as-page-sub">Buscá un paciente existente o registrá uno nuevo con odontograma.</p>
     </div>
+  </div>
 
-    <div class="row">
-      <button class="col btn btn-celeste m-4 text-white" id="select-1">Buscar Paciente</button>
-      <button class="col btn btn-celeste m-4 text-white" id="select-2">Registrar Paciente</button>
+  <div class="container my-5" id="menu">
+    <div class="row g-4">
+      <div class="col-md-6">
+        <button class="as-action w-100 border-0" id="select-1">
+          <div class="as-action__icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <h5>Buscar paciente</h5>
+          <p class="mb-0">Consultá la historia clínica de un paciente por su DNI.</p>
+        </button>
+      </div>
+      <div class="col-md-6">
+        <button class="as-action w-100 border-0" id="select-2">
+          <div class="as-action__icon as-action__icon--green"><i class="fa-solid fa-user-plus"></i></div>
+          <h5>Registrar paciente</h5>
+          <p class="mb-0">Creá un nuevo paciente, su consulta y su odontograma.</p>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -534,8 +548,8 @@
   <footer class="footer text-center py-4 mt-5 border-top">
     <p>&copy; 2024 Agenda Salud. Todos los derechos reservados.</p>
     <div>
-        <a href="terminos.html">Términos de servicio</a> |
-        <a href="politicas.html">Política de privacidad</a>
+        <a href="terminos-condiciones.html">Términos de servicio</a> ·
+        <a href="politica-privacidad.html">Política de privacidad</a>
     </div>
   </footer>
 

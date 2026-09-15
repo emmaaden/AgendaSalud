@@ -4,78 +4,98 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Turnos - Agenda Salud</title>
+  <title>Turnos — Agenda Salud</title>
   <link rel="icon" type="image/png" href="img/ico.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
   <script src="https://kit.fontawesome.com/b1ae749c97.js" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
 
 <body>
-  <nav class="navbar navbar-expand-lg p-3 border-bottom shadow-sm">
-    <div class="container-fluid">
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTogglerDemo01"
-        aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg as-navbar py-2">
+    <div class="container">
+      <a class="as-brand" href="index.html">
+        <img src="img/ico.png" alt="" class="as-brand__mark"> Agenda Salud
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+        aria-controls="mainNav" aria-expanded="false" aria-label="Abrir menú">
         <span class="navbar-toggler-icon"></span>
       </button>
-
-      <div class="collapse navbar-collapse" id="navbarTogglerDemo01">
-        <span class="navbar-brand">Agenda Salud</span>
-
-        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-          <li class="nav-item">
-            <a class="nav-link" aria-current="page" href="index.html"><i class="fa-solid fa-house"></i> Home</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link active" href="turnos.html"><i class="fa-solid fa-calendar-days"></i> Turnos</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="planes.html"><i class="fa-solid fa-clipboard-list"></i> Planes</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="https://wa.me/2615930274"><i class="fa-solid fa-circle-info"></i> Ayuda</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link text-info" href="/dashboard"><i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesion</a>
-          </li>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 mt-3 mt-lg-0">
+          <li class="nav-item"><a class="as-nav-link" href="index.html"><i class="fa-solid fa-house"></i> Inicio</a></li>
+          <li class="nav-item"><a class="as-nav-link active" href="turnos.html"><i class="fa-solid fa-calendar-days"></i> Turnos</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="planes.html"><i class="fa-solid fa-clipboard-list"></i> Planes</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="https://wa.me/2615930274"><i class="fa-brands fa-whatsapp"></i> Ayuda</a></li>
+          <li class="nav-item ms-lg-2 mt-2 mt-lg-0"><a class="as-btn as-btn-primary" href="/dashboard"><i class="fa-solid fa-right-to-bracket"></i> Iniciar sesión</a></li>
         </ul>
       </div>
     </div>
   </nav>
 
-  <main>
-    <div class="container p-5 pt-1 pb-1 mt-5">
-      <h1 class="text-center mb-4 text-azul-marino" id="title">Agenda de Citas</h1>
+  <!-- Encabezado -->
+  <div class="as-dash-head">
+    <div class="container text-center">
+      <h1 class="as-page-title" id="title">Agenda de citas</h1>
+      <p class="as-page-sub">Reservá un nuevo turno o consultá los que ya tenés.</p>
+    </div>
+  </div>
 
-      <hr class="mb-4">
+  <div class="container my-5" style="max-width: 720px;">
+    <!-- Selección inicial: Buscar / Agendar -->
+    <section id="prim">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <button class="as-action w-100 border-0" id="bus-turn">
+            <div class="as-action__icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <h5>Buscar turno</h5>
+            <p class="mb-0">Consultá tus turnos agendados con tu email.</p>
+          </button>
+        </div>
+        <div class="col-md-6">
+          <button class="as-action w-100 border-0" id="ag-turn">
+            <div class="as-action__icon as-action__icon--green"><i class="fa-solid fa-calendar-plus"></i></div>
+            <h5>Agendar turno</h5>
+            <p class="mb-0">Reservá un nuevo turno con el profesional que elijas.</p>
+          </button>
+        </div>
+      </div>
+    </section>
 
+    <!-- Flujo de reserva -->
+    <main>
       <!-- Selección Profesional -->
-      <form id="select-prof-form" style="display: none">
-        <label for="areaName" class="mb-2 text-azul-marino">Area Profesional:</label>
+      <form id="select-prof-form" class="card p-4 mt-4" style="display: none">
+        <label for="areaName" class="form-label">Área profesional:</label>
         <select id="areaName" name="areaName" required class="form-select mb-4">
           <option value="">Selecciona un Area</option>
         </select>
 
-        <label for="profName" class="mb-2 text-azul-marino">Elija un Profesional:</label>
+        <label for="profName" class="form-label">Elegí un profesional:</label>
         <select id="profName" name="profName" required class="form-select mb-4">
           <option value="">Selecciona un Profesional</option>
         </select>
-        <button type="button" id="volver2" class="btn btn-celeste text-white me-2">Volver</button>
-        <button type="submit" class="btn btn-celeste text-white" id="selectButton1">Siguiente</button>
-        <button type="submit" class="btn btn-celeste text-white" id="selectButton2" style="display: none;">Siguiente</button>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" id="volver2" class="btn btn-celeste text-white">Volver</button>
+          <button type="submit" class="btn btn-celeste text-white" id="selectButton1">Siguiente</button>
+          <button type="submit" class="btn btn-celeste text-white" id="selectButton2" style="display: none;">Siguiente</button>
+        </div>
       </form>
 
       <!-- Datos Paciente -->
-      <form id="appointment-form" style="display: none">
-        <label for="patientName" class="mb-2 text-azul-marino">Apellido y Nombre del Paciente:</label>
-        <input type="text" id="patientName" name="patientName" required class="form-control"/><br />
+      <form id="appointment-form" class="card p-4 mt-4" style="display: none">
+        <label for="patientName" class="form-label">Apellido y nombre del paciente:</label>
+        <input type="text" id="patientName" name="patientName" required class="form-control mb-3" />
 
-        <label for="email" class="mb-2 text-azul-marino">Correo Electrónico</label>
-        <input type="email" id="email" name="email" required class="form-control" /><br />
+        <label for="email" class="form-label">Correo electrónico:</label>
+        <input type="email" id="email" name="email" required class="form-control mb-3" />
 
-        <label for="country" class="mb-2 text-azul-marino">Selecciona tu país</label>
-        <select id="country" class="form-select" onchange="updatePhoneCode()">
+        <label for="country" class="form-label">Seleccioná tu país:</label>
+        <select id="country" class="form-select mb-3" onchange="updatePhoneCode()">
           <option value="+54">Argentina</option>
           <option value="+55">Brasil</option>
           <option value="+56">Chile</option>
@@ -95,107 +115,94 @@
           <option value="+81">Japón</option>
           <option value="+86">China</option>
           <option value="+91">India</option>
-        </select><br />
+        </select>
 
-        <label for="number" class="mb-2 text-azul-marino">Numero Telefónico</label>
-        <div class="row">
+        <label for="number" class="form-label">Número telefónico:</label>
+        <div class="row g-2 mb-3">
           <div class="col-4 col-sm-3 col-md-2">
             <input type="text" id="number-code" class="form-control" value="+54" readonly>
           </div>
           <div class="col-8 col-sm-9 col-md-10">
-            <input type="number" id="number" name="number" required class="form-control" placeholder="Número sin el código de país" d>
+            <input type="number" id="number" name="number" required class="form-control" placeholder="Número sin el código de país">
           </div>
-        </div><br />
+        </div>
 
-        <label for="appointmentDate" class="mb-2 text-azul-marino">Fecha de la Cita:</label>
-        <input type="date" id="appointmentDate" name="appointmentDate" required class="form-control" /><br />
+        <label for="appointmentDate" class="form-label">Fecha de la cita:</label>
+        <input type="date" id="appointmentDate" name="appointmentDate" required class="form-control mb-2" />
 
-        <p id="nearest-slot"></p>
+        <p id="nearest-slot" class="as-text-muted"></p>
 
-        <label for="available-slots" class="mb-2 text-azul-marino">Horarios Disponibles:</label>
-        <select id="available-slots" name="availableSlots" required class="form-control">
+        <label for="available-slots" class="form-label">Horarios disponibles:</label>
+        <select id="available-slots" name="availableSlots" required class="form-select mb-4">
           <option value="">Selecciona un horario</option>
-        </select><br />
-        <button type="button" id="volver3" class="btn btn-celeste text-white me-2">Volver</button>
+        </select>
 
-        <button id="enviar-datos" type="button" class="btn btn-celeste text-white" data-bs-toggle="modal">
-          <i class="fa-solid fa-calendar-plus me-2"></i>Agendar Cita
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" id="volver3" class="btn btn-celeste text-white">Volver</button>
+          <button id="enviar-datos" type="button" class="btn btn-celeste text-white" data-bs-toggle="modal">
+            <i class="fa-solid fa-calendar-plus me-2"></i>Agendar cita
+          </button>
+        </div>
       </form>
-    </div>
-  </main>
+    </main>
 
-  <section class="container" id="prim">
-    <div class="row">
-      <button class="col btn btn-celeste m-4 text-white" id="bus-turn">Buscar Turno</button>
-      <button class="col btn btn-celeste m-4 text-white" id="ag-turn">Agendar Turno</button>
-    </div>
-  </section>
-
-  <!-- Buscar Turno -->
-  <section class="container" id="sectsearchAppointmentForm" style="display: none">
-    <form id="searchAppointmentForm">
-      <label for="searchEmail" class="mb-2 text-azul-marino">Correo del paciente:</label>
-      <input type="email" id="searchEmail" name="searchEmail" required class="form-control"/><br />
-
-      <button type="button" id="volver" class="btn btn-celeste text-white me-2">Volver</button>
-      <button type="submit" class="btn btn-celeste text-white">Buscar Turnos</button>
-    </form>
-  <div id="appointments" class="container">
+    <!-- Buscar Turno -->
+    <section id="sectsearchAppointmentForm" style="display: none">
+      <form id="searchAppointmentForm" class="card p-4 mt-4">
+        <label for="searchEmail" class="form-label">Correo del paciente:</label>
+        <input type="email" id="searchEmail" name="searchEmail" required class="form-control mb-3" />
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" id="volver" class="btn btn-celeste text-white">Volver</button>
+          <button type="submit" class="btn btn-celeste text-white">Buscar turnos</button>
+        </div>
+      </form>
+      <div id="appointments" class="mt-3"></div>
+    </section>
   </div>
-
-  </section>
-
 
   <!-- Modal para verificación de datos -->
   <div class="modal fade" id="datosModal" tabindex="-1" aria-labelledby="datosModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h1 class="modal-title fs-5" id="successModalLabel">Revisa tus datos</h1>
+          <h1 class="modal-title fs-5" id="successModalLabel">Revisá tus datos</h1>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          Tu cita sera registrada con con los siguientes datos.
-          <div>Nombre y Apellido: <span id="v-name"></span></div>
-          <div>Numero Telefónico: <span id="v-number"></span></div>
-          <div>Email: <span id="v-email"></span></div>
-          <div>Turno: <span id="v-cita"></span>hs</div>
+          <p class="as-text-muted">Tu cita será registrada con los siguientes datos:</p>
+          <div class="mb-1">Nombre y apellido: <strong><span id="v-name"></span></strong></div>
+          <div class="mb-1">Número telefónico: <strong><span id="v-number"></span></strong></div>
+          <div class="mb-1">Email: <strong><span id="v-email"></span></strong></div>
+          <div>Turno: <strong><span id="v-cita"></span>hs</strong></div>
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-primary" data-bs-dismiss="modal" id="enviar">Enviar</button>
+          <button type="submit" class="as-btn as-btn-primary" data-bs-dismiss="modal" id="enviar">Confirmar</button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>
   </div>
 
-  <section class="mt-5">
-    <div class="container">
-      <hr class="mb-4">
-
-      <div class="card card-color-celeste text-white mb-4">
-        <div class="card-body">
-          <h5 class="card-title">Consejos</h5>
-          <p class="card-text">
-            Asegúrate de verificar la fecha y los horarios antes de solicitar tu turno.
-            Además, ingresa correctamente tu correo electrónico y número de teléfono, ya que la confirmación de tu turno
-            llegará a tu teléfono,
-            y el profesional podría contactarte por correo electrónico o teléfono en caso de que surja algún imprevisto.
-          </p>
-        </div>
+  <!-- Consejos -->
+  <section class="container my-5" style="max-width: 720px;">
+    <div class="card card-color-celeste text-white">
+      <div class="card-body p-4">
+        <h5 class="card-title text-white"><i class="fa-solid fa-circle-info"></i> Consejos</h5>
+        <p class="card-text mb-0">
+          Verificá la fecha y el horario antes de solicitar tu turno. Ingresá correctamente tu correo y teléfono:
+          la confirmación llega por email y el profesional podría contactarte ante cualquier imprevisto.
+        </p>
       </div>
     </div>
   </section>
 
+  <!-- Footer -->
   <footer class="footer text-center py-4 mt-5 border-top">
-    <p>&copy; 2024 Agenda Salud. Todos los derechos reservados.</p>
+    <p class="mb-1">&copy; 2024 Agenda Salud. Todos los derechos reservados.</p>
     <div>
-        <a href="terminos.html">Términos de servicio</a> |
-        <a href="politicas.html">Política de privacidad</a>
+      <a href="terminos-condiciones.html">Términos de servicio</a> · <a href="politica-privacidad.html">Política de privacidad</a>
     </div>
   </footer>
-
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

@@ -1,0 +1,431 @@
+/* =====================================================================
+   Agenda Salud — Sistema de diseño (rediseño 2026)
+   Estética: salud moderna y limpia. Teal + azul suave, mucho aire,
+   tipografía clara (Inter), bordes redondeados suaves.
+   Este archivo se carga DESPUÉS de Bootstrap y lo sobreescribe.
+   ===================================================================== */
+
+/* ---------- Tokens ---------- */
+:root {
+  /* Marca */
+  --as-brand:        #0d9488;   /* teal-600 */
+  --as-brand-600:    #0f766e;   /* teal-700 (hover) */
+  --as-brand-500:    #14b8a6;   /* teal-500 */
+  --as-brand-50:     #f0fdfa;   /* teal-50  (fondos suaves) */
+  --as-brand-100:    #ccfbf1;
+  --as-accent:       #2563eb;   /* azul suave de apoyo */
+  --as-accent-50:    #eff6ff;
+
+  /* Neutros (slate) */
+  --as-ink:          #0f172a;   /* títulos */
+  --as-body:         #334155;   /* texto normal */
+  --as-muted:        #64748b;   /* texto secundario */
+  --as-line:         #e2e8f0;   /* bordes */
+  --as-line-soft:    #eef2f6;
+  --as-bg:           #f6f9fb;   /* fondo de página */
+  --as-surface:      #ffffff;   /* tarjetas */
+
+  /* Estados */
+  --as-success:      #16a34a;
+  --as-danger:       #dc2626;
+  --as-warning:      #d97706;
+
+  /* Radios */
+  --as-radius:       16px;
+  --as-radius-sm:    12px;
+  --as-radius-pill:  999px;
+
+  /* Sombras */
+  --as-shadow-sm:  0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.05);
+  --as-shadow:     0 4px 6px rgba(15,23,42,.04), 0 10px 24px rgba(15,23,42,.06);
+  --as-shadow-lg:  0 12px 40px rgba(13,148,136,.10), 0 4px 12px rgba(15,23,42,.06);
+
+  /* Tipografía */
+  --as-font: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ---------- Base ---------- */
+html, body {
+  font-family: var(--as-font) !important;
+  color: var(--as-body);
+  background-color: var(--as-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body { min-height: 100vh; }
+
+h1, h2, h3, h4, h5, h6 { color: var(--as-ink); font-weight: 700; letter-spacing: -.01em; }
+a { color: var(--as-brand-600); }
+a:hover { color: var(--as-brand); }
+
+.as-text-muted { color: var(--as-muted) !important; }
+.as-lead { font-size: 1.075rem; color: var(--as-muted); line-height: 1.6; }
+.as-eyebrow {
+  display: inline-block;
+  font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--as-brand-600); background: var(--as-brand-50);
+  padding: .35rem .75rem; border-radius: var(--as-radius-pill);
+}
+
+/* ---------- Botones ---------- */
+.as-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  font-weight: 600; font-size: 1rem; line-height: 1;
+  padding: .8rem 1.4rem; border-radius: var(--as-radius-pill);
+  border: 1px solid transparent; cursor: pointer;
+  text-decoration: none; white-space: nowrap;
+  transition: transform .12s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.as-btn:active { transform: translateY(1px); }
+
+.as-btn-primary {
+  background: var(--as-brand); color: #fff;
+  box-shadow: 0 8px 20px rgba(13,148,136,.22);
+}
+.as-btn-primary:hover { background: var(--as-brand-600); color: #fff; transform: translateY(-2px); box-shadow: 0 12px 26px rgba(13,148,136,.28); }
+
+.as-btn-ghost {
+  background: var(--as-surface); color: var(--as-brand-600); border-color: var(--as-line);
+  box-shadow: var(--as-shadow-sm);
+}
+.as-btn-ghost:hover { border-color: var(--as-brand-500); color: var(--as-brand-600); background: var(--as-brand-50); transform: translateY(-2px); }
+
+.as-btn-light { background: rgba(255,255,255,.16); color: #fff; border-color: rgba(255,255,255,.35); }
+.as-btn-light:hover { background: rgba(255,255,255,.28); color: #fff; transform: translateY(-2px); }
+
+.as-btn-block { width: 100%; }
+.as-btn-lg { padding: .95rem 1.6rem; font-size: 1.05rem; }
+
+/* Sobrescribe el btn-primary de Bootstrap (los forms de auth lo usan) */
+.btn-primary {
+  --bs-btn-bg: var(--as-brand);
+  --bs-btn-border-color: var(--as-brand);
+  --bs-btn-hover-bg: var(--as-brand-600);
+  --bs-btn-hover-border-color: var(--as-brand-600);
+  --bs-btn-active-bg: var(--as-brand-600);
+  --bs-btn-active-border-color: var(--as-brand-600);
+  --bs-btn-disabled-bg: var(--as-brand);
+  --bs-btn-disabled-border-color: var(--as-brand);
+  border-radius: var(--as-radius-pill) !important;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(13,148,136,.20);
+}
+
+/* ---------- Navbar ---------- */
+.as-navbar {
+  background: rgba(255,255,255,.85);
+  backdrop-filter: saturate(180%) blur(10px);
+  border-bottom: 1px solid var(--as-line);
+  position: sticky; top: 0; z-index: 1030;
+}
+.as-brand {
+  display: inline-flex; align-items: center; gap: .6rem;
+  font-weight: 800; font-size: 1.2rem; color: var(--as-ink); text-decoration: none;
+  letter-spacing: -.02em;
+}
+.as-brand:hover { color: var(--as-ink); }
+.as-brand__mark {
+  width: 38px; height: 38px; border-radius: 11px; object-fit: cover;
+  box-shadow: var(--as-shadow-sm);
+}
+.as-nav-link {
+  color: var(--as-body); font-weight: 500; text-decoration: none;
+  padding: .5rem .9rem; border-radius: var(--as-radius-pill);
+  display: inline-flex; align-items: center; gap: .45rem;
+  transition: color .15s ease, background-color .15s ease;
+}
+.as-nav-link:hover { color: var(--as-brand-600); background: var(--as-brand-50); }
+.as-nav-link.active { color: var(--as-brand-600); font-weight: 600; }
+
+/* ---------- Cards / superficies ---------- */
+.as-card {
+  background: var(--as-surface);
+  border: 1px solid var(--as-line);
+  border-radius: var(--as-radius);
+  box-shadow: var(--as-shadow);
+}
+
+/* ---------- Formularios (restyle de Bootstrap floating) ---------- */
+.form-control, .form-select {
+  border-radius: var(--as-radius-sm);
+  border: 1px solid var(--as-line);
+  color: var(--as-ink);
+  background-color: #fff;
+  box-shadow: none !important;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--as-brand-500);
+  box-shadow: 0 0 0 4px rgba(20,184,166,.15) !important;
+}
+.form-floating > label { color: var(--as-muted); }
+
+/* Ocultar spin buttons en number */
+input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ---------- Layout de autenticación (pantalla partida) ---------- */
+.as-auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+}
+.as-auth__aside {
+  position: relative;
+  background: linear-gradient(150deg, var(--as-brand) 0%, var(--as-brand-600) 55%, #0b5c56 100%);
+  color: #fff;
+  padding: 3rem;
+  display: flex; flex-direction: column; justify-content: space-between;
+  overflow: hidden;
+}
+.as-auth__aside::after {
+  /* halo decorativo suave */
+  content: ""; position: absolute; width: 460px; height: 460px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.16), rgba(255,255,255,0) 70%);
+  right: -120px; bottom: -140px;
+}
+.as-auth__brand { display: inline-flex; align-items: center; gap: .6rem; color: #fff; font-weight: 800; font-size: 1.25rem; text-decoration: none; position: relative; z-index: 1; }
+.as-auth__brand img { width: 40px; height: 40px; border-radius: 11px; }
+.as-auth__pitch { position: relative; z-index: 1; }
+.as-auth__pitch h2 { color: #fff; font-size: 2rem; line-height: 1.2; margin-bottom: 1rem; }
+.as-auth__pitch p { color: rgba(255,255,255,.85); font-size: 1.05rem; max-width: 34ch; }
+.as-auth__list { list-style: none; padding: 0; margin: 1.75rem 0 0; position: relative; z-index: 1; }
+.as-auth__list li { display: flex; align-items: center; gap: .7rem; color: rgba(255,255,255,.92); margin-bottom: .85rem; font-weight: 500; }
+.as-auth__list i { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: rgba(255,255,255,.16); }
+
+.as-auth__main {
+  display: flex; align-items: center; justify-content: center;
+  padding: 2.5rem 1.5rem; background: var(--as-bg);
+}
+.as-auth__panel { width: 100%; max-width: 420px; }
+.as-auth__panel--wide { max-width: 720px; }
+.as-auth__title { font-size: 1.6rem; margin-bottom: .35rem; }
+.as-auth__sub { color: var(--as-muted); margin-bottom: 1.75rem; }
+.as-auth__mobilebrand { display: none; }
+
+.as-auth__foot { text-align: center; color: var(--as-muted); margin-top: 1.5rem; }
+.as-auth__foot a { font-weight: 600; text-decoration: none; }
+
+@media (max-width: 860px) {
+  .as-auth { grid-template-columns: 1fr; }
+  .as-auth__aside { display: none; }
+  .as-auth__mobilebrand {
+    display: flex; align-items: center; justify-content: center; gap: .55rem;
+    margin-bottom: 1.5rem; font-weight: 800; font-size: 1.2rem; color: var(--as-ink);
+  }
+  .as-auth__mobilebrand img { width: 40px; height: 40px; border-radius: 11px; }
+}
+
+/* ---------- Grid de formulario (registros) ---------- */
+.as-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1rem; }
+.as-form-grid .as-col-full { grid-column: 1 / -1; }
+@media (max-width: 575.98px) { .as-form-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Alertas suaves ---------- */
+.alert-success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; border-radius: var(--as-radius-sm); }
+.alert-danger  { background: #fef2f2; border-color: #fecaca; color: #991b1b; border-radius: var(--as-radius-sm); }
+.alert-warning { background: #fffbeb; border-color: #fde68a; color: #92400e; border-radius: var(--as-radius-sm); }
+
+/* ---------- Selector de rol (register.html) ---------- */
+.as-rolecard {
+  display: flex; flex-direction: column; gap: .35rem;
+  text-align: left; text-decoration: none;
+  background: var(--as-surface); border: 1px solid var(--as-line);
+  border-radius: var(--as-radius); padding: 1.5rem;
+  box-shadow: var(--as-shadow-sm);
+  transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.as-rolecard:hover { transform: translateY(-4px); box-shadow: var(--as-shadow-lg); border-color: var(--as-brand-500); }
+.as-rolecard__icon {
+  width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center;
+  font-size: 1.5rem; color: var(--as-brand-600); background: var(--as-brand-50); margin-bottom: .5rem;
+}
+.as-rolecard h3 { font-size: 1.15rem; margin: 0; color: var(--as-ink); }
+.as-rolecard p { margin: 0; color: var(--as-muted); font-size: .95rem; }
+.as-rolecard__cta { margin-top: .75rem; color: var(--as-brand-600); font-weight: 600; display: inline-flex; align-items: center; gap: .4rem; }
+
+/* ---------- Landing: hero ---------- */
+.as-hero { padding: clamp(3rem, 6vw, 5.5rem) 0 clamp(2.5rem, 5vw, 4rem); }
+.as-hero__img { border-radius: var(--as-radius); box-shadow: var(--as-shadow-lg); width: 100%; object-fit: cover; }
+.as-hero h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); line-height: 1.1; margin-bottom: 1.1rem; }
+
+/* ---------- Landing: feature cards ---------- */
+.as-feature {
+  height: 100%; text-align: center; padding: 2rem 1.5rem;
+  background: var(--as-surface); border: 1px solid var(--as-line);
+  border-radius: var(--as-radius); box-shadow: var(--as-shadow-sm);
+  transition: transform .15s ease, box-shadow .2s ease;
+}
+.as-feature:hover { transform: translateY(-4px); box-shadow: var(--as-shadow); }
+.as-feature__icon {
+  width: 64px; height: 64px; margin: 0 auto 1.1rem; border-radius: 18px;
+  display: grid; place-items: center; font-size: 1.6rem;
+  color: var(--as-brand-600); background: var(--as-brand-50);
+}
+.as-feature h3 { font-size: 1.15rem; margin-bottom: .5rem; }
+.as-feature p { color: var(--as-muted); margin: 0; }
+
+/* ---------- Landing: acceso rápido (chips grandes) ---------- */
+.as-quick {
+  display: flex; flex-direction: column; align-items: center; gap: .75rem;
+  text-decoration: none; padding: 1.5rem 1rem; border-radius: var(--as-radius);
+  background: var(--as-surface); border: 1px solid var(--as-line); box-shadow: var(--as-shadow-sm);
+  transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease; height: 100%;
+}
+.as-quick:hover { transform: translateY(-4px); box-shadow: var(--as-shadow); border-color: var(--as-brand-500); }
+.as-quick__icon {
+  width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 1.5rem; color: var(--as-brand-600); background: var(--as-brand-50);
+}
+.as-quick span { font-weight: 600; color: var(--as-ink); }
+
+/* ---------- Secciones alternadas ---------- */
+.as-section { padding: clamp(2.5rem, 5vw, 4rem) 0; }
+.as-section--soft { background: var(--as-brand-50); }
+.as-split-img { border-radius: var(--as-radius); box-shadow: var(--as-shadow); width: 100%; }
+
+/* ---------- Footer ---------- */
+.as-footer { background: #0b2b2a; color: rgba(255,255,255,.82); padding: 3rem 0 2rem; }
+.as-footer a { color: #fff; text-decoration: none; }
+.as-footer a:hover { color: var(--as-brand-100); }
+.as-footer__brand { display: inline-flex; align-items: center; gap: .55rem; color: #fff; font-weight: 800; font-size: 1.2rem; }
+.as-footer__brand img { width: 34px; height: 34px; border-radius: 9px; }
+.as-footer__divider { border-color: rgba(255,255,255,.12); }
+.as-footer h6 { color: #fff; font-weight: 700; margin-bottom: 1rem; }
+
+/* =====================================================================
+   Capa DASHBOARD (área privada del profesional)
+   Moderniza las páginas que aún usan clases legacy de style.css.
+   ===================================================================== */
+
+/* Navbar del dashboard: reutiliza .as-navbar/.as-brand/.as-nav-link.
+   Botón de logout como nav-link peligroso. */
+.as-nav-link--danger { color: var(--as-danger); }
+.as-nav-link--danger:hover { color: #fff; background: var(--as-danger); }
+.as-navbar .navbar-toggler { border: none; box-shadow: none; }
+
+/* Encabezado de página (banda con título) */
+.as-dash-head { background: linear-gradient(180deg, var(--as-brand-50), transparent); padding: 2.25rem 0 1.5rem; }
+.as-page-title { font-size: 1.75rem; margin: 0; }
+.as-page-sub { color: var(--as-muted); margin-top: .35rem; }
+
+/* Tarjeta de acción (accesos del panel) */
+.as-action {
+  height: 100%; text-align: center; padding: 1.75rem 1.25rem;
+  background: var(--as-surface); border: 1px solid var(--as-line);
+  border-radius: var(--as-radius); box-shadow: var(--as-shadow-sm);
+  transition: transform .15s ease, box-shadow .2s ease;
+}
+.as-action:hover { transform: translateY(-4px); box-shadow: var(--as-shadow); }
+.as-action__icon {
+  width: 60px; height: 60px; margin: 0 auto 1rem; border-radius: 16px;
+  display: grid; place-items: center; font-size: 1.5rem;
+  color: var(--as-brand-600); background: var(--as-brand-50);
+}
+.as-action__icon--green { color: #15803d; background: #f0fdf4; }
+.as-action__icon--amber { color: #b45309; background: #fffbeb; }
+.as-action h5 { font-size: 1.1rem; margin-bottom: .4rem; }
+.as-action p { color: var(--as-muted); font-size: .93rem; }
+
+/* Pestañas del perfil (perfilTabs sobre el carrusel de config) */
+#perfilTabs { gap: .5rem; }
+#perfilTabs li {
+  cursor: pointer; color: var(--as-muted); font-weight: 600; font-size: .95rem;
+  padding: .9rem .5rem; border-radius: var(--as-radius-sm);
+  border: 1px solid var(--as-line); background: var(--as-surface);
+  transition: color .15s ease, background .15s ease, border-color .15s ease;
+}
+#perfilTabs li:hover { color: var(--as-brand-600); border-color: var(--as-brand-500); background: var(--as-brand-50); text-decoration: none; }
+#perfilTabs li i { font-size: 1.25rem; }
+
+/* ---------- Overrides de clases legacy (style.css) ---------- */
+.text-azul, .text-azul-marino, .text-celeste, .text-azul-marino .card-title { color: var(--as-ink) !important; }
+.text-celeste { color: var(--as-brand-600) !important; }
+a.text-azul, .text-azul a { color: var(--as-brand-600) !important; }
+.text-gris { color: var(--as-muted) !important; }
+.text-turquesa { color: var(--as-brand-600) !important; }
+
+.btn-celeste, .btn-celeste.text-white {
+  background: var(--as-brand) !important; color: #fff !important; border: 1px solid var(--as-brand) !important;
+  border-radius: var(--as-radius-pill) !important; font-weight: 600;
+  box-shadow: 0 6px 16px rgba(13,148,136,.18);
+}
+.btn-celeste:hover, .btn-celeste.text-white:hover {
+  background: var(--as-brand-600) !important; border-color: var(--as-brand-600) !important; color: #fff !important;
+  transform: translateY(-2px);
+}
+.btn { border-radius: var(--as-radius-pill); font-weight: 600; }
+.btn-sm { border-radius: var(--as-radius-sm); }
+
+/* Cards y superficies legacy */
+.card {
+  border: 1px solid var(--as-line);
+  border-radius: var(--as-radius);
+  box-shadow: var(--as-shadow-sm) !important;
+}
+.card.border-primary { border-color: var(--as-brand-500) !important; }
+.card .bg-light { background: var(--as-brand-50) !important; border-radius: calc(var(--as-radius) - 4px); }
+.card-color-celeste {
+  background: linear-gradient(135deg, var(--as-brand), var(--as-brand-600)) !important;
+  border: none !important;
+}
+
+/* Tablas */
+.table { --bs-table-striped-bg: var(--as-brand-50); }
+.table > :not(caption) > * > * { border-color: var(--as-line-soft); }
+.table thead th { color: var(--as-ink); font-weight: 700; }
+
+/* Lista de códigos */
+.list-group-item { border-color: var(--as-line); }
+
+/* Modales */
+.modal-content { border: none; border-radius: var(--as-radius); box-shadow: var(--as-shadow-lg); }
+.modal-header, .modal-footer { border-color: var(--as-line-soft); }
+
+/* Footer legacy (dashboard) */
+footer.footer { background: var(--as-surface); border-color: var(--as-line) !important; color: var(--as-muted); }
+footer.footer a { color: var(--as-brand-600); text-decoration: none; }
+footer.footer a:hover { color: var(--as-brand); }
+
+/* Contenedor destacado para las secciones del registro clínico */
+.as-panel {
+  background: var(--as-surface); border: 1px solid var(--as-line);
+  border-radius: var(--as-radius); box-shadow: var(--as-shadow-sm); padding: 1.75rem;
+}
+
+/* ---------- Planes / pricing ---------- */
+.as-price {
+  position: relative; height: 100%;
+  background: var(--as-surface); border: 1px solid var(--as-line);
+  border-radius: var(--as-radius); padding: 2rem 1.75rem;
+  box-shadow: var(--as-shadow-sm); display: flex; flex-direction: column;
+  transition: transform .15s ease, box-shadow .2s ease;
+}
+.as-price:hover { transform: translateY(-4px); box-shadow: var(--as-shadow); }
+.as-price--featured { border-color: var(--as-brand-500); box-shadow: var(--as-shadow-lg); }
+.as-price__badge {
+  position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+  background: var(--as-brand); color: #fff; font-size: .72rem; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; padding: .35rem .8rem; border-radius: var(--as-radius-pill);
+}
+.as-price__name { font-size: 1.1rem; color: var(--as-brand-600); font-weight: 700; margin-bottom: .25rem; }
+.as-price__amount { font-size: 2.1rem; font-weight: 800; color: var(--as-ink); }
+.as-price__amount small { font-size: .95rem; font-weight: 500; color: var(--as-muted); }
+.as-price__desc { color: var(--as-muted); font-size: .93rem; margin: .5rem 0 1.25rem; }
+.as-price__list { list-style: none; padding: 0; margin: 0 0 1.5rem; text-align: left; }
+.as-price__list li { display: flex; align-items: center; gap: .6rem; padding: .45rem 0; border-bottom: 1px solid var(--as-line-soft); }
+.as-price__list li:last-child { border-bottom: none; }
+.as-price__list .yes { color: var(--as-success); }
+.as-price__list .no  { color: #cbd5e1; }
+.as-price__list .no + span { color: var(--as-muted); text-decoration: line-through; }
+.as-price .as-btn { margin-top: auto; }
+
+/* Etiquetas de formulario: tinta neutra + icono en teal.
+   Una declaración directa vence al color azul heredado de `.active` (style.css). */
+.form-label { color: var(--as-ink); font-weight: 500; margin-bottom: .4rem; }
+.form-label i { color: var(--as-brand-600); }
+
+/* Odontograma: diente hover en teal (coincide con la marca) */
+.tooth:hover { fill: var(--as-brand-100) !important; }

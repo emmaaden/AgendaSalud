@@ -2,147 +2,161 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Planes - Agenda Salud</title>
-    <link rel="icon" type="image/png" href="img/ico.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
-    <script src="https://kit.fontawesome.com/b1ae749c97.js" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planes — Agenda Salud</title>
+  <link rel="icon" type="image/png" href="img/ico.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg p-3 border-bottom shadow">
-        <div class="container-fluid">
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTogglerDemo01"
-            aria-controls="navbarTogglerDemo01" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-
-          <div class="collapse navbar-collapse" id="navbarTogglerDemo01">
-            <span class="navbar-brand">Agenda Salud</span>
-
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-              <li class="nav-item">
-                <a class="nav-link" aria-current="page" href="index.html"><i class="fa-solid fa-house"></i> Home</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="turnos.html"><i class="fa-solid fa-calendar-days"></i> Turnos</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link active" href="planes.html"><i class="fa-solid fa-clipboard-list"></i> Planes</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" href="https://wa.me/2615930274"><i class="fa-solid fa-circle-info"></i> Ayuda</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link text-info" href="/dashboard"><i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesion</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </nav>
-
-      <section class="container mt-5">
-      <h2 class="text-center mb-4 text-azul-marino">Planes para Profesionales</h2>
-      <hr class="mb-4">
-      <div class="row text-center">
-          <!-- Plan Básico -->
-          <div class="col-md-4">
-              <div class="card p-3 shadow-sm mb-4 plan">
-                  <h3 class="card-title">Plan <span class="text-gris">Básico</span></h3>
-                  <p class="card-text">Perfecto para profesionales que desean una solución práctica y eficiente para gestionar sus turnos de manera simple.</p>
-                  <ul class="list-unstyled">
-                      <li><i class="fa-solid fa-check"></i> Perfil profesional personalizado</li>
-                      <li><i class="fa-solid fa-check"></i> Gestión de agenda de turnos</li>
-                      <li><i class="fa-solid fa-xmark"></i> Acceso al registro clínico</li>
-                      <li><i class="fa-solid fa-check"></i> <strong>Precio:</strong> $5.000 por mes</li>
-                  </ul>
-                  <a class="btn btn-celeste text-white" href="https://wa.me/2615930274?text=Hola,%20me%20interesa%20suscribirme%20al%20Plan%20Básico%20y%20deseo%20recibir%20más%20información%20sobre%20los%20pasos%20a%20seguir.">
-                      Suscribirse (WhatsApp)
-                  </a>
-              </div>
-          </div>
-
-          <!-- Plan Medio -->
-          <div class="col-md-4">
-              <div class="card p-3 shadow-sm mb-4 plan">
-                  <h3 class="card-title">Plan <span class="text-turquesa">Medio</span></h3>
-                  <p class="card-text">Diseñado para profesionales que buscan integrar un sistema completo de registro clínico en su práctica.</p>
-                  <ul class="list-unstyled">
-                      <li><i class="fa-solid fa-check"></i> Perfil profesional personalizado</li>
-                      <li><i class="fa-solid fa-xmark"></i> Gestión de agenda de turnos</li>
-                      <li><i class="fa-solid fa-check"></i> Acceso al registro clínico</li>
-                      <li><i class="fa-solid fa-check"></i> <strong>Precio:</strong> $7.000 por mes</li>
-                  </ul>
-                  <a class="btn btn-celeste text-white" href="https://wa.me/2615930274?text=Hola,%20me%20interesa%20suscribirme%20al%20Plan%20Medio%20y%20deseo%20recibir%20más%20información%20sobre%20los%20pasos%20a%20seguir.">
-                      Suscribirse (WhatsApp)
-                  </a>
-              </div>
-          </div>
-
-          <!-- Plan Full -->
-          <div class="col-md-4">
-              <div class="card p-3 shadow-sm mb-4 plan">
-                  <h3 class="card-title">Plan <span class="text-azul">Full</span></h3>
-                  <p class="card-text">La opción más completa para profesionales que necesitan gestionar turnos y llevar un registro clínico detallado.</p>
-                  <ul class="list-unstyled">
-                      <li><i class="fa-solid fa-check"></i> Perfil profesional personalizado</li>
-                      <li><i class="fa-solid fa-check"></i> Gestión de agenda de turnos</li>
-                      <li><i class="fa-solid fa-check"></i> Acceso al registro clínico</li>
-                      <li><i class="fa-solid fa-check"></i> <strong>Precio:</strong> $10.000 por mes</li>
-                  </ul>
-                  <a class="btn btn-celeste text-white" href="https://wa.me/2615930274?text=Hola,%20me%20interesa%20suscribirme%20al%20Plan%20Full%20y%20deseo%20recibir%20más%20información%20sobre%20los%20pasos%20a%20seguir.">
-                      Suscribirse (WhatsApp)
-                  </a>
-              </div>
-          </div>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg as-navbar py-2">
+    <div class="container">
+      <a class="as-brand" href="index.html">
+        <img src="img/ico.png" alt="" class="as-brand__mark"> Agenda Salud
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+        aria-controls="mainNav" aria-expanded="false" aria-label="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 mt-3 mt-lg-0">
+          <li class="nav-item"><a class="as-nav-link" href="index.html"><i class="bi bi-house"></i> Inicio</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="turnos.html"><i class="bi bi-calendar-check"></i> Turnos</a></li>
+          <li class="nav-item"><a class="as-nav-link active" href="planes.html"><i class="bi bi-clipboard-check"></i> Planes</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="https://wa.me/2615930274"><i class="bi bi-whatsapp"></i> Ayuda</a></li>
+          <li class="nav-item ms-lg-2 mt-2 mt-lg-0"><a class="as-btn as-btn-primary" href="/dashboard"><i class="bi bi-box-arrow-in-right"></i> Iniciar sesión</a></li>
+        </ul>
       </div>
+    </div>
+  </nav>
+
+  <!-- Encabezado -->
+  <section class="as-section text-center">
+    <div class="container">
+      <span class="as-eyebrow mb-3">Para profesionales</span>
+      <h1 class="mt-2 mb-3">Planes que se adaptan a tu práctica</h1>
+      <p class="as-lead mx-auto" style="max-width:60ch">
+        Elegí el plan que mejor acompañe tu forma de trabajar. Podés cambiarlo o cancelarlo cuando quieras.
+      </p>
+    </div>
   </section>
 
-
-    <section class="container mt-5 mb-5">
-        <h2 class="text-center mb-4 text-azul-marino">Perfil del Profesional</h2>
-        <div class="container">
-          <hr class="mb-4">
-
-          <div class="card card-color-celeste text-white mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Vista Previa de Perfil Profesional</h5>
-                <p class="card-text">
-                    Los pacientes podrán consultar la información completa del profesional, incluyendo su experiencia, ubicación, y el acceso directo a su calendario de turnos. Asegúrese de que el perfil esté actualizado con todos los detalles relevantes para facilitar la toma de decisiones de los pacientes.
-                </p>
-            </div>
+  <!-- Pricing -->
+  <section class="container pb-5">
+    <div class="row g-4 justify-content-center">
+      <!-- Plan Básico -->
+      <div class="col-md-6 col-lg-4">
+        <div class="as-price text-center">
+          <div class="as-price__name">Básico</div>
+          <div class="as-price__amount">$5.000 <small>/ mes</small></div>
+          <p class="as-price__desc">Una solución práctica para gestionar tus turnos de manera simple.</p>
+          <ul class="as-price__list">
+            <li><i class="bi bi-check-circle-fill yes"></i> <span>Perfil profesional personalizado</span></li>
+            <li><i class="bi bi-check-circle-fill yes"></i> <span>Gestión de agenda de turnos</span></li>
+            <li><i class="bi bi-x-circle no"></i> <span>Acceso al registro clínico</span></li>
+          </ul>
+          <a class="as-btn as-btn-ghost as-btn-block" href="https://wa.me/2615930274?text=Hola,%20me%20interesa%20suscribirme%20al%20Plan%20Básico%20y%20deseo%20recibir%20más%20información%20sobre%20los%20pasos%20a%20seguir.">
+            <i class="bi bi-whatsapp"></i> Suscribirme
+          </a>
         </div>
-        </div>
-
-        <div class="card p-4 shadow-sm">
-            <h3 class="card-title text-azul">Nombre del Profesional</h3>
-            <p class="card-text">Descripción completa del profesional, su experiencia en el campo de la salud, especialidades y los servicios que ofrece. Detalle de los años de trayectoria, certificaciones, y las instituciones en las que ha trabajado.</p>
-            <ul class="list-unstyled">
-                <li><i class="fa-solid fa-user text-azul"></i></i> Area: Area del Profesional</span></li>
-                <li><i class="fa-solid fa-location-dot text-danger"></i> Dirección: Calle Falsa 123</li>
-                <li><i class="fa-solid fa-dollar-sign text-success"></i> Precio de la consulta: $Precio</li>
-                <li><i class="fa-solid fa-calendar-days text-azul"></i> Turnos disponibles: <a href="turnos.html" class="th">Agenda</a></li>
-            </ul>
-        </div>
-    </section>
-
-
-    <footer class="footer text-center py-4 mt-5 border-top">
-      <p>&copy; 2024 Agenda Salud. Todos los derechos reservados.</p>
-      <div>
-          <a href="terminos.html">Términos de servicio</a> |
-          <a href="politicas.html">Política de privacidad</a>
       </div>
+
+      <!-- Plan Full (destacado) -->
+      <div class="col-md-6 col-lg-4">
+        <div class="as-price as-price--featured text-center">
+          <span class="as-price__badge">Recomendado</span>
+          <div class="as-price__name">Full</div>
+          <div class="as-price__amount">$10.000 <small>/ mes</small></div>
+          <p class="as-price__desc">La opción más completa: turnos y registro clínico detallado.</p>
+          <ul class="as-price__list">
+            <li><i class="bi bi-check-circle-fill yes"></i> <span>Perfil profesional personalizado</span></li>
+            <li><i class="bi bi-check-circle-fill yes"></i> <span>Gestión de agenda de turnos</span></li>
+            <li><i class="bi bi-check-circle-fill yes"></i> <span>Acceso al registro clínico</span></li>
+          </ul>
+          <a class="as-btn as-btn-primary as-btn-block" href="https://wa.me/2615930274?text=Hola,%20me%20interesa%20suscribirme%20al%20Plan%20Full%20y%20deseo%20recibir%20más%20información%20sobre%20los%20pasos%20a%20seguir.">
+            <i class="bi bi-whatsapp"></i> Suscribirme
+          </a>
+        </div>
+      </div>
+
+      <!-- Plan Medio -->
+      <div class="col-md-6 col-lg-4">
+        <div class="as-price text-center">
+          <div class="as-price__name">Medio</div>
+          <div class="as-price__amount">$7.000 <small>/ mes</small></div>
+          <p class="as-price__desc">Para integrar un sistema completo de registro clínico en tu práctica.</p>
+          <ul class="as-price__list">
+            <li><i class="bi bi-check-circle-fill yes"></i> <span>Perfil profesional personalizado</span></li>
+            <li><i class="bi bi-x-circle no"></i> <span>Gestión de agenda de turnos</span></li>
+            <li><i class="bi bi-check-circle-fill yes"></i> <span>Acceso al registro clínico</span></li>
+          </ul>
+          <a class="as-btn as-btn-ghost as-btn-block" href="https://wa.me/2615930274?text=Hola,%20me%20interesa%20suscribirme%20al%20Plan%20Medio%20y%20deseo%20recibir%20más%20información%20sobre%20los%20pasos%20a%20seguir.">
+            <i class="bi bi-whatsapp"></i> Suscribirme
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vista previa de perfil -->
+  <section class="as-section as-section--soft">
+    <div class="container">
+      <div class="text-center mb-4">
+        <span class="as-eyebrow mb-3">Tu presencia</span>
+        <h2 class="mt-2">Así te ven los pacientes</h2>
+        <p class="as-lead mx-auto" style="max-width:58ch">
+          Los pacientes consultan tu experiencia, ubicación y calendario de turnos. Mantené tu perfil actualizado
+          para facilitar su decisión.
+        </p>
+      </div>
+      <div class="card p-4 mx-auto" style="max-width:640px">
+        <h3 class="h4 mb-2">Nombre del profesional</h3>
+        <p class="as-text-muted">Descripción del profesional, su experiencia, especialidades y servicios que ofrece,
+          años de trayectoria y certificaciones.</p>
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2"><i class="bi bi-person" style="color:var(--as-brand-600)"></i> Área: Especialidad del profesional</li>
+          <li class="mb-2"><i class="bi bi-geo-alt text-danger"></i> Dirección: Calle Ejemplo 123</li>
+          <li class="mb-2"><i class="bi bi-cash-coin text-success"></i> Precio de la consulta: $—</li>
+          <li class="mb-0"><i class="bi bi-calendar-check" style="color:var(--as-brand-600)"></i> Turnos disponibles: <a href="turnos.html" class="text-decoration-none fw-semibold">Ver agenda</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="as-footer">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-md-5">
+          <div class="as-footer__brand mb-3"><img src="img/ico.png" alt=""> Agenda Salud</div>
+          <p style="max-width:38ch">Plataforma para gestionar turnos médicos y llevar un registro clínico digital.</p>
+        </div>
+        <div class="col-md-3">
+          <h6>Navegación</h6>
+          <p class="mb-1"><a href="turnos.html">Turnos</a></p>
+          <p class="mb-1"><a href="planes.html">Planes</a></p>
+          <p class="mb-1"><a href="/dashboard">Iniciar sesión</a></p>
+        </div>
+        <div class="col-md-4">
+          <h6>Contacto</h6>
+          <p class="mb-1"><i class="bi bi-telephone me-2"></i><a href="tel:2615930274">2615930274</a></p>
+          <p class="mb-1"><i class="bi bi-envelope me-2"></i><a href="mailto:agendasaludsoporte@gmail.com">agendasaludsoporte@gmail.com</a></p>
+          <p class="mb-1"><i class="bi bi-instagram me-2"></i><a href="https://www.instagram.com/agendasaludmdz/">@AgendaSalud</a></p>
+        </div>
+      </div>
+      <hr class="as-footer__divider my-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+        <span class="small">&copy; 2024 Agenda Salud. Todos los derechos reservados.</span>
+        <span class="small"><a href="terminos-condiciones.html">Términos</a> · <a href="politica-privacidad.html">Privacidad</a></span>
+      </div>
+    </div>
   </footer>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
-    <script src="js/main.js" defer></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
