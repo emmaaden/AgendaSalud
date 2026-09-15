@@ -101,7 +101,7 @@ async function getProfContext(session) {
         if (esp && esp[0] && esp[0].id_especialidad) area = esp[0].id_especialidad.nombre;
     }
 
-    return { idProfesional: idRole || null, nombre, area };
+    return { idProfesional: idRole || null, nombre, area, clinicaId: session.user.clinicaId || null };
 }
 
 // Inserta el registro clínico + el estado del odontograma (si viene).
@@ -111,6 +111,7 @@ async function insertRegistro(idPaciente, prof, body) {
     const registro = {
         id_paciente: idPaciente,
         id_profesional: prof.idProfesional,
+        clinica_id: prof.clinicaId,
         profesional_nombre: prof.nombre || null,
         area: prof.area || area || null,
         sintomas: sintomas || null,
@@ -156,19 +157,23 @@ exports.regisPacient = async (req, res) => {
             return res.status(400).json({ error: 'Nombre y DNI son obligatorios.' });
         }
 
-        // ¿Ya existe una persona con ese DNI?
+        const prof = await getProfContext(req.session);
+        if (!prof.clinicaId) {
+            return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
+        }
+
+        // ¿Ya existe una persona con ese DNI EN ESTA CLÍNICA?
         const { data: existente } = await supabase
             .from('persona')
             .select('id')
             .eq('dni', dni)
+            .eq('clinica_id', prof.clinicaId)
             .maybeSingle();
         if (existente) {
-            return res.status(409).json({ error: 'Ya existe una persona registrada con ese DNI.' });
+            return res.status(409).json({ error: 'Ya existe un paciente con ese DNI en tu clínica.' });
         }
 
-        const prof = await getProfContext(req.session);
-
-        // 1. persona
+        // 1. persona (asignada a la clínica del profesional)
         const { data: persona, error: personaError } = await supabase
             .from('persona')
             .insert({
@@ -179,6 +184,7 @@ exports.regisPacient = async (req, res) => {
                 sexo: sexo || null,
                 fecha_nacimiento: parseFechaNacimiento(fechaNacimiento),
                 email: email || null,
+                clinica_id: prof.clinicaId,
             })
             .select('id')
             .single();
@@ -213,10 +219,14 @@ exports.saveDataPacient = async (req, res) => {
         const { dni } = req.body;
         if (!dni) return res.status(400).json({ error: 'Debe enviar un DNI.' });
 
+        const clinicaId = req.session.user.clinicaId;
+        if (!clinicaId) return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
+
         const { data: persona, error: personaError } = await supabase
             .from('persona')
             .select('id, paciente(id)')
             .eq('dni', dni)
+            .eq('clinica_id', clinicaId)
             .maybeSingle();
         if (personaError) throw personaError;
 
@@ -244,10 +254,14 @@ exports.getDataPacient = async (req, res) => {
         const { dni } = req.body;
         if (!dni) return res.status(400).json({ error: 'Debe enviar un DNI.' });
 
+        const clinicaId = req.session.user.clinicaId;
+        if (!clinicaId) return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
+
         const { data: persona, error: personaError } = await supabase
             .from('persona')
             .select('nombre, apellido, dni, telefono, direccion, sexo, fecha_nacimiento, email, paciente(id, obra_social)')
             .eq('dni', dni)
+            .eq('clinica_id', clinicaId)
             .maybeSingle();
         if (personaError) throw personaError;
 

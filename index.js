@@ -16,6 +16,7 @@ const profesionalRoutes = require('./routes/profesionalRoutes');
 const avatarsRoutes = require('./routes/avatarsRoutes');
 const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
+const clinicaRoutes = require('./routes/clinicaRoutes'); // Fase 2: gestión de clínica
 const { requireAuth, requireAdmin } = require('./middleware/auth');
 const { supabase } = require('./config/supabaseClient');
 const { sendMail, isMailerConfigured } = require('./utils/mailer');
@@ -105,6 +106,7 @@ app.use('/especialidades', especialidadesRoutes); // público: usado en el regis
 app.use('/profesional', profesionalRoutes);
 app.use('/avatars', avatarsRoutes);
 app.use('/ortodoncia', ortPacienteRoutes);
+app.use('/clinica', clinicaRoutes); // Fase 2: gestión de clínica (rol profesional)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
 
 // Config pública para el cliente (solo datos NO sensibles).

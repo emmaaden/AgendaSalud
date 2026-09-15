@@ -40,4 +40,18 @@ function requireAdmin(req, res, next) {
     return res.status(403).json({ error: 'Requiere permisos de administrador' });
 }
 
-module.exports = { requireAuth, requireRole, requireAdmin };
+// Verifica que el profesional autenticado sea admin de su clínica (Fase 2).
+function requireClinicaAdmin(req, res, next) {
+    if (
+        req.session &&
+        req.session.isAuthenticated &&
+        req.session.user &&
+        req.session.user.role === 'profesional' &&
+        req.session.user.esAdmin
+    ) {
+        return next();
+    }
+    return res.status(403).json({ error: 'Requiere ser administrador de la clínica' });
+}
+
+module.exports = { requireAuth, requireRole, requireAdmin, requireClinicaAdmin };

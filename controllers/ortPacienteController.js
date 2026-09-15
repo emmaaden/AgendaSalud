@@ -11,6 +11,11 @@ exports.data = async (req, res) => {
             return res.status(400).json({ error: 'Debe enviar un DNI.' });
         }
 
+        const clinicaId = req.session.user.clinicaId;
+        if (!clinicaId) {
+            return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
+        }
+
         const { data, error } = await supabase
             .from('pacientes_ortodoncia')
             .select(`
@@ -25,6 +30,7 @@ exports.data = async (req, res) => {
                 )
                 `)
             .eq('paciente.persona.dni', dni)
+            .eq('paciente.persona.clinica_id', clinicaId)
             .single();
 
         if (error || !data) {

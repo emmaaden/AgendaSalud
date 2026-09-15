@@ -25,7 +25,15 @@ module.exports = {
             dni,
             nombre,
             role: z.enum(['PACIENTE', 'PROFESIONAL'], 'Rol inválido'),
-        }),
+            // Fase 2: onboarding del profesional (una de las dos).
+            nombreClinica: z.string().trim().max(120).optional(),
+            activationCode: z.string().trim().max(40).optional(),
+        }).refine(
+            d => d.role !== 'PROFESIONAL'
+                || (d.nombreClinica && d.nombreClinica.length > 0)
+                || (d.activationCode && d.activationCode.length > 0),
+            { message: 'Indicá el nombre de la clínica nueva o un código de activación', path: ['nombreClinica'] }
+        ),
         login: z.object({
             email: z.email('Email inválido'),
             password: z.string().min(1, 'Contraseña requerida'),

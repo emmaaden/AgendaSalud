@@ -83,6 +83,17 @@ document.addEventListener("DOMContentLoaded", function () {
   registerEspecialidad = document.getElementById("registerEspecialidad");
   populateAreaList(registerEspecialidad);
 
+  // Toggle onboarding: crear clínica nueva vs unirse con código.
+  const onboardingMode = document.getElementById("onboardingMode");
+  const nombreClinicaWrap = document.getElementById("nombreClinicaWrap");
+  const activationCodeWrap = document.getElementById("activationCodeWrap");
+  if (onboardingMode) {
+    onboardingMode.addEventListener("change", function () {
+      const crear = this.value === "crear";
+      nombreClinicaWrap.style.display = crear ? "" : "none";
+      activationCodeWrap.style.display = crear ? "none" : "";
+    });
+  }
 });
 
 document.getElementById("registerForm").addEventListener("submit", async (e) => {
@@ -91,7 +102,10 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   // Obtener los valores del formulario
   const email = document.getElementById("registerEmail").value;
   const password = document.getElementById("registerPassword").value;
-  const activationCode = document.getElementById("activationCode").value;
+  // Fase 2: onboarding de clínica (crear nueva o unirse con código).
+  const onboardingMode = document.getElementById("onboardingMode").value;
+  const nombreClinica = onboardingMode === "crear" ? document.getElementById("nombreClinica").value : "";
+  const activationCode = onboardingMode === "codigo" ? document.getElementById("activationCode").value : "";
   const dni = document.getElementById("registerDNI").value;
   const nombre = document.getElementById("registerNombre").value;
   const apellido = document.getElementById("registerApellido").value;
@@ -110,7 +124,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, activationCode, dni, nombre, apellido, fechaNacimiento, telefono, especialidad, matricula, direccion, sexo, role }),
+      body: JSON.stringify({ email, password, activationCode, nombreClinica, dni, nombre, apellido, fechaNacimiento, telefono, especialidad, matricula, direccion, sexo, role }),
     });
 
     if (!response.ok) {

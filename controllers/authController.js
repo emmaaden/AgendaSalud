@@ -5,25 +5,65 @@ require('dotenv').config();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 exports.register = async (req, res) => {
-    const { email, password, activationCode, dni, nombre, apellido, fechaNacimiento, telefono, telefono_profesional, direccion, direccion_profesional, obraSocial, sexo, especialidad, matricula, role, area } = req.body;
+    const {
+        email, password, activationCode, nombreClinica,
+        dni, nombre, apellido, fechaNacimiento, telefono, telefono_profesional,
+        direccion, direccion_profesional, obraSocial, sexo, especialidad, matricula, role, area
+    } = req.body;
 
     try {
-        // Creamos usuairo en Supabase Auth
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password
-        })
-        if (error) { return res.status(400).json({ error: error.message }) };
+        // --- Fase 2: resolver la clínica del profesional ANTES de crear el usuario ---
+        // Dos vías de onboarding:
+        //   a) código de activación -> se une a una clínica existente (no admin).
+        //   b) nombre de clínica     -> crea una clínica nueva y queda como admin.
+        let clinicaId = null;
+        let esAdmin = false;
+        let codigoRow = null;
+        const tieneCodigo = activationCode && String(activationCode).trim();
+        const tieneNombreClinica = nombreClinica && String(nombreClinica).trim();
 
-        const user = data.user
+        if (role === "PROFESIONAL") {
+            if (tieneCodigo) {
+                const { data: cod, error: codErr } = await supabase
+                    .from("codigo_activacion")
+                    .select("id, clinica_id, usado")
+                    .eq("codigo", String(activationCode).trim())
+                    .maybeSingle();
+                if (codErr) throw codErr;
+                if (!cod || cod.usado) {
+                    return res.status(400).json({ error: "Código de activación inválido o ya utilizado." });
+                }
+                clinicaId = cod.clinica_id;
+                codigoRow = cod;
+            } else if (!tieneNombreClinica) {
+                return res.status(400).json({ error: "Debés crear una clínica nueva o ingresar un código de activación." });
+            }
+        }
 
+        // Creamos usuario en Supabase Auth
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) { return res.status(400).json({ error: error.message }); }
+
+        const user = data.user;
         if (!user) {
             return res.status(200).json({
                 message: "Usuario registrado, pero falta confirmar el email antes de insertar en la tabla",
             });
         }
 
-        const userId = data.user.id
+        const userId = data.user.id;
+
+        // Crear la clínica nueva (vía b) una vez confirmado el usuario.
+        if (role === "PROFESIONAL" && !clinicaId && tieneNombreClinica) {
+            const { data: cli, error: cliErr } = await supabase
+                .from("clinica")
+                .insert([{ nombre: String(nombreClinica).trim() }])
+                .select("id")
+                .single();
+            if (cliErr) throw cliErr;
+            clinicaId = cli.id;
+            esAdmin = true;
+        }
 
         const { data: persona_data, error: persona_error } = await supabase
             .from("persona")
@@ -35,7 +75,8 @@ exports.register = async (req, res) => {
                 fecha_nacimiento: fechaNacimiento,
                 telefono,
                 direccion,
-                sexo
+                sexo,
+                clinica_id: clinicaId
             }])
             .select()
             .single();
@@ -44,16 +85,10 @@ exports.register = async (req, res) => {
 
         const id_persona = persona_data.id;
 
-
-        // Insertar en la tabla correspondiente
-        let insertError;
         if (role === "PACIENTE") {
             const { error: err } = await supabase
                 .from("paciente")
-                .insert([{
-                    id_persona,
-                    obra_social: obraSocial
-                }]);
+                .insert([{ id_persona, obra_social: obraSocial }]);
             if (err) throw err;
         }
 
@@ -64,7 +99,8 @@ exports.register = async (req, res) => {
                     id_persona,
                     telefono: telefono_profesional,
                     direccion: direccion_profesional,
-                    matricula
+                    matricula,
+                    es_admin: esAdmin
                 }])
                 .select()
                 .single();
@@ -77,13 +113,15 @@ exports.register = async (req, res) => {
                     id_especialidad: especialidad
                 }]);
             if (err_esp) throw err_esp;
+
+            // Marcar el código de activación como usado.
+            if (codigoRow) {
+                await supabase
+                    .from("codigo_activacion")
+                    .update({ usado: true, usado_por: userId })
+                    .eq("id", codigoRow.id);
+            }
         }
-
-
-        /*  if (insertError) {
-             console.error("Error insertando en tabla:", insertError);
-             return res.status(400).json({ error: insertError.message });
-         } */
 
         res.json({ message: "Registro exitoso", user: { id: userId, email: user.email, role } });
 
@@ -110,50 +148,53 @@ exports.login = async (req, res) => {
         const userId = data.user.id;
 
         let idRole = null;
-        // 3. Buscar en tabla PROFESIONAL (solo si no es paciente)
+        let clinicaId = null;
+        let esAdmin = false;
+
+        // 3. Buscar rol + clínica (scoping multi-clínica).
         if (role == "profesional") {
             const { data: profesional, error: profesionalError } = await supabase
                 .from("persona")
-                .select(`
-                    id, profesional(id)
-                    `)
+                .select(`id, clinica_id, profesional(id, es_admin)`)
                 .eq("id_auth", userId)
                 .maybeSingle();
 
             if (profesionalError) {
-                console.error("Error al buscar profesional:", error);
+                console.error("Error al buscar profesional:", profesionalError);
             }
 
-            if (profesional && profesional.profesional) {
-                console.log("✅ Usuario es profesional:", profesional.profesional[0].id);
-                idRole = profesional.profesional[0].id;
+            if (profesional) {
+                clinicaId = profesional.clinica_id;
+                if (profesional.profesional && profesional.profesional[0]) {
+                    idRole = profesional.profesional[0].id;
+                    esAdmin = !!profesional.profesional[0].es_admin;
+                }
             }
         } else if (role == "paciente") {
             const { data: paciente, error: pacienteError } = await supabase
                 .from("persona")
-                .select(`
-                    id, paciente(id)
-                    `)
+                .select(`id, clinica_id, paciente(id)`)
                 .eq("id_auth", userId)
                 .maybeSingle();
 
             if (pacienteError) {
-                console.error("Error al buscar paciente:", error);
+                console.error("Error al buscar paciente:", pacienteError);
             }
 
-            if (paciente && paciente.paciente) {
-                console.log("✅ Usuario es paciente:", paciente.paciente[0].id);
-                idRole = paciente.paciente[0].id;
+            if (paciente) {
+                clinicaId = paciente.clinica_id;
+                if (paciente.paciente && paciente.paciente[0]) {
+                    idRole = paciente.paciente[0].id;
+                }
             }
-        };
+        }
 
         // 4. Si no está en ninguna tabla
         if (!role) {
             return res.status(403).json({ error: "El usuario no tiene rol asignado" });
         }
         req.session.isAuthenticated = true;
-        req.session.user = { idRole: idRole ,id: userId, email: data.user.email, role };
-        console.log(req.session.user)
+        req.session.user = { idRole, id: userId, email: data.user.email, role, clinicaId, esAdmin };
 
         res.json({ message: "Login exitoso", user: req.session.user });
 
