@@ -96,6 +96,13 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 
 ## 7. Changelog
 
+### 2026-09-15 — Bump de dependencias (googleapis, nodemailer)
+- `googleapis` ^144 → ^181 y `nodemailer` ^7 → ^10 (majors). Uso verificado sin cambios de
+  API: `google.auth.GoogleAuth` + `google.calendar('v3')` (create-event probado en vivo) y
+  `nodemailer.createTransport`/`sendMail` (API SMTP estable). Node 24 cumple los engines.
+- Nota: `google-auth-library` (^9) quedó como dep directo **vestigial** (no se importa; el auth
+  de Calendar usa el que trae `googleapis`). Candidato a eliminar en una limpieza aparte.
+
 ### 2026-09-15 — Verificación de claves Supabase
 - `SUPABASE_KEY` decodificada: `role=service_role`; `SUPABASE_KEY_PUBLIC`: `role=anon` (mismo proyecto).
 - La `service_role` solo se usa en backend; `/api/public-config` expone únicamente la anon.
