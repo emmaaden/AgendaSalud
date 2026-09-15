@@ -19,6 +19,8 @@ const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals
 const { requireAuth, requireAdmin } = require('./middleware/auth');
 const { supabase } = require('./config/supabaseClient');
 const { sendMail, isMailerConfigured } = require('./utils/mailer');
+const { validate } = require('./middleware/validate');
+const schemas = require('./validators/schemas');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -209,11 +211,8 @@ const SLOT_MINUTOS = 30;
 // Franjas horarias disponibles de un profesional para una fecha dada.
 // Respeta horario_profesional (por día de la semana) y excluye los eventos ya
 // agendados en su Google Calendar. El calendario se deriva del profesional.
-app.get('/available-slots', async (req, res) => {
+app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), async (req, res) => {
     const { date, profId } = req.query;
-
-    if (!date) return res.status(400).json({ error: 'Fecha no proporcionada' });
-    if (!profId) return res.status(400).json({ error: 'profId no proporcionado' });
 
     try {
         // 1. Profesional -> calendario + horarios.
@@ -275,12 +274,8 @@ app.get('/available-slots', async (req, res) => {
 });
 
 // Crear un turno (evento) en el calendario indicado.
-app.post('/create-event', async (req, res) => {
+app.post('/create-event', validate(schemas.calendar.createEvent), async (req, res) => {
     const { summary, description, start, end, email, number, calendarId } = req.body;
-
-    if (!summary || !start || !end || !email || !number || !calendarId) {
-        return res.status(400).json({ error: 'Datos de evento incompletos' });
-    }
 
     try {
         const calendar = await authenticate();
@@ -314,11 +309,8 @@ app.post('/create-event', async (req, res) => {
 });
 
 // Buscar turnos por email en un calendario.
-app.get('/search-appointment', async (req, res) => {
+app.get('/search-appointment', validate(schemas.calendar.searchAppointment, 'query'), async (req, res) => {
     const { email, calendarId } = req.query;
-
-    if (!email) return res.status(400).json({ error: 'El correo es obligatorio para la búsqueda' });
-    if (!calendarId) return res.status(400).json({ error: 'calendarId no proporcionado' });
 
     try {
         const calendar = await authenticate();
@@ -346,7 +338,7 @@ app.get('/search-appointment', async (req, res) => {
 });
 
 // Eliminar un turno por ID de evento.
-app.delete('/delete-appointment/:eventId', async (req, res) => {
+app.delete('/delete-appointment/:eventId', validate(schemas.calendar.deleteAppointmentParams, 'params'), async (req, res) => {
     const { eventId } = req.params;
     const calendarId = req.query.calendarId || req.body.calendarId;
 

@@ -47,8 +47,9 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - ✅ `helmet`, CORS con lista blanca (`ALLOWED_ORIGINS`), rate-limit, cookies seguras en prod, `sameSite`.
 - ✅ Sin variable global `CALENDAR_ID`: el `calendarId` viaja por request.
 - ✅ Credenciales de Google desde memoria (no se escribe JSON a disco).
-- ⏳ **Pendiente:** validación de entrada (`zod`/`express-validator`); RLS por clínica (Fase 2);
-  confirmar que `SUPABASE_KEY` sea `service_role` solo en servidor.
+- ✅ Validación de entrada con **zod** (`middleware/validate.js` + `validators/schemas.js`) en
+  auth, historia clínica, profesional, horarios, ortodoncia y endpoints de calendario.
+- ⏳ **Pendiente:** RLS por clínica (Fase 2); confirmar que `SUPABASE_KEY` sea `service_role` solo en servidor.
 
 ## 5. Bugs conocidos de `dev`
 - ✅ `authController.login`: typo `rol`→`role` corregido (Fase 1). El login web sigue forzando
@@ -85,6 +86,13 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   WhatsApp (Twilio) sigue inactivo.
 
 ## 7. Changelog
+
+### 2026-09-14 — Validación de entrada (zod)
+- `middleware/validate.js`: gate que valida `req.body/query/params` con zod y responde 400 con
+  el detalle de campos inválidos (no muta el request, para no descartar campos dinámicos).
+- `validators/schemas.js`: schemas por área (auth, pacient, profesional, horario, ortodoncia,
+  calendar). Aplicados en todas las rutas con entrada del usuario.
+- Se quitaron los chequeos manuales de "campo faltante" que ahora cubre el validador.
 
 ### 2026-09-14 — Reservas: recordatorio ~24 h antes (§6.3)
 - `sendUpcomingReminders()`: recorre los calendarios de los profesionales, busca turnos que
