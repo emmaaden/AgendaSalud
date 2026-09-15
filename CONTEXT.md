@@ -79,9 +79,19 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 ### 6.3 Otros
 - ✅ `/available-slots` respeta `horario_profesional` por día (recibe `profId`, deriva el
   calendario y genera slots de 30' en la franja del día, excluyendo eventos). Fase reservas.
-- ⏳ Recordatorios Twilio/Nodemailer (confirmación + 24 h antes). *(pendiente: falta SMTP)*.
+- ✅ Recordatorios por email (Nodemailer): confirmación al reservar + recordatorio ~24 h antes
+  (scheduler in-process + endpoint `/internal/send-reminders` para cron externo).
+  **Requiere configurar `EMAIL_*` (SMTP)** y, para el cron externo, `REMINDERS_TOKEN`.
+  WhatsApp (Twilio) sigue inactivo.
 
 ## 7. Changelog
+
+### 2026-09-14 — Reservas: recordatorio ~24 h antes (§6.3)
+- `sendUpcomingReminders()`: recorre los calendarios de los profesionales, busca turnos que
+  empiezan en ~24 h, envía email al paciente (email tomado de la descripción) y marca el evento
+  (`extendedProperties.reminded`) para no repetir.
+- `POST /internal/send-reminders` protegido por `REMINDERS_TOKEN` (para cron externo) +
+  scheduler in-process cada 60 min (solo si el mailer está configurado).
 
 ### 2026-09-14 — Reservas: slots según horario del profesional (§6.3)
 - `/available-slots` ahora recibe `profId` (no `calendarId`): deriva el `id_calendario` y el

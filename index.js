@@ -18,7 +18,7 @@ const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
 const { requireAuth, requireAdmin } = require('./middleware/auth');
 const { supabase } = require('./config/supabaseClient');
-const { sendMail } = require('./utils/mailer');
+const { sendMail, isMailerConfigured } = require('./utils/mailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -361,6 +361,124 @@ app.delete('/delete-appointment/:eventId', async (req, res) => {
         res.status(500).json({ error: 'Error al eliminar el turno', details: error.message });
     }
 });
+
+// ---------------------------------------------------------------------------
+// Recordatorios de turnos (~24 h antes)
+// Recorre los calendarios de los profesionales, busca los turnos que empiezan en
+// ~24 h y envía un email de recordatorio al paciente (email tomado de la
+// descripción del evento). Marca el evento (extendedProperties) para no repetir.
+// ---------------------------------------------------------------------------
+const REMINDER_MIN_H = 23; // ventana: entre 23 y 25 h a futuro
+const REMINDER_MAX_H = 25;
+
+function extraerEmail(desc) {
+    if (!desc) return null;
+    const m = String(desc).match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+    return m ? m[0] : null;
+}
+
+async function sendUpcomingReminders() {
+    if (!isMailerConfigured()) {
+        console.warn('Recordatorios: mailer no configurado, se omite.');
+        return { sent: 0, reason: 'mailer-no-configurado' };
+    }
+
+    const { data: profs, error } = await supabase
+        .from('profesional')
+        .select('id_calendario')
+        .not('id_calendario', 'is', null);
+    if (error) throw error;
+
+    const calendar = await authenticate();
+    const now = new Date();
+    const timeMin = new Date(now.getTime() + REMINDER_MIN_H * 3600 * 1000);
+    const timeMax = new Date(now.getTime() + REMINDER_MAX_H * 3600 * 1000);
+
+    let sent = 0;
+    for (const p of profs || []) {
+        if (!p.id_calendario) continue;
+        let items = [];
+        try {
+            const resp = await calendar.events.list({
+                calendarId: p.id_calendario,
+                timeMin: timeMin.toISOString(),
+                timeMax: timeMax.toISOString(),
+                singleEvents: true,
+                orderBy: 'startTime',
+                showDeleted: false,
+            });
+            items = resp.data.items || [];
+        } catch (e) {
+            console.error('Recordatorios: error listando calendario', p.id_calendario, e.message);
+            continue;
+        }
+
+        for (const ev of items) {
+            if (!ev.start || !ev.start.dateTime) continue;
+            const yaAvisado = ev.extendedProperties && ev.extendedProperties.private
+                && ev.extendedProperties.private.reminded === 'true';
+            if (yaAvisado) continue;
+
+            const email = extraerEmail(ev.description);
+            if (!email) continue;
+
+            const fechaLocal = new Date(ev.start.dateTime).toLocaleString('es-AR', {
+                timeZone: 'America/Argentina/Buenos_Aires',
+                dateStyle: 'full',
+                timeStyle: 'short',
+            });
+
+            try {
+                await sendMail({
+                    to: email,
+                    subject: 'Recordatorio de tu turno - Agenda Salud',
+                    text: `Hola,\n\nTe recordamos tu turno para el ${fechaLocal} hs.\n${ev.summary || ''}\n\nAgenda Salud.`,
+                    html: `<p>Hola,</p><p>Te recordamos tu turno para el <strong>${fechaLocal} hs</strong>.</p><p>${ev.summary || ''}</p><p>Agenda Salud.</p>`,
+                });
+                await calendar.events.patch({
+                    calendarId: p.id_calendario,
+                    eventId: ev.id,
+                    resource: {
+                        extendedProperties: {
+                            private: { ...((ev.extendedProperties && ev.extendedProperties.private) || {}), reminded: 'true' },
+                        },
+                    },
+                });
+                sent++;
+            } catch (e) {
+                console.error('Recordatorios: fallo enviando a', email, e.message);
+            }
+        }
+    }
+
+    console.log(`Recordatorios enviados: ${sent}`);
+    return { sent };
+}
+
+// Endpoint protegido para disparar los recordatorios desde un cron EXTERNO
+// (útil en hostings que duermen, ej. onrender free). Requiere REMINDERS_TOKEN.
+app.post('/internal/send-reminders', async (req, res) => {
+    const token = req.get('x-reminders-token');
+    if (!process.env.REMINDERS_TOKEN || token !== process.env.REMINDERS_TOKEN) {
+        return res.status(403).json({ error: 'No autorizado' });
+    }
+    try {
+        const result = await sendUpcomingReminders();
+        res.json({ ok: true, ...result });
+    } catch (error) {
+        console.error('Error en send-reminders:', error.message);
+        res.status(500).json({ error: 'Error al enviar recordatorios', details: error.message });
+    }
+});
+
+// Scheduler in-process: corre cada hora (solo si el mailer está configurado).
+// En hostings que duermen puede no dispararse; usar además el endpoint + cron externo.
+if (isMailerConfigured()) {
+    setInterval(() => {
+        sendUpcomingReminders().catch(e => console.error('Recordatorios (scheduler):', e.message));
+    }, 60 * 60 * 1000);
+    console.log('Scheduler de recordatorios activo (cada 60 min).');
+}
 
 // ---------------------------------------------------------------------------
 // Arranque
