@@ -1,6 +1,8 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+// Agenda del profesional autenticado (horario_profesional).
+// Fase 2c: opera con el cliente por-JWT (RLS por clinica_id a nivel Postgres).
+const { getUserSupabase } = require('../middleware/userSupabase');
+
+const ERR_SESION = { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' };
 
 exports.saveHours = async (req, res) => {
     try {
@@ -11,7 +13,10 @@ exports.saveHours = async (req, res) => {
             return res.status(400).json({ error: 'Datos incompletos' });
         }
 
-        const { data, error } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from('horario_profesional')
             .update({
                 dia,
@@ -50,7 +55,10 @@ exports.insertHours = async (req, res) => {
             return res.status(400).json({ error: 'Datos incompletos' });
         }
 
-        const { data, error } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from('horario_profesional')
             .insert({
                 id_profesional: user_id,
@@ -83,7 +91,10 @@ exports.getHours = async (req, res) => {
             return res.status(400).json({ error: "Falta el user_id" });
         }
 
-        const { data, error } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from("horario_profesional")
             .select("*")
             .eq("id_profesional", user_id);
@@ -108,7 +119,11 @@ exports.deleteHours = async (req, res) => {
     try {
         const { id } = req.body;
         const user_id = req.session.user.idRole; // profesional.id
-        const { error } = await supabase
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { error } = await db
             .from('horario_profesional')
             .delete()
             .eq('id', id)

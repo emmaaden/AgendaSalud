@@ -49,13 +49,14 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - ✅ Credenciales de Google desde memoria (no se escribe JSON a disco).
 - ✅ Validación de entrada con **zod** (`middleware/validate.js` + `validators/schemas.js`) en
   auth, historia clínica, profesional, horarios, ortodoncia y endpoints de calendario.
-- ✅ **RLS real por JWT (Fase 2c):** políticas por `clinica_id` en Postgres, aplicadas al
-  operar con el JWT del usuario (rol `authenticated`). Migrados: historia clínica
-  (`pacienteController`), **ortodoncia** (`ortPacienteController`) y **clínica**
-  (`clinicaController` + `codigo_activacion`).
-- ⏳ **Pendiente:** migrar los controllers autenticados restantes al cliente por-JWT
-  (`profesionalController`, `horarioController`, `avatarsController`); confirmar que
-  `SUPABASE_KEY` sea `service_role` solo en servidor.
+- ✅ **RLS real por JWT (Fase 2c) — rollout completo:** políticas por `clinica_id` en
+  Postgres, aplicadas al operar con el JWT del usuario (rol `authenticated`). **Todos los
+  controllers autenticados** migrados: historia clínica (`pacienteController`), ortodoncia
+  (`ortPacienteController`), clínica (`clinicaController`), profesional
+  (`profesionalController`), horarios (`horarioController`) y avatars (`avatarsController`,
+  política de storage). El `service_role` queda solo para lo público/sistema: registro,
+  página de turnos, recordatorios (cron) y `/api/user`.
+- ⏳ **Pendiente:** confirmar que `SUPABASE_KEY` sea `service_role` solo en servidor.
 
 ## 5. Bugs conocidos de `dev`
 - ✅ `authController.login`: typo `rol`→`role` corregido (Fase 1). El login web sigue forzando
@@ -92,6 +93,17 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   WhatsApp (Twilio) sigue inactivo.
 
 ## 7. Changelog
+
+### 2026-09-15 — Fase 2c (parte 3): RLS por JWT en horarios, profesional y avatars (rollout completo)
+- **Rollout RLS completo:** `profesionalController` (datos + ajustes), `horarioController`
+  (CRUD de agenda) y `avatarsController` (subida) migrados al cliente por-JWT. Con esto, todos
+  los controllers autenticados operan bajo RLS; `service_role` queda solo para lo público/sistema.
+- **DB:** `db/fase2c3_rls_horarios_avatars.sql` — RLS por clínica en `horario_profesional` y
+  política `avatar_rw_own` en `storage.objects` (cada usuario escribe solo `avatars/<auth.uid()>.png`).
+  `profesionalController` no necesitó SQL (usa tablas ya cubiertas por fase2c). Idempotente.
+- **Verificado** con JWTs reales en 2 clínicas: horarios y datos de profesional aislados
+  (update/insert cross-tenant sin efecto o rechazado 42501), y avatar rechazando la subida a la
+  ruta de otro usuario. Flujo de la app OK (horarios, datos/especialidad/descripción, upload de avatar).
 
 ### 2026-09-15 — Fase 2c (parte 2): RLS por JWT en ortodoncia y clínica + limpieza Mongo
 - **Rollout RLS:** `ortPacienteController` (consulta de ortodoncia) y `clinicaController`

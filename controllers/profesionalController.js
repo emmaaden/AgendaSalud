@@ -1,13 +1,19 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+// Datos y ajustes del profesional autenticado.
+// Fase 2c: opera con el cliente por-JWT (RLS por clinica_id a nivel Postgres).
+// La identidad se toma de la sesión (id = auth.users; idRole = profesional.id).
+const { getUserSupabase } = require('../middleware/userSupabase');
+
+const ERR_SESION = { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' };
 
 // Datos del profesional
 exports.getDatosProf = async (req, res) => {
     try {
         const user_id = req.session.user.id; // id de auth.users (persona.id_auth)
 
-        const { data, error } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from("persona")
             .select(`
                 nombre,
@@ -52,11 +58,15 @@ exports.getDatosProf = async (req, res) => {
 exports.getEspProf = async (req, res) => {
     try {
         const user_id = req.session.user.idRole; // profesional.id
-        const { data, error } = await supabase
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from('especialidad_profesional')
             .select(`
                 id_profesional,
-                id_especialidad ( 
+                id_especialidad (
                     nombre
                 )
             `)
@@ -82,7 +92,11 @@ exports.saveDesc = async (req, res) => {
     try {
         const { descripcion } = req.body;
         const user_id = req.session.user.idRole; // profesional.id
-        const { data, error } = await supabase
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from("profesional")
             .update({ descripcion: descripcion })
             .eq("id", user_id)
@@ -106,7 +120,11 @@ exports.savePrecio = async (req, res) => {
     try {
         const { precio } = req.body;
         const user_id = req.session.user.idRole; // profesional.id
-        const { data, error } = await supabase
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from("profesional")
             .update({ precio: precio })
             .eq("id", user_id)
@@ -130,7 +148,11 @@ exports.saveDirec = async (req, res) => {
     try {
         const { direccion } = req.body;
         const user_id = req.session.user.idRole; // profesional.id
-        const { data, error } = await supabase
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from("profesional")
             .update({ direccion: direccion })
             .eq("id", user_id)
@@ -154,7 +176,11 @@ exports.saveCalenID = async (req, res) => {
     try {
         const { calendarid } = req.body;
         const user_id = req.session.user.idRole; // profesional.id
-        const { data, error } = await supabase
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json(ERR_SESION);
+
+        const { data, error } = await db
             .from('profesional')
             .update({ id_calendario: calendarid })
             .eq('id', user_id)
