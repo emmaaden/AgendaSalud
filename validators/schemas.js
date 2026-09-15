@@ -114,7 +114,11 @@ module.exports = {
             summary: z.string().min(1, 'Resumen requerido'),
             email: z.email('Email inválido'),
             number: z.union([z.string().min(1), z.number()]),
-            calendarId: z.string().min(1, 'Calendar ID requerido'),
+            // El calendario se deriva del profesional en el server (no se confía en el
+            // cliente). Se exige profId; calendarId queda como legacy y se ignora.
+            profId: idFlexible,
+            clinica: z.string().trim().max(60).optional(),
+            calendarId: z.string().optional(),
             start: z.object({ dateTime: z.string().min(1, 'Fecha/hora de inicio requerida') }),
             end: z.object({ dateTime: z.string().min(1, 'Fecha/hora de fin requerida') }),
         }),

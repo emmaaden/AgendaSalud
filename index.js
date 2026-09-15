@@ -275,11 +275,45 @@ app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), 
     }
 });
 
-// Crear un turno (evento) en el calendario indicado.
+// Crear un turno (evento) en el calendario del profesional elegido.
+// El calendario se DERIVA del profesional en el server (no se confía en un calendarId
+// del cliente, que permitiría inyectar eventos en cualquier calendario). Si la reserva
+// viene de la página de una clínica (?clinica=<slug>), el profesional debe pertenecer a
+// ella (aislamiento por tenant, Fase 2).
 app.post('/create-event', validate(schemas.calendar.createEvent), async (req, res) => {
-    const { summary, description, start, end, email, number, calendarId } = req.body;
+    const { summary, description, start, end, email, number, profId, clinica } = req.body;
 
     try {
+        // 1. Profesional -> calendario (+ clínica) desde la base, no desde el body.
+        const { data: prof, error: profError } = await supabase
+            .from('profesional')
+            .select('id_calendario, persona:id_persona ( clinica_id )')
+            .eq('id', profId)
+            .maybeSingle();
+        if (profError) throw profError;
+        if (!prof) return res.status(404).json({ error: 'Profesional no encontrado' });
+        if (!prof.id_calendario) {
+            return res.status(400).json({ error: 'El profesional no tiene un calendario configurado.' });
+        }
+
+        // 2. Si la reserva es sobre una clínica, el profesional debe ser de esa clínica.
+        if (clinica) {
+            const { data: cli, error: cliError } = await supabase
+                .from('clinica')
+                .select('id')
+                .eq('slug', String(clinica).trim())
+                .eq('activa', true)
+                .maybeSingle();
+            if (cliError) throw cliError;
+            if (!cli) return res.status(404).json({ error: 'Clínica no encontrada.' });
+            const clinicaProf = prof.persona && prof.persona.clinica_id;
+            if (clinicaProf !== cli.id) {
+                return res.status(403).json({ error: 'El profesional no pertenece a esta clínica.' });
+            }
+        }
+
+        const calendarId = prof.id_calendario;
+
         const calendar = await authenticate();
         const event = {
             summary,

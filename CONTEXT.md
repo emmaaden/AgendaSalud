@@ -100,9 +100,11 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   `authController.register` genera el slug al crear una clínica; `/clinica/info` lo devuelve.
 - **Frontend:** `select-prof.js` lee el slug de la URL y muestra el nombre de la clínica;
   `dashboard.js` muestra al admin su link público de turnos con botón de copiar.
-- ⏳ **Pendiente (endurecimiento):** validar en `/create-event` que el profesional
-  pertenezca a la clínica del slug (hoy el aislamiento del listado ya evita elegir
-  profesionales de otra clínica desde la UI).
+- **Endurecimiento `/create-event`:** el calendario ya NO se toma del cliente. El endpoint
+  recibe `profId` (+ `clinica` opcional), deriva el `id_calendario` del profesional desde
+  la DB y, si viene el slug, valida que el profesional pertenezca a esa clínica (403 si no).
+  Cierra dos agujeros: inyección de eventos en un calendario arbitrario y reserva cross-tenant.
+  `main.js` ahora envía `profId` + `clinica` (el `calendarId` quedó como legacy ignorado).
 
 ### 2026-09-14 — Validación de entrada (zod)
 - `middleware/validate.js`: gate que valida `req.body/query/params` con zod y responde 400 con

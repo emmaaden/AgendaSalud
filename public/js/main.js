@@ -17,8 +17,10 @@ function handleFormSubmit(event) {
     const selectedSlot = document.getElementById('available-slots').value;
     const date = new Date(selectedSlot);
 
-    const calendarId = window.CALENDAR_ID;
-    if (!calendarId) {
+    // El calendario lo resuelve el server a partir del profesional (no se envía).
+    const profId = document.getElementById('profName').value;
+    const clinica = new URLSearchParams(window.location.search).get('clinica') || undefined;
+    if (!profId) {
       Swal.fire({
         icon: "warning",
         title: "Elegí un profesional",
@@ -53,7 +55,8 @@ function handleFormSubmit(event) {
         email: email, // Añadir el correo del cliente
         number: number, // Añadir el número de teléfono del cliente
         numberCode: numberCode, // Añadir el area de país del teléfono del cliente
-        calendarId: calendarId // Calendario del profesional elegido
+        profId: profId, // El server deriva el calendario del profesional
+        clinica: clinica // Slug de la clínica (aislamiento por tenant)
     };
 
     fetch(`/create-event`, {
