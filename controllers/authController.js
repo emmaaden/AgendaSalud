@@ -208,6 +208,16 @@ exports.login = async (req, res) => {
         req.session.isAuthenticated = true;
         req.session.user = { idRole, id: userId, email: data.user.email, role, clinicaId, esAdmin };
 
+        // Fase 2c (RLS por JWT): guardamos los tokens de Supabase para poder operar
+        // "como el usuario" (rol authenticated) y que la RLS por clinica_id aplique.
+        if (data.session) {
+            req.session.sb = {
+                accessToken: data.session.access_token,
+                refreshToken: data.session.refresh_token,
+                expiresAt: data.session.expires_at, // epoch en segundos
+            };
+        }
+
         res.json({ message: "Login exitoso", user: req.session.user });
 
     } catch (err) {

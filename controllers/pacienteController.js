@@ -8,13 +8,18 @@
 // snapshot en cada registro_clinico. El body NO puede sobrescribir quién firma el registro.
 //
 // Las rutas que usan este controller pasan por requireRole('profesional') (ver routes/pacienteRoutes.js).
+//
+// Fase 2c: este controller opera "como el usuario" (anon key + JWT), de modo que la
+// RLS por clinica_id se aplica a nivel Postgres. El cliente se obtiene por-request con
+// getUserSupabase(req); el scoping por clinica_id en la app se mantiene como defensa en
+// profundidad (y para dar errores claros), pero ya no es lo único que aísla los datos.
 
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const { getUserSupabase } = require('../middleware/userSupabase');
 
 const ESTADOS_DIENTE = ['sano', 'caries', 'tratado', 'falta'];
+
+// Mensaje uniforme cuando la sesión no tiene (o perdió) el token de Supabase.
+const ERR_SESION = { status: 401, body: { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' } };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,12 +84,12 @@ function fmtFecha(iso) {
 }
 
 // Datos del profesional autenticado (nombre + área) tomados de la sesión.
-async function getProfContext(session) {
+async function getProfContext(db, session) {
     const authId = session.user.id;      // persona.id_auth
     const idRole = session.user.idRole;  // profesional.id
 
     let nombre = '';
-    const { data: per } = await supabase
+    const { data: per } = await db
         .from('persona')
         .select('nombre, apellido')
         .eq('id_auth', authId)
@@ -93,7 +98,7 @@ async function getProfContext(session) {
 
     let area = '';
     if (idRole) {
-        const { data: esp } = await supabase
+        const { data: esp } = await db
             .from('especialidad_profesional')
             .select('id_especialidad ( nombre )')
             .eq('id_profesional', idRole)
@@ -105,7 +110,7 @@ async function getProfContext(session) {
 }
 
 // Inserta el registro clínico + el estado del odontograma (si viene).
-async function insertRegistro(idPaciente, prof, body) {
+async function insertRegistro(db, idPaciente, prof, body) {
     const { sintomas, diagnostico, tratamiento, fecha, dientes, area } = body;
 
     const registro = {
@@ -121,7 +126,7 @@ async function insertRegistro(idPaciente, prof, body) {
     const fechaIso = toIso(fecha);
     if (fechaIso) registro.fecha = fechaIso;
 
-    const { data: reg, error: regError } = await supabase
+    const { data: reg, error: regError } = await db
         .from('registro_clinico')
         .insert(registro)
         .select('id')
@@ -138,7 +143,7 @@ async function insertRegistro(idPaciente, prof, body) {
                 notas: d.notas || null,
             }));
         if (rows.length > 0) {
-            const { error: dienteError } = await supabase.from('registro_diente').insert(rows);
+            const { error: dienteError } = await db.from('registro_diente').insert(rows);
             if (dienteError) throw dienteError;
         }
     }
@@ -157,13 +162,16 @@ exports.regisPacient = async (req, res) => {
             return res.status(400).json({ error: 'Nombre y DNI son obligatorios.' });
         }
 
-        const prof = await getProfContext(req.session);
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
+
+        const prof = await getProfContext(db, req.session);
         if (!prof.clinicaId) {
             return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
         }
 
         // ¿Ya existe una persona con ese DNI EN ESTA CLÍNICA?
-        const { data: existente } = await supabase
+        const { data: existente } = await db
             .from('persona')
             .select('id')
             .eq('dni', dni)
@@ -174,7 +182,7 @@ exports.regisPacient = async (req, res) => {
         }
 
         // 1. persona (asignada a la clínica del profesional)
-        const { data: persona, error: personaError } = await supabase
+        const { data: persona, error: personaError } = await db
             .from('persona')
             .insert({
                 dni,
@@ -191,18 +199,18 @@ exports.regisPacient = async (req, res) => {
         if (personaError) throw personaError;
 
         // 2. paciente (si falla, limpiamos la persona huérfana)
-        const { data: paciente, error: pacienteError } = await supabase
+        const { data: paciente, error: pacienteError } = await db
             .from('paciente')
             .insert({ id_persona: persona.id, obra_social: obraSocial || null })
             .select('id')
             .single();
         if (pacienteError) {
-            await supabase.from('persona').delete().eq('id', persona.id);
+            await db.from('persona').delete().eq('id', persona.id);
             throw pacienteError;
         }
 
         // 3. primer registro clínico (+ odontograma)
-        await insertRegistro(paciente.id, prof, req.body);
+        await insertRegistro(db, paciente.id, prof, req.body);
 
         return res.status(201).json({ message: 'Paciente registrado con éxito', id_paciente: paciente.id });
     } catch (err) {
@@ -222,7 +230,10 @@ exports.saveDataPacient = async (req, res) => {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
 
-        const { data: persona, error: personaError } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
+
+        const { data: persona, error: personaError } = await db
             .from('persona')
             .select('id, paciente(id)')
             .eq('dni', dni)
@@ -235,8 +246,8 @@ exports.saveDataPacient = async (req, res) => {
             return res.status(404).json({ error: 'Paciente no encontrado.' });
         }
 
-        const prof = await getProfContext(req.session);
-        await insertRegistro(paciente.id, prof, req.body);
+        const prof = await getProfContext(db, req.session);
+        await insertRegistro(db, paciente.id, prof, req.body);
 
         return res.status(201).json({ message: 'Registro guardado con éxito' });
     } catch (err) {
@@ -257,7 +268,10 @@ exports.getDataPacient = async (req, res) => {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
 
-        const { data: persona, error: personaError } = await supabase
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
+
+        const { data: persona, error: personaError } = await db
             .from('persona')
             .select('nombre, apellido, dni, telefono, direccion, sexo, fecha_nacimiento, email, paciente(id, obra_social)')
             .eq('dni', dni)
@@ -270,7 +284,7 @@ exports.getDataPacient = async (req, res) => {
             return res.status(404).json({ error: 'Paciente no encontrado.' });
         }
 
-        const { data: registros, error: regError } = await supabase
+        const { data: registros, error: regError } = await db
             .from('registro_clinico')
             .select('id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, registro_diente(numero, estado, notas)')
             .eq('id_paciente', paciente.id)

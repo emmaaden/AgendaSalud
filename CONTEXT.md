@@ -49,7 +49,12 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - ✅ Credenciales de Google desde memoria (no se escribe JSON a disco).
 - ✅ Validación de entrada con **zod** (`middleware/validate.js` + `validators/schemas.js`) en
   auth, historia clínica, profesional, horarios, ortodoncia y endpoints de calendario.
-- ⏳ **Pendiente:** RLS por clínica (Fase 2); confirmar que `SUPABASE_KEY` sea `service_role` solo en servidor.
+- ✅ **RLS real por JWT (Fase 2c):** políticas por `clinica_id` en Postgres, aplicadas al
+  operar con el JWT del usuario (rol `authenticated`). Piloto: historia clínica
+  (`pacienteController`). Resto de controllers aún en `service_role` (rollout pendiente).
+- ⏳ **Pendiente:** migrar el resto de los controllers autenticados al cliente por-JWT
+  (ortodoncia, profesional, horarios, clínica); confirmar que `SUPABASE_KEY` sea
+  `service_role` solo en servidor.
 
 ## 5. Bugs conocidos de `dev`
 - ✅ `authController.login`: typo `rol`→`role` corregido (Fase 1). El login web sigue forzando
@@ -86,6 +91,26 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   WhatsApp (Twilio) sigue inactivo.
 
 ## 7. Changelog
+
+### 2026-09-15 — Fase 2c: RLS real por JWT de usuario
+- **El aislamiento por clínica ahora lo garantiza Postgres**, no solo la app. Para las
+  operaciones de usuario autenticado el backend usa la anon key + el JWT del usuario
+  (rol `authenticated`) y las políticas RLS filtran por `clinica_id` a partir de `auth.uid()`.
+  El `service_role` (resto del backend) saltea la RLS, así que los endpoints no migrados
+  siguen igual.
+- **DB:** `db/fase2c_rls_jwt.sql` — función `app_current_clinica_id()` (SECURITY DEFINER,
+  deriva la clínica del `auth.uid()`) + RLS y políticas en `persona`, `profesional`,
+  `paciente`, `registro_clinico`, `registro_diente`, `especialidad_profesional`, y lectura
+  del catálogo `especialidad`. Idempotente, con rollback documentado. **Requiere correrlo en Supabase.**
+- **App:** `config/supabaseClient.js` expone `supabaseAnon` y `userClientFromToken(jwt)`;
+  `authController.login` guarda `access/refresh/expiresAt` en la sesión;
+  `middleware/userSupabase.js` (`getUserSupabase(req)`) arma el cliente por-request y refresca
+  el token si vence. **Piloto:** `pacienteController` (historia clínica) migrado.
+- ⚠️ Las sesiones abiertas de antes de 2c no tienen el token guardado → deben reloguearse
+  para usar la historia clínica (el login nuevo captura el JWT).
+- **Verificado** con JWTs reales (usuarios descartables en 2 clínicas): lectura aislada,
+  bloqueo de lectura cross-tenant, rechazo de INSERT con `clinica_id` ajeno (WITH CHECK,
+  error 42501), e historia clínica funcionando por el stack completo login→RLS.
 
 ### 2026-09-15 — Fase 2b: turnos públicos por clínica (aislamiento por tenant)
 - **Cierra el aislamiento del lado público:** antes `/professionals` mezclaba los
