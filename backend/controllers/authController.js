@@ -274,7 +274,9 @@ exports.forgotPassword = async (req, res) => {
         if (!email) return res.status(400).json({ error: 'Debe indicar un email.' });
 
         const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-        const redirectTo = `${baseUrl}/reset-password.html`;
+        // Ruta del SPA (React). Se conserva compatibilidad con el legacy .html vía
+        // un redirect en el router del frontend.
+        const redirectTo = `${baseUrl}/reset-password`;
 
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) {

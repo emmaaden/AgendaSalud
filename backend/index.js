@@ -17,7 +17,7 @@ const avatarsRoutes = require('./routes/avatarsRoutes');
 const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
 const clinicaRoutes = require('./routes/clinicaRoutes'); // Fase 2: gestión de clínica
-const { requireAuth, requireAdmin } = require('./middleware/auth');
+// (requireAuth/requireAdmin ya no se usan en index.js: el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { sendMail, isMailerConfigured } = require('./utils/mailer');
 const { validate } = require('./middleware/validate');
@@ -97,6 +97,14 @@ app.use(session({
 // ---------------------------------------------------------------------------
 // Estáticos y rutas
 // ---------------------------------------------------------------------------
+// SPA (React): en producción servimos el build de /frontend/dist desde la raíz.
+// Se registra ANTES del static legacy para que "/" sea el index.html del SPA.
+const spaDist = path.join(__dirname, '..', 'frontend', 'dist');
+if (isProd) {
+    app.use(express.static(spaDist));
+}
+
+// Estáticos legacy (imágenes, css/js del dashboard, y páginas .html aún no migradas).
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/auth', authRoutes);
@@ -147,30 +155,10 @@ app.get('/api/user', async (req, res) => {
     });
 });
 
-const email_autorizado = process.env.EMAIL_AUTORIZADO;
-
-app.get('/dashboard', requireAuth, (req, res) => {
-    if (req.session.user.email === email_autorizado) {
-        return res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
-    }
-    return res.sendFile(path.join(__dirname, 'dashboard', 'dashboard.html'));
-});
-
-app.get('/dashboardAutorizado', requireAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard', 'dashboard-autorizado.html'));
-});
-
-app.get('/dashboardRegistroClinico', requireAuth, (req, res) => {
-    if (req.session.area === 'Dentista') {
-        res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinicoOdonto.html'));
-    } else {
-        res.sendFile(path.join(__dirname, 'dashboard', 'dashboardRegistroClinico.html'));
-    }
-});
-
-app.get('/dashboardConfig', requireAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard', 'dashboardConfig.html'));
-});
+// El dashboard es ahora parte del SPA (React, rutas /dashboard*). Ya no se
+// sirven los HTML legacy de /dashboard: el SPA controla esas rutas y protege
+// el acceso en el cliente (los datos siguen protegidos por sesión en la API).
+// Los .html legacy de backend/dashboard/ se conservan como referencia.
 
 // ---------------------------------------------------------------------------
 // Google Calendar
@@ -506,6 +494,30 @@ if (isMailerConfigured()) {
         sendUpcomingReminders().catch(e => console.error('Recordatorios (scheduler):', e.message));
     }, 60 * 60 * 1000);
     console.log('Scheduler de recordatorios activo (cada 60 min).');
+}
+
+// ---------------------------------------------------------------------------
+// Fallback del SPA (solo producción)
+// Cualquier GET de navegación que no sea una ruta de API ni un archivo estático
+// devuelve el index.html del build, para que el routing client-side y el 404
+// personalizado de React funcionen también al refrescar o entrar por deep-link.
+// ---------------------------------------------------------------------------
+if (isProd) {
+    const API_PREFIXES = [
+        '/auth', '/hour', '/pacient', '/especialidades', '/profesional',
+        '/avatars', '/ortodoncia', '/clinica', '/clinica-publica',
+        '/professionals', '/available-slots', '/create-event',
+        '/search-appointment', '/delete-appointment', '/api', '/internal',
+    ];
+    const isApiPath = (p) =>
+        API_PREFIXES.some((pre) => p === pre || p.startsWith(pre + '/'));
+
+    app.use((req, res, next) => {
+        if (req.method !== 'GET') return next();
+        if (isApiPath(req.path)) return next();
+        if (!req.accepts('html')) return next();
+        return res.sendFile(path.join(spaDist, 'index.html'));
+    });
 }
 
 // ---------------------------------------------------------------------------
