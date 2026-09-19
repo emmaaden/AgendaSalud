@@ -48,6 +48,16 @@ module.exports = {
         getCalenID: z.object({
             id: idFlexible,
         }),
+        selectClinica: z.object({
+            clinicaId: z.uuid('Clínica inválida'),
+        }),
+    },
+
+    admin: {
+        actualizarMiembro: z.object({
+            activo: z.boolean().optional(),
+            rol: z.enum(['admin', 'profesional', 'recepcion']).optional(),
+        }),
     },
 
     pacient: {

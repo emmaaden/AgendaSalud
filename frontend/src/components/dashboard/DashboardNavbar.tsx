@@ -8,6 +8,9 @@ import {
   LifeBuoy,
   LogOut,
   User,
+  Building2,
+  ArrowLeftRight,
+  ShieldCheck,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -42,10 +45,20 @@ const LINKS = [
   },
 ]
 
+// Enlace solo para el admin de la clínica activa (Fase B).
+const ADMIN_LINK = {
+  to: "/dashboard/admin",
+  label: "Administración",
+  icon: ShieldCheck,
+  end: false,
+}
+
 export function DashboardNavbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+
+  const links = user?.esAdmin ? [...LINKS, ADMIN_LINK] : LINKS
 
   async function handleLogout() {
     await logout()
@@ -60,13 +73,24 @@ export function DashboardNavbar() {
       .join("")
       .toUpperCase() || "?"
 
+  // Fase A: clínica activa y posibilidad de cambiar (si pertenece a varias).
+  const clinicaActiva = user?.clinicas?.find(
+    (c) => c.clinicaId === user?.clinicaId
+  )
+  const puedeCambiarClinica = (user?.clinicas?.length ?? 0) > 1
+  const ROL_LABEL: Record<string, string> = {
+    admin: "Administrador/a",
+    profesional: "Profesional",
+    recepcion: "Recepción",
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Logo to="/dashboard" />
           <nav className="hidden items-center gap-1 md:flex">
-            {LINKS.map((l) => (
+            {links.map((l) => (
               <NavLink
                 key={l.to}
                 to={l.to}
@@ -102,10 +126,31 @@ export function DashboardNavbar() {
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel className="truncate">
                 {user?.email}
               </DropdownMenuLabel>
+              {clinicaActiva && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5">
+                    <p className="flex items-center gap-1.5 text-sm font-medium">
+                      <Building2 className="size-3.5 text-muted-foreground" />
+                      <span className="truncate">{clinicaActiva.nombre}</span>
+                    </p>
+                    <p className="mt-0.5 pl-5 text-xs text-muted-foreground">
+                      {ROL_LABEL[clinicaActiva.rol] ?? clinicaActiva.rol}
+                    </p>
+                  </div>
+                  {puedeCambiarClinica && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/seleccionar-clinica?cambiar=1">
+                        <ArrowLeftRight /> Cambiar de clínica
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/dashboard/config">
@@ -133,7 +178,7 @@ export function DashboardNavbar() {
               </SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col gap-1 px-4">
-              {LINKS.map((l) => (
+              {links.map((l) => (
                 <SheetClose asChild key={l.to}>
                   <NavLink
                     to={l.to}

@@ -34,6 +34,11 @@ function Guarded() {
     return <Navigate to="/mis-turnos" replace />
   }
 
+  // Fase A: con varias clínicas y ninguna activa todavía → elegir primero.
+  if (user.needsClinicSelection) {
+    return <Navigate to="/seleccionar-clinica" replace />
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">
       <ScrollToTop />

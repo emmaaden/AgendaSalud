@@ -77,7 +77,7 @@ exports.listarCodigos = async (req, res) => {
 
         const { data, error } = await db
             .from('codigo_activacion')
-            .select('codigo, usado, creado_en')
+            .select('id, codigo, usado, creado_en')
             .eq('clinica_id', clinicaId)
             .order('creado_en', { ascending: false });
         if (error) return res.status(400).json({ error: error.message });
@@ -86,5 +86,50 @@ exports.listarCodigos = async (req, res) => {
     } catch (err) {
         console.error('Error listando códigos:', err);
         return res.status(500).json({ error: 'Error al listar los códigos' });
+    }
+};
+
+// Elimina un código de activación de la clínica del admin, SOLO si no está usado.
+// Si el código ya fue usado, no se borra (409). El aislamiento por clínica y la
+// restricción "usado=false" los refuerza también la RLS (codigo_activacion_admin_delete).
+exports.eliminarCodigo = async (req, res) => {
+    try {
+        const clinicaId = req.session.user.clinicaId;
+        if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica asignada.' });
+
+        const codigoId = req.params.id;
+        if (!codigoId) return res.status(400).json({ error: 'Código inválido.' });
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.' });
+
+        // 1. Verificar estado (la RLS de SELECT ya lo acota a la propia clínica).
+        const { data: cod, error: selErr } = await db
+            .from('codigo_activacion')
+            .select('id, usado')
+            .eq('id', codigoId)
+            .maybeSingle();
+        if (selErr) return res.status(400).json({ error: selErr.message });
+        if (!cod) return res.status(404).json({ error: 'Código no encontrado.' });
+        if (cod.usado) {
+            return res.status(409).json({ error: 'El código ya fue utilizado; no se puede eliminar.' });
+        }
+
+        // 2. Eliminar (la RLS de DELETE exige admin + misma clínica + usado=false).
+        const { data: del, error: delErr } = await db
+            .from('codigo_activacion')
+            .delete()
+            .eq('id', codigoId)
+            .select('id');
+        if (delErr) return res.status(400).json({ error: delErr.message });
+        if (!del || del.length === 0) {
+            // La RLS bloqueó el borrado (p. ej. dejó de estar libre entre el SELECT y el DELETE).
+            return res.status(409).json({ error: 'No se pudo eliminar el código.' });
+        }
+
+        return res.json({ message: 'Código eliminado' });
+    } catch (err) {
+        console.error('Error eliminando código:', err);
+        return res.status(500).json({ error: 'Error al eliminar el código' });
     }
 };

@@ -8,8 +8,9 @@ router.use(requireRole('profesional'));
 
 router.get('/info', clinicaController.info);
 
-// Generar/listar códigos: solo el admin de la clínica.
+// Generar/listar/eliminar códigos: solo el admin de la clínica.
 router.post('/generar-codigo', requireClinicaAdmin, clinicaController.generarCodigo);
 router.get('/codigos', requireClinicaAdmin, clinicaController.listarCodigos);
+router.delete('/codigos/:id', requireClinicaAdmin, clinicaController.eliminarCodigo);
 
 module.exports = router;

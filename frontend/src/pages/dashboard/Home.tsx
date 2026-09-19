@@ -7,15 +7,12 @@ import {
   ClipboardList,
   ArrowRight,
   Building2,
-  Plus,
   Copy,
   Check,
-  Loader2,
-  KeyRound,
+  ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Container } from "@/components/site/Section"
 import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
@@ -24,7 +21,6 @@ type ClinicaInfo = {
   esAdmin?: boolean
   clinica?: { nombre?: string; slug?: string; plan?: string }
 }
-type Codigo = { codigo: string; usado: boolean }
 
 const accesos = [
   {
@@ -51,8 +47,6 @@ export default function DashboardHome() {
   const { user } = useAuth()
   const [nombre, setNombre] = useState("")
   const [clinica, setClinica] = useState<ClinicaInfo | null>(null)
-  const [codigos, setCodigos] = useState<Codigo[]>([])
-  const [generating, setGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -70,33 +64,9 @@ export default function DashboardHome() {
 
     api
       .get<ClinicaInfo>("/clinica/info")
-      .then((info) => {
-        setClinica(info)
-        if (info.esAdmin) cargarCodigos()
-      })
+      .then((info) => setClinica(info))
       .catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
-
-  function cargarCodigos() {
-    api
-      .get<{ codigos?: Codigo[] }>("/clinica/codigos")
-      .then((d) => setCodigos(d.codigos || []))
-      .catch(() => {})
-  }
-
-  async function generarCodigo() {
-    setGenerating(true)
-    try {
-      const d = await api.post<{ codigo?: string }>("/clinica/generar-codigo")
-      toast.success(`Código generado: ${d.codigo}`)
-      cargarCodigos()
-    } catch {
-      toast.error("No se pudo generar el código.")
-    } finally {
-      setGenerating(false)
-    }
-  }
 
   const slug = clinica?.clinica?.slug
   const publicLink = slug
@@ -180,40 +150,16 @@ export default function DashboardHome() {
               </div>
             )}
 
-            <div className="mt-6">
-              <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <KeyRound className="size-4 text-primary" />
-                  Códigos de activación
-                </h3>
-                <Button size="sm" onClick={generarCodigo} disabled={generating}>
-                  {generating ? <Loader2 className="animate-spin" /> : <Plus />}
-                  Generar
-                </Button>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4">
+              <div className="flex items-center gap-2 text-sm">
+                <ShieldCheck className="size-4 text-primary" />
+                <span className="font-medium">Profesionales y códigos de activación</span>
               </div>
-              <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-                {codigos.length ? (
-                  codigos.map((c) => (
-                    <li
-                      key={c.codigo}
-                      className="flex items-center justify-between px-4 py-2.5 text-sm"
-                    >
-                      <code className="font-mono">{c.codigo}</code>
-                      <Badge variant={c.usado ? "secondary" : "default"}>
-                        {c.usado ? "Usado" : "Disponible"}
-                      </Badge>
-                    </li>
-                  ))
-                ) : (
-                  <li className="px-4 py-3 text-sm text-muted-foreground">
-                    Todavía no generaste códigos.
-                  </li>
-                )}
-              </ul>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Compartí un código disponible con otro profesional para que se
-                una a tu clínica al registrarse.
-              </p>
+              <Button asChild size="sm">
+                <Link to="/dashboard/admin">
+                  Administración <ArrowRight className="size-4" />
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

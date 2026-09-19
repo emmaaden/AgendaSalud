@@ -70,6 +70,7 @@ export const api = {
   get: <T = unknown>(path: string) => request<T>("GET", path),
   post: <T = unknown>(path: string, body?: Json) => request<T>("POST", path, body),
   put: <T = unknown>(path: string, body?: Json) => request<T>("PUT", path, body),
+  patch: <T = unknown>(path: string, body?: Json) => request<T>("PATCH", path, body),
   del: <T = unknown>(path: string) => request<T>("DELETE", path),
   upload: <T = unknown>(path: string, form: FormData) => request<T>("POST", path, form),
 }

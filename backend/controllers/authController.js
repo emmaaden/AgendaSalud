@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { slugify } = require('../utils/slug');
+const { getMembresiasActivas } = require('../utils/membresias');
 require('dotenv').config();
 
 // service_role: SALTEA la RLS. Se usa SOLO para operaciones sobre tablas.
@@ -136,6 +137,19 @@ exports.register = async (req, res) => {
                 }]);
             if (err_esp) throw err_esp;
 
+            // Fase A: crear la membresía (pertenencia + rol en la clínica).
+            //   - alta con código  -> rol 'profesional'
+            //   - clínica nueva     -> rol 'admin' (esAdmin=true)
+            const { error: err_mem } = await supabase
+                .from("membresia")
+                .insert([{
+                    id_persona,
+                    clinica_id: clinicaId,
+                    rol: esAdmin ? 'admin' : 'profesional',
+                    activo: true,
+                }]);
+            if (err_mem) throw err_mem;
+
             // Marcar el código de activación como usado.
             if (codigoRow) {
                 await supabase
@@ -175,7 +189,7 @@ exports.login = async (req, res) => {
         //    Si una persona fuese ambas cosas, se prioriza profesional.
         const { data: persona, error: personaError } = await supabase
             .from("persona")
-            .select(`id, clinica_id, profesional(id, es_admin), paciente(id)`)
+            .select(`id, clinica_id, profesional(id), paciente(id)`)
             .eq("id_auth", userId)
             .maybeSingle();
         if (personaError) {
@@ -184,16 +198,14 @@ exports.login = async (req, res) => {
 
         const profRow = persona?.profesional?.[0];
         const pacRow = persona?.paciente?.[0];
+        const personaId = persona?.id || null;
 
         let role = null;
         let idRole = null;
-        let esAdmin = false;
-        const clinicaId = persona?.clinica_id || null;
 
         if (profRow) {
             role = "profesional";
             idRole = profRow.id;
-            esAdmin = !!profRow.es_admin;
         } else if (pacRow) {
             role = "paciente";
             idRole = pacRow.id;
@@ -203,11 +215,8 @@ exports.login = async (req, res) => {
         if (!role) {
             return res.status(403).json({ error: "El usuario no tiene rol asignado" });
         }
-        req.session.isAuthenticated = true;
-        req.session.user = { idRole, id: userId, email: data.user.email, role, clinicaId, esAdmin };
 
-        // Fase 2c (RLS por JWT): guardamos los tokens de Supabase para poder operar
-        // "como el usuario" (rol authenticated) y que la RLS por clinica_id aplique.
+        // 4. Guardar los tokens de Supabase (Fase 2c: operar por-JWT bajo RLS).
         if (data.session) {
             req.session.sb = {
                 accessToken: data.session.access_token,
@@ -216,7 +225,55 @@ exports.login = async (req, res) => {
             };
         }
 
-        res.json({ message: "Login exitoso", user: req.session.user });
+        // 5. Fase A — resolver la clínica activa a partir de las MEMBRESÍAS.
+        //    Los pacientes siguen mono-clínica (persona.clinica_id).
+        req.session.isAuthenticated = true;
+
+        if (role === "paciente") {
+            req.session.user = {
+                idRole, id: userId, personaId, email: data.user.email, role,
+                clinicaId: persona?.clinica_id || null, rol: null, esAdmin: false,
+            };
+            return res.json({ message: "Login exitoso", user: req.session.user });
+        }
+
+        // Profesional/recepción/admin: puede tener N clínicas.
+        let membresias = [];
+        try {
+            membresias = await getMembresiasActivas(supabase, personaId);
+        } catch (e) {
+            console.error("Error obteniendo membresías en login:", e.message);
+        }
+
+        if (membresias.length === 0) {
+            // Sin membresía activa: dado de baja en todas sus clínicas, o cuenta legacy
+            // sin backfill. No puede operar.
+            req.session.destroy(() => {});
+            return res.status(403).json({
+                error: "No tenés una clínica activa asignada. Contactá al administrador.",
+            });
+        }
+
+        if (membresias.length === 1) {
+            const m = membresias[0];
+            req.session.user = {
+                idRole, id: userId, personaId, email: data.user.email, role,
+                clinicaId: m.clinicaId, rol: m.rol, esAdmin: m.esAdmin,
+            };
+            return res.json({ message: "Login exitoso", user: req.session.user });
+        }
+
+        // Varias clínicas: no se fija ninguna todavía; el cliente debe elegir.
+        req.session.user = {
+            idRole, id: userId, personaId, email: data.user.email, role,
+            clinicaId: null, rol: null, esAdmin: false,
+        };
+        return res.json({
+            message: "Elegí la clínica para trabajar",
+            needsClinicSelection: true,
+            clinicas: membresias.map((m) => ({ clinicaId: m.clinicaId, nombre: m.nombre, rol: m.rol })),
+            user: req.session.user,
+        });
 
     } catch (err) {
         console.error(err);
@@ -231,6 +288,53 @@ exports.logout = (req, res) => {
         }
         res.status(200).json({ message: 'Sesión cerrada exitosamente' });
     });
+};
+
+// Fase A — Lista las membresías (clínicas + rol) del usuario autenticado.
+// Sirve para el selector de clínica y para el switch dentro del dashboard.
+exports.misClinicas = async (req, res) => {
+    try {
+        const personaId = req.session.user?.personaId;
+        if (!personaId) return res.json({ clinicas: [], activa: null });
+        const membresias = await getMembresiasActivas(supabase, personaId);
+        return res.json({
+            clinicas: membresias.map((m) => ({ clinicaId: m.clinicaId, nombre: m.nombre, rol: m.rol })),
+            activa: req.session.user?.clinicaId || null,
+        });
+    } catch (err) {
+        console.error('Error en mis-clinicas:', err);
+        return res.status(500).json({ error: 'Error al obtener las clínicas' });
+    }
+};
+
+// Fase A — Fija la clínica activa de la sesión. Valida que el usuario tenga una
+// membresía ACTIVA en la clínica pedida (no se confía en el cliente).
+exports.selectClinica = async (req, res) => {
+    try {
+        const personaId = req.session.user?.personaId;
+        const { clinicaId } = req.body;
+        if (!personaId) return res.status(403).json({ error: 'Sesión sin identidad.' });
+        if (!clinicaId) return res.status(400).json({ error: 'Debés indicar una clínica.' });
+
+        const membresias = await getMembresiasActivas(supabase, personaId);
+        const elegida = membresias.find((m) => m.clinicaId === clinicaId);
+        if (!elegida) {
+            return res.status(403).json({ error: 'No tenés una membresía activa en esa clínica.' });
+        }
+
+        req.session.user.clinicaId = elegida.clinicaId;
+        req.session.user.rol = elegida.rol;
+        req.session.user.esAdmin = elegida.esAdmin;
+
+        return res.json({
+            message: 'Clínica seleccionada',
+            clinica: { clinicaId: elegida.clinicaId, nombre: elegida.nombre, rol: elegida.rol },
+            user: req.session.user,
+        });
+    } catch (err) {
+        console.error('Error en select-clinica:', err);
+        return res.status(500).json({ error: 'Error al seleccionar la clínica' });
+    }
 };
 
 // Área/especialidad del profesional AUTENTICADO (se deriva de la sesión, no del body).

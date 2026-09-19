@@ -16,10 +16,13 @@ async function getUserSupabase(req) {
     const sb = req.session && req.session.sb;
     if (!sb || !sb.accessToken || !sb.refreshToken) return null;
 
+    // Fase A: clínica activa de la sesión (header x-clinica-id para la RLS).
+    const clinicaId = req.session.user && req.session.user.clinicaId;
+
     const ahora = Math.floor(Date.now() / 1000);
     if (sb.expiresAt && ahora < sb.expiresAt - MARGEN_SEG) {
         // Token todavía válido.
-        return userClientFromToken(sb.accessToken);
+        return userClientFromToken(sb.accessToken, clinicaId);
     }
 
     // Token vencido o por vencer: refrescar con el refresh_token.
@@ -34,7 +37,7 @@ async function getUserSupabase(req) {
         refreshToken: data.session.refresh_token,
         expiresAt: data.session.expires_at,
     };
-    return userClientFromToken(data.session.access_token);
+    return userClientFromToken(data.session.access_token, clinicaId);
 }
 
 module.exports = { getUserSupabase };

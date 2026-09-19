@@ -18,13 +18,20 @@ const supabaseAnon = createClient(
 // Cliente "como el usuario": anon key + JWT del usuario en el header Authorization.
 // Con esto las consultas corren con el rol `authenticated` y la RLS por clinica_id
 // se aplica realmente a nivel Postgres (Fase 2c).
-function userClientFromToken(accessToken) {
+//
+// Fase A (multi-clínica): si se pasa `clinicaId`, se envía también el header
+// `x-clinica-id`. La función RLS `app_current_clinica_id()` lo lee (vía
+// current_setting('request.headers')) y lo valida contra una membresía activa del
+// usuario. Así la "clínica activa" de la sesión se resuelve por request.
+function userClientFromToken(accessToken, clinicaId) {
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  if (clinicaId) headers['x-clinica-id'] = String(clinicaId);
   return createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY_PUBLIC,
     {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      global: { headers },
     }
   );
 }

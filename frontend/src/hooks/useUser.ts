@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
 
+export type ClinicaMembresia = {
+  clinicaId: string
+  nombre: string | null
+  rol: "admin" | "profesional" | "recepcion"
+}
+
 export type CurrentUser = {
   user: string
   email: string
@@ -8,6 +14,12 @@ export type CurrentUser = {
   idRole: number
   id: string
   role: string
+  // Fase A (multi-clínica): clínica activa, rol en ella y todas las membresías.
+  clinicaId: string | null
+  rol: "admin" | "profesional" | "recepcion" | null
+  esAdmin: boolean
+  clinicas: ClinicaMembresia[]
+  needsClinicSelection: boolean
 }
 
 /**

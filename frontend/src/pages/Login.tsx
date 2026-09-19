@@ -29,15 +29,20 @@ export default function Login() {
     setSubmitting(true)
     try {
       // El backend detecta el rol (profesional/paciente) desde la base; no se envía.
-      const res = await api.post<{ user?: { role?: string } }>(
-        "/auth/login",
-        values
-      )
+      const res = await api.post<{
+        user?: { role?: string }
+        needsClinicSelection?: boolean
+      }>("/auth/login", values)
       toast.success("Bienvenido/a")
-      // Paciente → su área de turnos; profesional → panel. Navegación completa para
-      // que la nueva sesión (cookie httpOnly) se tome en el primer render.
+      // Paciente → su área de turnos. Profesional con varias clínicas → selector.
+      // Profesional con una sola clínica → panel. Navegación completa para que la
+      // nueva sesión (cookie httpOnly) se tome en el primer render.
       const destino =
-        res?.user?.role === "paciente" ? "/mis-turnos" : "/dashboard"
+        res?.user?.role === "paciente"
+          ? "/mis-turnos"
+          : res?.needsClinicSelection
+            ? "/seleccionar-clinica"
+            : "/dashboard"
       window.location.href = destino
     } catch (err) {
       const msg =

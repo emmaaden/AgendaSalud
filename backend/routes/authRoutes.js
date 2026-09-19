@@ -14,6 +14,10 @@ router.post('/register', authLimiter, validate(schemas.auth.register), authContr
 router.post('/login', authLimiter, validate(schemas.auth.login), authController.login);
 router.post('/logout', authController.logout);
 
+// Fase A — multi-clínica: listar las clínicas del usuario y fijar la activa.
+router.get('/mis-clinicas', requireAuth, authController.misClinicas);
+router.post('/select-clinica', requireAuth, validate(schemas.auth.selectClinica), authController.selectClinica);
+
 // Recuperación de contraseña (envía el email de recuperación de Supabase).
 router.post('/forgot-password', authLimiter, validate(schemas.auth.forgotPassword), authController.forgotPassword);
 

@@ -16,11 +16,13 @@ const avatarsRoutes = require('./routes/avatarsRoutes');
 const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
 const clinicaRoutes = require('./routes/clinicaRoutes'); // Fase 2: gestión de clínica
+const adminRoutes = require('./routes/adminRoutes'); // Fase B: administración (miembros)
 const turnosRoutes = require('./routes/turnosRoutes'); // Fase 3: turnos del paciente (/api/turnos)
 const miCuentaRoutes = require('./routes/miCuentaRoutes'); // Fase 3: autogestión del paciente (/api/mi-cuenta)
 // (requireAuth/requireAdmin ya no se usan en index.js: el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getCalendar, isCalendarConfigured } = require('./utils/googleCalendar');
+const { getMembresiasActivas } = require('./utils/membresias');
 const { generarTokenGestion } = require('./utils/turnoToken');
 const { sendMail, isMailerConfigured } = require('./utils/mailer');
 const { validate } = require('./middleware/validate');
@@ -118,6 +120,7 @@ app.use('/profesional', profesionalRoutes);
 app.use('/avatars', avatarsRoutes);
 app.use('/ortodoncia', ortPacienteRoutes);
 app.use('/clinica', clinicaRoutes); // Fase 2: gestión de clínica (rol profesional)
+app.use('/admin', adminRoutes); // Fase B: administración de la clínica (solo admin)
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
@@ -150,13 +153,32 @@ app.get('/api/user', async (req, res) => {
         console.error('Error obteniendo nombre en /api/user:', err.message);
     }
 
+    // Fase A (multi-clínica): clínicas del profesional + estado de selección.
+    let clinicas = [];
+    if (u.role === 'profesional' && u.personaId) {
+        try {
+            const membresias = await getMembresiasActivas(supabase, u.personaId);
+            clinicas = membresias.map((m) => ({ clinicaId: m.clinicaId, nombre: m.nombre, rol: m.rol }));
+        } catch (err) {
+            console.error('Error obteniendo clínicas en /api/user:', err.message);
+        }
+    }
+    // Necesita elegir clínica si tiene varias y todavía no fijó ninguna.
+    const needsClinicSelection = u.role === 'profesional' && !u.clinicaId && clinicas.length > 1;
+
     res.json({
         user: u.email,
         email: u.email,
         fullName,
         idRole: u.idRole,
         id: u.id,
-        role: u.role
+        role: u.role,
+        // Clínica activa y rol dentro de ella (admin | profesional | recepcion).
+        clinicaId: u.clinicaId || null,
+        rol: u.rol || null,
+        esAdmin: !!u.esAdmin,
+        clinicas,
+        needsClinicSelection,
     });
 });
 
