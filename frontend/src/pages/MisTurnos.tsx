@@ -9,6 +9,7 @@ import {
   User,
   Pencil,
   FileText,
+  FileCheck2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -142,6 +143,11 @@ export default function MisTurnos() {
                 <Button asChild variant="outline" size="sm">
                   <Link to="/mi-historia">
                     <FileText /> Mi historia clínica
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/mis-certificados">
+                    <FileCheck2 /> Mis certificados
                   </Link>
                 </Button>
                 <Button asChild size="sm" className="sm:ml-auto">

@@ -193,10 +193,25 @@ admin genera y elimina un código libre (ok) e intenta eliminar uno usado (recha
 
 ---
 
-## FASE C — Certificados médicos
+## FASE C — Certificados médicos  ✅ IMPLEMENTADA (pendiente verificar UI logueado)
 
 **Objetivo:** el profesional emite certificados (generados o foto de físico); el paciente los
 descarga desde su panel. Emitir "desde cero" exige tener cargada la **firma/sello**.
+
+**Cambios hechos:**
+- DB (`db/faseC_certificados.sql`, aplicada en Supabase): `profesional.firma_path/firma_mime`;
+  tabla `certificado_medico` con RLS (profesional por clínica activa; paciente dueño); buckets
+  privados `firmas` y `certificados` (acceso mediado por el backend, URLs firmadas).
+- Backend: `utils/certificadoPdf.js` (pdf-lib, firma embebida); `controllers/certificadoController.js`
+  (`estadoFirma`, `subirFirma`, `generar`, `subir`, `listarPorPaciente`, `misCertificados`, `descargar`);
+  `routes/certificadoRoutes.js` en `/certificados` + `GET /api/mi-cuenta/certificados`; validador
+  `certificado.generar`; dependencia `pdf-lib`.
+- Frontend: `pages/dashboard/Certificados.tsx` (firma + búsqueda por DNI + generar/subir + descargar)
+  con enlace en el navbar; `pages/MisCertificados.tsx` (paciente) + ruta y acceso desde "Mi cuenta".
+
+**Verificación:** migración aplicada; generación de PDF validada en aislamiento (PDF válido con firma);
+backend arranca y los endpoints responden 401 sin sesión; frontend typecheck + build de producción OK;
+advisors sin errores nuevos. Pendiente: probar logueado (cargar firma, generar/subir, descarga del paciente).
 
 ### C1 · Base de datos y storage (`db/faseC_certificados.sql`)
 - **Firma/sello del profesional:** columna `profesional.firma_path text` (o tabla `firma_profesional`).

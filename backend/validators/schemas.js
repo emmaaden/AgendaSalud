@@ -60,6 +60,20 @@ module.exports = {
         }),
     },
 
+    certificado: {
+        generar: z.object({
+            dni: z.string().trim().min(1, 'DNI requerido').max(20),
+            motivo: z.string().max(2000).optional(),
+            diagnostico: z.string().max(2000).optional(),
+            indicaciones: z.string().max(2000).optional(),
+            diasReposo: z.union([z.string(), z.number()]).optional(),
+        }).refine(
+            (d) => d.motivo || d.diagnostico || d.indicaciones ||
+                   (d.diasReposo !== undefined && d.diasReposo !== '' && Number(d.diasReposo) > 0),
+            { message: 'Completá al menos el motivo, el diagnóstico, las indicaciones o los días de reposo.' }
+        ),
+    },
+
     pacient: {
         regis: z.object({
             fullName: nombre,

@@ -21,6 +21,7 @@ const Turnos = lazy(() => import("@/pages/Turnos"))
 const MisTurnos = lazy(() => import("@/pages/MisTurnos"))
 const GestionarTurno = lazy(() => import("@/pages/GestionarTurno"))
 const MiHistoria = lazy(() => import("@/pages/MiHistoria"))
+const MisCertificados = lazy(() => import("@/pages/MisCertificados"))
 const MiPerfil = lazy(() => import("@/pages/MiPerfil"))
 const ValorOrtodoncia = lazy(() => import("@/pages/ValorOrtodoncia"))
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"))
@@ -34,6 +35,9 @@ const DashboardRegistroClinico = lazy(
 )
 const DashboardAdministracion = lazy(
   () => import("@/pages/dashboard/Administracion")
+)
+const DashboardCertificados = lazy(
+  () => import("@/pages/dashboard/Certificados")
 )
 
 function PageLoader() {
@@ -58,6 +62,10 @@ function App() {
             element={<DashboardRegistroClinico />}
           />
           <Route path="/dashboard/admin" element={<DashboardAdministracion />} />
+          <Route
+            path="/dashboard/certificados"
+            element={<DashboardCertificados />}
+          />
         </Route>
 
         <Route element={<PublicLayout />}>
@@ -66,6 +74,7 @@ function App() {
           <Route path="/mis-turnos" element={<MisTurnos />} />
           <Route path="/mi-perfil" element={<MiPerfil />} />
           <Route path="/mi-historia" element={<MiHistoria />} />
+          <Route path="/mis-certificados" element={<MisCertificados />} />
           <Route path="/gestionar-turno" element={<GestionarTurno />} />
           <Route path="/planes" element={<Planes />} />
           {/* Compatibilidad: la vieja historia clínica pública por DNI se retiró. */}

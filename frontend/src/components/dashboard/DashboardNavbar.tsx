@@ -11,6 +11,7 @@ import {
   Building2,
   ArrowLeftRight,
   ShieldCheck,
+  FileCheck2,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -41,6 +42,12 @@ const LINKS = [
     to: "/dashboard/registro-clinico",
     label: "Registro clínico",
     icon: ClipboardList,
+    end: false,
+  },
+  {
+    to: "/dashboard/certificados",
+    label: "Certificados",
+    icon: FileCheck2,
     end: false,
   },
 ]
