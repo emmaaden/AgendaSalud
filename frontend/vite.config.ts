@@ -16,6 +16,8 @@ const API_PREFIXES = [
   '/ortodoncia',
   '/clinica',
   '/clinica-publica',
+  '/admin',
+  '/certificados',
   '/professionals',
   '/available-slots',
   '/create-event',
