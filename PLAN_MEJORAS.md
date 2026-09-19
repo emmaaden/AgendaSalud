@@ -271,6 +271,34 @@ el paciente ve y descarga solo los suyos; un paciente no puede acceder a los de 
 
 ---
 
+## FASE D — Exportación / Importación de Historias Clínicas  ✅ IMPLEMENTADA (pendiente verificar UI logueado)
+
+**Objetivo (cumplimiento legal):** poder **exportar** e **importar** la información de HC.
+Marco: **Ley 26.529** (derecho del paciente a copia de su HC), **Ley 27.706** (digitalización),
+**Res. 1840/2018** (interoperabilidad). Formato de export **JSON estructurado** (`agendasalud.hc` v1.0),
+portable y re-importable, + **PDF** legible.
+
+**Decisiones:** export JSON + PDF; alcance del profesional = **solo pacientes que atendió**
+(`registro_clinico.id_profesional`), admin = **toda la clínica**; import empareja por **DNI** y
+**deduplica** registros por `origen_id`.
+
+**Cambios hechos:**
+- DB (`db/faseD_hc_export.sql`, aplicada): `registro_clinico.origen` + `origen_id` + índice único
+  parcial `(id_paciente, origen_id)` para deduplicar importaciones.
+- Backend: `controllers/hcController.js` (`exportar`, `pacientesEnAlcance`, `importar` con resumen)
+  + `routes/hcRoutes.js` en `/hc` (rol profesional; parser JSON 20 MB para import). Export del
+  propio paciente: `GET /api/mi-cuenta/historia/export` (mismo formato). Alcance por sesión con
+  service_role acotado (admin = clínica; profesional = sus registros).
+- Frontend: `pages/dashboard/HistoriasClinicas.tsx` (`/dashboard/historias`): exportar JSON, importar
+  con resumen, lista de pacientes en alcance con **PDF por paciente** (reusa `patientPdf`). Enlace
+  "Historias" en el navbar. Paciente: botón **Descargar JSON** en `MiHistoria` (el PDF ya existía).
+  `/hc` agregado al proxy de Vite.
+
+**Verificación:** consultas del export validadas contra la base real (admin ve [1,2,3]; profesional
+ve solo los que atendió; embeds de count y odontograma OK); backend arranca y los endpoints responden
+401 sin sesión; frontend typecheck + build OK. Pendiente: probar logueado (exportar, importar un JSON,
+PDF por paciente, y el JSON del paciente). **Requiere reiniciar backend y frontend** (código + proxy nuevos).
+
 ## 2. Orden sugerido y dependencias
 
 1. **Fase A** (base de todo; sin esto no hay "rol por clínica"). ⚠️ Migración + cambio de RLS.

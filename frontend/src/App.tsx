@@ -39,6 +39,9 @@ const DashboardAdministracion = lazy(
 const DashboardCertificados = lazy(
   () => import("@/pages/dashboard/Certificados")
 )
+const DashboardHistorias = lazy(
+  () => import("@/pages/dashboard/HistoriasClinicas")
+)
 
 function PageLoader() {
   return (
@@ -66,6 +69,7 @@ function App() {
             path="/dashboard/certificados"
             element={<DashboardCertificados />}
           />
+          <Route path="/dashboard/historias" element={<DashboardHistorias />} />
         </Route>
 
         <Route element={<PublicLayout />}>

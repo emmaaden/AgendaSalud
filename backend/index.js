@@ -20,6 +20,7 @@ const adminRoutes = require('./routes/adminRoutes'); // Fase B: administración 
 const turnosRoutes = require('./routes/turnosRoutes'); // Fase 3: turnos del paciente (/api/turnos)
 const miCuentaRoutes = require('./routes/miCuentaRoutes'); // Fase 3: autogestión del paciente (/api/mi-cuenta)
 const certificadoRoutes = require('./routes/certificadoRoutes'); // Fase C: certificados médicos
+const hcRoutes = require('./routes/hcRoutes'); // Fase D: export/import de historias clínicas
 // (requireAuth/requireAdmin ya no se usan en index.js: el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getCalendar, isCalendarConfigured } = require('./utils/googleCalendar');
@@ -123,6 +124,7 @@ app.use('/ortodoncia', ortPacienteRoutes);
 app.use('/clinica', clinicaRoutes); // Fase 2: gestión de clínica (rol profesional)
 app.use('/admin', adminRoutes); // Fase B: administración de la clínica (solo admin)
 app.use('/certificados', certificadoRoutes); // Fase C: certificados médicos
+app.use('/hc', hcRoutes); // Fase D: export/import de historias clínicas
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)

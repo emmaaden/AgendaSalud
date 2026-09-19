@@ -141,6 +141,66 @@ exports.updatePerfil = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
+// GET /api/mi-cuenta/historia/export  -> HC propia en formato estructurado (JSON),
+// mismo formato 'agendasalud.hc' que el export del profesional (portable/re-importable).
+// Ley 26.529: derecho del paciente a una copia de su información.
+// ---------------------------------------------------------------------------
+exports.exportHistoria = async (req, res) => {
+    try {
+        const persona = await getPersonaPaciente(req.session);
+        if (!persona) return res.status(404).json({ error: 'No encontramos tus datos.' });
+        const paciente = persona.paciente && persona.paciente[0];
+        if (!paciente) return res.status(404).json({ error: 'No encontramos tu ficha de paciente.' });
+
+        const { data: registros, error } = await supabase
+            .from('registro_clinico')
+            .select('id, fecha, profesional_nombre, area, sintomas, diagnostico, tratamiento, registro_diente(numero, estado, notas)')
+            .eq('id_paciente', paciente.id)
+            .order('fecha', { ascending: true });
+        if (error) throw error;
+
+        const doc = {
+            formato: 'agendasalud.hc',
+            version: '1.0',
+            generadoEn: new Date().toISOString(),
+            alcance: 'paciente',
+            totalPacientes: 1,
+            pacientes: [{
+                dni: persona.dni || null,
+                nombre: persona.nombre || null,
+                apellido: persona.apellido || null,
+                fechaNacimiento: persona.fecha_nacimiento || null,
+                sexo: persona.sexo || null,
+                telefono: persona.telefono || null,
+                email: persona.email || null,
+                direccion: persona.direccion || null,
+                obraSocial: paciente.obra_social || null,
+                registros: (registros || []).map((r) => ({
+                    origenId: r.id,
+                    fecha: r.fecha,
+                    profesional: r.profesional_nombre || null,
+                    area: r.area || null,
+                    sintomas: r.sintomas || null,
+                    diagnostico: r.diagnostico || null,
+                    tratamiento: r.tratamiento || null,
+                    odontograma: (r.registro_diente || []).map((d) => ({
+                        numero: d.numero, estado: d.estado, notas: d.notas || null,
+                    })),
+                })),
+            }],
+        };
+
+        const fecha = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="mi-historia-clinica-${fecha}.json"`);
+        return res.send(JSON.stringify(doc, null, 2));
+    } catch (err) {
+        console.error('Error en mi-cuenta/historia/export:', err);
+        return res.status(500).json({ error: 'Error al exportar tu historia clínica.' });
+    }
+};
+
+// ---------------------------------------------------------------------------
 // GET /api/mi-cuenta/historia  -> historia clínica propia (solo lectura).
 // Mismo shape que /pacient/get-data-pacient, para reutilizar el PDF en el front.
 // ---------------------------------------------------------------------------

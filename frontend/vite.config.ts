@@ -18,6 +18,7 @@ const API_PREFIXES = [
   '/clinica-publica',
   '/admin',
   '/certificados',
+  '/hc',
   '/professionals',
   '/available-slots',
   '/create-event',

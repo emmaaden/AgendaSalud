@@ -14,6 +14,7 @@ router.use(requireRole('paciente'));
 router.get('/perfil', miCuentaController.getPerfil);
 router.put('/perfil', validate(schemas.miCuenta.updatePerfil), miCuentaController.updatePerfil);
 router.get('/historia', miCuentaController.getHistoria);
+router.get('/historia/export', miCuentaController.exportHistoria);
 
 // Fase C: certificados del propio paciente.
 router.get('/certificados', certificadoController.misCertificados);

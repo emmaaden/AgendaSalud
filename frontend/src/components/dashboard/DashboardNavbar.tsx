@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   FileCheck2,
+  FolderDown,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -48,6 +49,12 @@ const LINKS = [
     to: "/dashboard/certificados",
     label: "Certificados",
     icon: FileCheck2,
+    end: false,
+  },
+  {
+    to: "/dashboard/historias",
+    label: "Historias",
+    icon: FolderDown,
     end: false,
   },
 ]

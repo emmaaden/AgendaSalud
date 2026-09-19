@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, Navigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Loader2, Download, FileText, User, ArrowLeft } from "lucide-react"
+import { Loader2, Download, FileText, User, ArrowLeft, FileJson } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container, PageHero } from "@/components/site/Section"
@@ -24,6 +24,28 @@ export default function MiHistoria() {
       .catch(() => toast.error("No se pudo cargar tu historia clínica."))
       .finally(() => setLoading(false))
   }, [esPaciente])
+
+  async function descargarJson() {
+    try {
+      const res = await fetch("/api/mi-cuenta/historia/export", {
+        credentials: "include",
+      })
+      if (!res.ok) throw new Error()
+      const blob = await res.blob()
+      const cd = res.headers.get("Content-Disposition") || ""
+      const m = cd.match(/filename="?([^"]+)"?/)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = m?.[1] || "mi-historia-clinica.json"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("No se pudo descargar el archivo.")
+    }
+  }
 
   if (loadingUser) {
     return (
@@ -67,9 +89,14 @@ export default function MiHistoria() {
               </Link>
             </Button>
             {paciente && (
-              <Button onClick={() => downloadPatientHistoryPdf(paciente)}>
-                <Download /> Descargar PDF
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={descargarJson}>
+                  <FileJson /> Descargar JSON
+                </Button>
+                <Button onClick={() => downloadPatientHistoryPdf(paciente)}>
+                  <Download /> Descargar PDF
+                </Button>
+              </div>
             )}
           </div>
 
