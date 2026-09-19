@@ -162,6 +162,27 @@ $$;
 GRANT EXECUTE ON FUNCTION public.app_is_clinica_admin() TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.app_is_clinica_admin() FROM anon, public;
 
+-- Helper: ¿el usuario es MIEMBRO del staff (membresía activa) de la clínica activa?
+-- Necesario para distinguir staff de pacientes en las políticas "por clínica": los
+-- pacientes obtienen su clínica por el FALLBACK de app_current_clinica_id(), así que
+-- una condición `clinica_id = app_current_clinica_id()` sola también daría verdadero
+-- para ellos. Con este helper, la rama "por clínica" aplica solo al staff.
+CREATE OR REPLACE FUNCTION public.app_is_clinica_member()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM membresia m
+        JOIN persona pe ON pe.id = m.id_persona
+        WHERE pe.id_auth = auth.uid()
+          AND m.activo = true
+          AND m.clinica_id = public.app_current_clinica_id()
+    );
+$$;
+GRANT EXECUTE ON FUNCTION public.app_is_clinica_member() TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.app_is_clinica_member() FROM anon, public;
+
 -- ---------------------------------------------------------------------------
 -- 5. RLS de membresia.
 --    - Lectura: cada usuario ve SUS propias membresías (para el selector) y, si
@@ -179,7 +200,7 @@ DROP POLICY IF EXISTS membresia_select ON membresia;
 CREATE POLICY membresia_select ON membresia
     FOR SELECT TO authenticated
     USING (
-        clinica_id = public.app_current_clinica_id()
+        (public.app_is_clinica_member() AND clinica_id = public.app_current_clinica_id())
         OR id_persona IN (SELECT id FROM persona WHERE id_auth = auth.uid())
     );
 

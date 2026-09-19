@@ -61,20 +61,25 @@ GRANT USAGE, SELECT ON SEQUENCE certificado_medico_id_seq TO authenticated;
 
 ALTER TABLE certificado_medico ENABLE ROW LEVEL SECURITY;
 
--- Lectura: el profesional de la clínica del certificado, o el paciente dueño.
+-- Lectura: el STAFF de la clínica del certificado, o el paciente dueño.
+-- OJO: la rama por clínica exige app_is_clinica_member() (staff), porque los pacientes
+-- también satisfacen `clinica_id = app_current_clinica_id()` vía el fallback y verían
+-- los certificados de toda la clínica. Ver app_is_clinica_member() en faseA_membresia.sql.
 DROP POLICY IF EXISTS certificado_select ON certificado_medico;
 CREATE POLICY certificado_select ON certificado_medico
     FOR SELECT TO authenticated
     USING (
-        clinica_id = public.app_current_clinica_id()
+        (public.app_is_clinica_member() AND clinica_id = public.app_current_clinica_id())
         OR id_paciente = public.app_current_paciente_id()
     );
 
--- Alta: solo dentro de la clínica activa (lo hace el profesional).
+-- Alta: solo el STAFF, dentro de la clínica activa (evita que un paciente se auto-emita).
 DROP POLICY IF EXISTS certificado_insert ON certificado_medico;
 CREATE POLICY certificado_insert ON certificado_medico
     FOR INSERT TO authenticated
-    WITH CHECK (clinica_id = public.app_current_clinica_id());
+    WITH CHECK (
+        public.app_is_clinica_member() AND clinica_id = public.app_current_clinica_id()
+    );
 
 -- ---------------------------------------------------------------------------
 -- 4. Buckets de Storage PRIVADOS. El acceso lo media el backend (service_role);

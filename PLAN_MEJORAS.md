@@ -211,7 +211,20 @@ descarga desde su panel. Emitir "desde cero" exige tener cargada la **firma/sell
 
 **Verificación:** migración aplicada; generación de PDF validada en aislamiento (PDF válido con firma);
 backend arranca y los endpoints responden 401 sin sesión; frontend typecheck + build de producción OK;
-advisors sin errores nuevos. Pendiente: probar logueado (cargar firma, generar/subir, descarga del paciente).
+advisors sin errores nuevos.
+
+**Verificación E2E de RLS (simulando la sesión JWT de cada usuario en Postgres) — 2026-09-19:**
+- ✅ Profesional (Carlos, staff): inserta y ve el certificado de su clínica.
+- ✅ Paciente dueño: ve su certificado.
+- ✅ Paciente ajeno: **NO** lo ve; y no puede auto-emitirse uno (INSERT bloqueado 42501).
+- 🐞 **Bug encontrado y corregido:** el fallback de `app_current_clinica_id()` (para pacientes sin
+  membresía) hacía que la rama "por clínica" de la RLS diera verdadero para cualquier paciente,
+  exponiéndole los certificados de toda la clínica. **Fix:** helper `app_is_clinica_member()` +
+  gate en las políticas de `certificado_medico` y `membresia` (`db/faseC2_fix_rls_miembro.sql`,
+  aplicado; faseA/faseC actualizados). Re-testeado: ajeno pasa a ver 0.
+
+Pendiente (necesita credenciales del usuario): probar la UI logueado — cargar firma, generar/subir,
+y la descarga por URL firmada (capa Storage/HTTP, no cubierta por el test de datos).
 
 ### C1 · Base de datos y storage (`db/faseC_certificados.sql`)
 - **Firma/sello del profesional:** columna `profesional.firma_path text` (o tabla `firma_profesional`).
