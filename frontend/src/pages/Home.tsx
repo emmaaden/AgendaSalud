@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import {
   CalendarClock,
@@ -11,10 +12,15 @@ import {
   CalendarPlus,
   Search,
   ClipboardList,
+  LogIn,
+  LayoutDashboard,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container } from "@/components/site/Section"
+import { api } from "@/lib/api"
+import { useUser } from "@/hooks/useUser"
 
 const features = [
   {
@@ -29,9 +35,9 @@ const features = [
     icon: FileHeart,
     title: "Historia clínica digital",
     description:
-      "Consultá tu historial de consultas, diagnósticos y tratamientos de forma segura con tu DNI.",
-    to: "/historia-clinica",
-    cta: "Ver historia clínica",
+      "Consultá tu historial de consultas, diagnósticos y tratamientos de forma segura desde tu cuenta.",
+    to: "/mi-historia",
+    cta: "Ver mi historia clínica",
   },
   {
     icon: Stethoscope,
@@ -79,6 +85,163 @@ const values = [
     description: "Una experiencia rápida y clara en el celular o la computadora.",
   },
 ]
+
+type ProximoTurno = {
+  id: number
+  inicio: string
+  profesional_nombre: string | null
+  especialidad: string | null
+}
+
+function formatCorto(iso: string) {
+  return new Date(iso).toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+}
+
+// Tarjeta del hero. Antes mostraba un turno ficticio a todo el mundo; ahora es
+// consciente de la sesión: el paciente logueado ve SU próximo turno real, y quien
+// no tiene sesión ve una invitación a entrar o reservar.
+function ProximoTurnoCard() {
+  const { user, loading } = useUser()
+  const [turno, setTurno] = useState<ProximoTurno | null>(null)
+  const [loadingTurno, setLoadingTurno] = useState(false)
+
+  const esPaciente = user?.role === "paciente"
+
+  useEffect(() => {
+    if (!esPaciente) return
+    setLoadingTurno(true)
+    api
+      .get<{ turno: ProximoTurno | null }>("/api/turnos/proximo")
+      .then((d) => setTurno(d?.turno ?? null))
+      .catch(() => setTurno(null))
+      .finally(() => setLoadingTurno(false))
+  }, [esPaciente])
+
+  const Shell = ({ children }: { children: React.ReactNode }) => (
+    <Card className="mx-auto max-w-md shadow-xl ring-foreground/5">
+      <CardContent className="space-y-4 p-6">{children}</CardContent>
+    </Card>
+  )
+
+  const Header = ({ title, subtitle }: { title: string; subtitle: string }) => (
+    <div className="flex items-center gap-3">
+      <div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
+        <CalendarClock className="size-6" />
+      </div>
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      </div>
+    </div>
+  )
+
+  if (loading || (esPaciente && loadingTurno)) {
+    return (
+      <Shell>
+        <Header title="Próximo turno" subtitle="Cargando…" />
+        <div className="flex justify-center py-6">
+          <Loader2 className="size-6 animate-spin text-primary" />
+        </div>
+      </Shell>
+    )
+  }
+
+  // Profesional logueado: atajo al panel.
+  if (user && !esPaciente) {
+    return (
+      <Shell>
+        <Header title="Hola de nuevo" subtitle="Tu panel te espera" />
+        <Button asChild className="w-full" size="lg">
+          <a href="/dashboard">
+            <LayoutDashboard /> Ir al panel
+          </a>
+        </Button>
+      </Shell>
+    )
+  }
+
+  // Paciente logueado con un turno próximo real.
+  if (esPaciente && turno) {
+    return (
+      <Shell>
+        <Header title="Tu próximo turno" subtitle="Asociado a tu cuenta" />
+        <div className="rounded-xl border border-border bg-muted/40 p-4">
+          <p className="text-sm text-muted-foreground">
+            {turno.especialidad || "Consulta"}
+          </p>
+          <p className="font-medium">
+            {turno.profesional_nombre || "Profesional a confirmar"}
+          </p>
+          <div className="mt-3 flex items-center justify-between text-sm">
+            <span className="inline-flex items-center gap-1.5 capitalize text-foreground">
+              <CalendarClock className="size-4 text-primary" />{" "}
+              {formatCorto(turno.inicio)} hs
+            </span>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              Reservado
+            </span>
+          </div>
+        </div>
+        <Button asChild className="w-full" size="lg">
+          <Link to="/mis-turnos">
+            Ver mis turnos <ArrowRight />
+          </Link>
+        </Button>
+      </Shell>
+    )
+  }
+
+  // Paciente logueado sin turnos próximos.
+  if (esPaciente) {
+    return (
+      <Shell>
+        <Header title="Tu próximo turno" subtitle="Asociado a tu cuenta" />
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+          No tenés turnos próximos.
+        </div>
+        <Button asChild className="w-full" size="lg">
+          <Link to="/turnos">
+            <CalendarPlus /> Reservar ahora
+          </Link>
+        </Button>
+      </Shell>
+    )
+  }
+
+  // Sin sesión.
+  return (
+    <Shell>
+      <Header
+        title="Tu próximo turno"
+        subtitle="Iniciá sesión para verlo acá"
+      />
+      <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+        Con tu cuenta, tus turnos y tus datos quedan en un solo lugar: los ves y
+        los cancelás cuando quieras.
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Button asChild size="lg" variant="outline">
+          <Link to="/login">
+            <LogIn /> Iniciar sesión
+          </Link>
+        </Button>
+        <Button asChild size="lg">
+          <Link to="/turnos">
+            <CalendarPlus /> Pedir turno
+          </Link>
+        </Button>
+      </div>
+    </Shell>
+  )
+}
 
 export default function Home() {
   return (
@@ -138,38 +301,7 @@ export default function Home() {
           </div>
 
           <div className="relative">
-            <Card className="mx-auto max-w-md shadow-xl ring-foreground/5">
-              <CardContent className="space-y-4 p-6">
-                <div className="flex items-center gap-3">
-                  <div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-                    <CalendarClock className="size-6" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Próximo turno</p>
-                    <p className="text-sm text-muted-foreground">
-                      Confirmado por email
-                    </p>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border bg-muted/40 p-4">
-                  <p className="text-sm text-muted-foreground">Especialidad</p>
-                  <p className="font-medium">Odontología · Dra. Pérez</p>
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <span className="inline-flex items-center gap-1.5 text-foreground">
-                      <CalendarClock className="size-4 text-primary" /> Lun 09:30
-                    </span>
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      Confirmado
-                    </span>
-                  </div>
-                </div>
-                <Button asChild className="w-full" size="lg">
-                  <Link to="/turnos">
-                    Reservar ahora <ArrowRight />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <ProximoTurnoCard />
           </div>
         </Container>
       </section>

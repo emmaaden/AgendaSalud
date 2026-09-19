@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import {
   CalendarPlus,
-  Search,
+  ListChecks,
   ArrowLeft,
   ArrowRight,
   Loader2,
-  Trash2,
   CalendarClock,
   Building2,
+  LogIn,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +26,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { api, ApiError } from "@/lib/api"
-import { WHATSAPP_URL } from "@/lib/site"
+import { useUser } from "@/hooks/useUser"
 
 type Professional = { id: number | string; nombre: string; id_calendario?: string }
 type ProfArea = { area: string; professionals: Professional[] }
-type Appointment = { id: string; start: { dateTime: string } }
 
 const COUNTRIES = [
   { name: "Argentina", code: "+54" },
@@ -58,11 +57,12 @@ function formatSlotLocal(iso: string) {
   })
 }
 
-type View = "menu" | "reservar" | "buscar"
+type View = "menu" | "reservar"
 
 export default function Turnos() {
   const [params] = useSearchParams()
   const clinica = params.get("clinica") || ""
+  const { user } = useUser()
 
   const [view, setView] = useState<View>("menu")
   const [areas, setAreas] = useState<ProfArea[]>([])
@@ -171,22 +171,34 @@ export default function Turnos() {
                 </Card>
               </button>
 
-              <button onClick={() => setView("buscar")} className="group text-left">
+              <Link
+                to={user?.role === "paciente" ? "/mis-turnos" : "/login"}
+                className="group text-left"
+              >
                 <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:ring-primary/40">
                   <CardContent className="p-6">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                      <Search className="size-6" />
+                      {user?.role === "paciente" ? (
+                        <ListChecks className="size-6" />
+                      ) : (
+                        <LogIn className="size-6" />
+                      )}
                     </div>
                     <h3 className="mt-4 text-lg font-semibold">Mis turnos</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Consultá o cancelá los turnos que reservaste por email.
+                      {user?.role === "paciente"
+                        ? "Consultá o cancelá tus turnos desde tu cuenta."
+                        : "Iniciá sesión para ver tus turnos. Si reservaste como invitado, usá el enlace que te llegó por email."}
                     </p>
                     <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                      Continuar <ArrowRight className="size-4" />
+                      {user?.role === "paciente"
+                        ? "Ver mis turnos"
+                        : "Iniciar sesión"}{" "}
+                      <ArrowRight className="size-4" />
                     </span>
                   </CardContent>
                 </Card>
-              </button>
+              </Link>
             </div>
           )}
 
@@ -241,11 +253,10 @@ export default function Turnos() {
                   profId={profId}
                   profName={profName}
                   clinica={clinica}
+                  prefillName={user?.fullName || ""}
+                  prefillEmail={user?.email || ""}
+                  lockEmail={!!user}
                 />
-              )}
-
-              {profId && calendarId && !loadingCal && view === "buscar" && (
-                <BuscarPanel calendarId={calendarId} />
               )}
             </>
           )}
@@ -262,10 +273,16 @@ function ReservarForm({
   profId,
   profName,
   clinica,
+  prefillName,
+  prefillEmail,
+  lockEmail,
 }: {
   profId: string
   profName: string
   clinica: string
+  prefillName: string
+  prefillEmail: string
+  lockEmail: boolean
 }) {
   const today = new Date().toISOString().split("T")[0]
   const [date, setDate] = useState("")
@@ -274,10 +291,18 @@ function ReservarForm({
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [nearest, setNearest] = useState("")
 
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
+  const [name, setName] = useState(prefillName)
+  const [email, setEmail] = useState(prefillEmail)
   const [code, setCode] = useState("+54")
   const [number, setNumber] = useState("")
+
+  // La sesión (useUser) llega async: si aparece un dato de perfil, lo prellenamos.
+  useEffect(() => {
+    if (prefillName) setName(prefillName)
+  }, [prefillName])
+  useEffect(() => {
+    if (prefillEmail) setEmail(prefillEmail)
+  }, [prefillEmail])
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -343,6 +368,7 @@ function ReservarForm({
     try {
       const res = await api.post<{ success?: boolean }>("/create-event", {
         summary: `Cita con ${name}`,
+        name,
         description: `Correo del paciente: ${email}, Numero de teléfono: ${number}`,
         start: {
           dateTime: start.toISOString(),
@@ -442,7 +468,14 @@ function ReservarForm({
               className="h-10"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              readOnly={lockEmail}
+              aria-readonly={lockEmail}
             />
+            {lockEmail && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Usamos el email de tu cuenta. El turno queda asociado a ella.
+              </p>
+            )}
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-[minmax(0,12rem)_1fr]">
@@ -518,155 +551,3 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Buscar / cancelar                                                          */
-/* -------------------------------------------------------------------------- */
-function BuscarPanel({ calendarId }: { calendarId: string }) {
-  const [email, setEmail] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<Appointment[] | null>(null)
-  const [toDelete, setToDelete] = useState<Appointment | null>(null)
-  const [deleting, setDeleting] = useState(false)
-
-  async function buscar(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email) return
-    setLoading(true)
-    try {
-      const data = await api.get<Appointment[]>(
-        `/search-appointment?email=${encodeURIComponent(email)}&calendarId=${encodeURIComponent(calendarId)}`
-      )
-      setResults(Array.isArray(data) ? data : [])
-    } catch {
-      toast.error("Error al buscar turnos. Intentá de nuevo.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function eliminar() {
-    if (!toDelete) return
-    setDeleting(true)
-    try {
-      await api.del(
-        `/delete-appointment/${toDelete.id}?calendarId=${encodeURIComponent(calendarId)}`
-      )
-      toast.success("Turno eliminado con éxito")
-      setResults((r) => (r ? r.filter((a) => a.id !== toDelete.id) : r))
-      setToDelete(null)
-    } catch {
-      toast.error("No se pudo eliminar el turno.")
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  function formatFecha(iso: string) {
-    const f = new Date(iso)
-    f.setHours(f.getHours() - 3)
-    return f.toLocaleString("es-ES", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  return (
-    <Card className="mt-6">
-      <CardContent className="p-6">
-        <h3 className="text-lg font-semibold">Buscar mis turnos</h3>
-        <form onSubmit={buscar} className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <Input
-            type="email"
-            placeholder="Tu email"
-            className="h-10"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button type="submit" size="lg" disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : <Search />}
-            Buscar
-          </Button>
-        </form>
-
-        {results && (
-          <div className="mt-6">
-            {results.length ? (
-              <ul className="space-y-3">
-                {results.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center justify-between gap-4 rounded-lg border-l-4 border-primary bg-muted/40 px-4 py-3"
-                  >
-                    <span className="text-sm">
-                      Turno: {formatFecha(a.start.dateTime)}
-                    </span>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      aria-label="Cancelar turno"
-                      onClick={() => setToDelete(a)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>No se encontraron turnos disponibles.</p>
-                <p>
-                  Solo aparecen los turnos solicitados a través de nuestro
-                  sistema. Si lo reservaste de manera presencial, comunicate con
-                  el centro médico.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancelar turno</DialogTitle>
-            <DialogDescription>
-              {toDelete
-                ? `¿Seguro que querés cancelar el turno del ${formatFecha(toDelete.start.dateTime)}?`
-                : ""}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setToDelete(null)}
-              disabled={deleting}
-            >
-              No, volver
-            </Button>
-            <Button variant="destructive" onClick={eliminar} disabled={deleting}>
-              {deleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
-              Sí, cancelar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <div className="border-t border-border px-6 py-3 text-center text-xs text-muted-foreground">
-        ¿Problemas?{" "}
-        <a
-          href={WHATSAPP_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="font-medium text-primary hover:underline"
-        >
-          Escribinos
-        </a>
-      </div>
-    </Card>
-  )
-}

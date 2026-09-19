@@ -1,9 +1,17 @@
 const { createClient } = require('@supabase/supabase-js');
-const { glob } = require('fs');
 const { slugify } = require('../utils/slug');
 require('dotenv').config();
 
+// service_role: SALTEA la RLS. Se usa SOLO para operaciones sobre tablas.
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// anon (sin sesión persistida): se usa para las operaciones de auth (signUp / signIn /
+// reset). IMPORTANTE: no se deben hacer los signIn/signUp sobre el cliente `supabase`
+// service_role, porque supabase-js le adjunta la sesión del usuario a ese cliente y las
+// consultas posteriores dejarían de correr como service_role (pasarían a estar bajo RLS).
+const supabaseAuth = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY_PUBLIC, {
+    auth: { persistSession: false, autoRefreshToken: false },
+});
 
 exports.register = async (req, res) => {
     const {
@@ -41,8 +49,10 @@ exports.register = async (req, res) => {
             }
         }
 
-        // Creamos usuario en Supabase Auth
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        // Creamos usuario en Supabase Auth (cliente anon: si el signUp devolviera sesión
+        // —confirmación de email desactivada— no debe adjuntarse al cliente service_role,
+        // porque los INSERT siguientes dejarían de saltear la RLS).
+        const { data, error } = await supabaseAuth.auth.signUp({ email, password });
         if (error) { return res.status(400).json({ error: error.message }); }
 
         const user = data.user;
@@ -144,11 +154,12 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
 
     try {
-        // 1. Autenticación con Supabase Auth
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // 1. Autenticación con Supabase Auth (cliente anon, para no adjuntar la sesión
+        //    del usuario al cliente service_role).
+        const { data, error } = await supabaseAuth.auth.signInWithPassword({
             email,
             password,
         });
@@ -159,49 +170,36 @@ exports.login = async (req, res) => {
 
         const userId = data.user.id;
 
-        let idRole = null;
-        let clinicaId = null;
-        let esAdmin = false;
-
-        // 3. Buscar rol + clínica (scoping multi-clínica).
-        if (role == "profesional") {
-            const { data: profesional, error: profesionalError } = await supabase
-                .from("persona")
-                .select(`id, clinica_id, profesional(id, es_admin)`)
-                .eq("id_auth", userId)
-                .maybeSingle();
-
-            if (profesionalError) {
-                console.error("Error al buscar profesional:", profesionalError);
-            }
-
-            if (profesional) {
-                clinicaId = profesional.clinica_id;
-                if (profesional.profesional && profesional.profesional[0]) {
-                    idRole = profesional.profesional[0].id;
-                    esAdmin = !!profesional.profesional[0].es_admin;
-                }
-            }
-        } else if (role == "paciente") {
-            const { data: paciente, error: pacienteError } = await supabase
-                .from("persona")
-                .select(`id, clinica_id, paciente(id)`)
-                .eq("id_auth", userId)
-                .maybeSingle();
-
-            if (pacienteError) {
-                console.error("Error al buscar paciente:", pacienteError);
-            }
-
-            if (paciente) {
-                clinicaId = paciente.clinica_id;
-                if (paciente.paciente && paciente.paciente[0]) {
-                    idRole = paciente.paciente[0].id;
-                }
-            }
+        // 2. Detectar el rol desde la base (NO se confía en un rol enviado por el
+        //    cliente). Un mismo formulario de login sirve para profesional y paciente.
+        //    Si una persona fuese ambas cosas, se prioriza profesional.
+        const { data: persona, error: personaError } = await supabase
+            .from("persona")
+            .select(`id, clinica_id, profesional(id, es_admin), paciente(id)`)
+            .eq("id_auth", userId)
+            .maybeSingle();
+        if (personaError) {
+            console.error("Error al buscar la persona en login:", personaError);
         }
 
-        // 4. Si no está en ninguna tabla
+        const profRow = persona?.profesional?.[0];
+        const pacRow = persona?.paciente?.[0];
+
+        let role = null;
+        let idRole = null;
+        let esAdmin = false;
+        const clinicaId = persona?.clinica_id || null;
+
+        if (profRow) {
+            role = "profesional";
+            idRole = profRow.id;
+            esAdmin = !!profRow.es_admin;
+        } else if (pacRow) {
+            role = "paciente";
+            idRole = pacRow.id;
+        }
+
+        // 3. Si no está asociado a ningún rol.
         if (!role) {
             return res.status(403).json({ error: "El usuario no tiene rol asignado" });
         }
@@ -278,7 +276,7 @@ exports.forgotPassword = async (req, res) => {
         // un redirect en el router del frontend.
         const redirectTo = `${baseUrl}/reset-password`;
 
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        const { error } = await supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) {
             // Se loguea pero no se expone al cliente.
             console.error('Error en resetPasswordForEmail:', error.message);

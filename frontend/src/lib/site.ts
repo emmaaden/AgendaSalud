@@ -9,7 +9,6 @@ export const NAV_LINKS = [
   { to: "/", label: "Inicio" },
   { to: "/turnos", label: "Turnos" },
   { to: "/planes", label: "Planes" },
-  { to: "/historia-clinica", label: "Historia clínica" },
 ] as const
 
 /** Enlaces de ayuda / secundarios usados en footer y menú móvil. */

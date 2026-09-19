@@ -6,7 +6,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const session = require('express-session');
-const { google } = require('googleapis');
 
 const authRoutes = require('./routes/authRoutes');
 const horariosRoutes = require('./routes/horarios');
@@ -17,8 +16,12 @@ const avatarsRoutes = require('./routes/avatarsRoutes');
 const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
 const clinicaRoutes = require('./routes/clinicaRoutes'); // Fase 2: gestión de clínica
+const turnosRoutes = require('./routes/turnosRoutes'); // Fase 3: turnos del paciente (/api/turnos)
+const miCuentaRoutes = require('./routes/miCuentaRoutes'); // Fase 3: autogestión del paciente (/api/mi-cuenta)
 // (requireAuth/requireAdmin ya no se usan en index.js: el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
+const { getCalendar, isCalendarConfigured } = require('./utils/googleCalendar');
+const { generarTokenGestion } = require('./utils/turnoToken');
 const { sendMail, isMailerConfigured } = require('./utils/mailer');
 const { validate } = require('./middleware/validate');
 const schemas = require('./validators/schemas');
@@ -115,6 +118,8 @@ app.use('/profesional', profesionalRoutes);
 app.use('/avatars', avatarsRoutes);
 app.use('/ortodoncia', ortPacienteRoutes);
 app.use('/clinica', clinicaRoutes); // Fase 2: gestión de clínica (rol profesional)
+app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
+app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
 
 // Config pública para el cliente (solo datos NO sensibles).
@@ -162,32 +167,10 @@ app.get('/api/user', async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // Google Calendar
-// Credenciales cargadas desde memoria (no se escribe archivo en disco).
-// El calendarId viaja EN CADA request (se eliminó la variable global mutable).
+// La autenticación vive en utils/googleCalendar.js (compartida con turnosController).
+// `authenticate()` se mantiene como alias local para no tocar los call-sites de abajo.
 // ---------------------------------------------------------------------------
-const googleCredentials = {
-    type: process.env.TYPE,
-    project_id: process.env.PROJECT_ID,
-    private_key_id: process.env.PRIVATE_KEY_ID,
-    // Las claves privadas en .env suelen venir con '\n' escapados.
-    private_key: process.env.PRIVATE_KEY ? process.env.PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
-    client_email: process.env.CLIENT_EMAIL,
-    client_id: process.env.CLIENT_ID,
-    auth_uri: process.env.AUTH_URI,
-    token_uri: process.env.TOKEN_URI,
-    auth_provider_x509_cert_url: process.env.AUTH_PROVIDER_X509_CERT_URL,
-    client_x509_cert_url: process.env.CLIENT_X509_CERT_URL,
-    universe_domain: process.env.UNIVERSE_DOMAIN,
-};
-
-async function authenticate() {
-    const auth = new google.auth.GoogleAuth({
-        credentials: googleCredentials,
-        scopes: ['https://www.googleapis.com/auth/calendar'],
-    });
-    const client = await auth.getClient();
-    return google.calendar({ version: 'v3', auth: client });
-}
+const authenticate = getCalendar;
 
 // Normaliza un nombre de día (minúsculas, sin acentos) para comparar.
 function normalizarDia(s) {
@@ -269,13 +252,18 @@ app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), 
 // viene de la página de una clínica (?clinica=<slug>), el profesional debe pertenecer a
 // ella (aislamiento por tenant, Fase 2).
 app.post('/create-event', validate(schemas.calendar.createEvent), async (req, res) => {
-    const { summary, description, start, end, email, number, profId, clinica } = req.body;
+    const { summary, description, start, end, email, number, profId, clinica, name } = req.body;
 
     try {
-        // 1. Profesional -> calendario (+ clínica) desde la base, no desde el body.
+        // 1. Profesional -> calendario + clínica + snapshot (nombre/especialidad) desde
+        //    la base, no desde el body.
         const { data: prof, error: profError } = await supabase
             .from('profesional')
-            .select('id_calendario, persona:id_persona ( clinica_id )')
+            .select(`
+                id_calendario,
+                persona:id_persona ( clinica_id, nombre, apellido ),
+                especialidad_profesional ( especialidad:id_especialidad ( nombre ) )
+            `)
             .eq('id', profId)
             .maybeSingle();
         if (profError) throw profError;
@@ -283,6 +271,10 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
         if (!prof.id_calendario) {
             return res.status(400).json({ error: 'El profesional no tiene un calendario configurado.' });
         }
+
+        // clinica_id del turno: se deriva SIEMPRE del profesional (para que aparezca
+        // en el panel de su clínica). El slug, si viene, solo valida pertenencia.
+        const clinicaProf = (prof.persona && prof.persona.clinica_id) || null;
 
         // 2. Si la reserva es sobre una clínica, el profesional debe ser de esa clínica.
         if (clinica) {
@@ -294,7 +286,6 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
                 .maybeSingle();
             if (cliError) throw cliError;
             if (!cli) return res.status(404).json({ error: 'Clínica no encontrada.' });
-            const clinicaProf = prof.persona && prof.persona.clinica_id;
             if (clinicaProf !== cli.id) {
                 return res.status(403).json({ error: 'El profesional no pertenece a esta clínica.' });
             }
@@ -312,17 +303,63 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
 
         const response = await calendar.events.insert({ calendarId, resource: event });
 
-        // Email de confirmación al paciente (best-effort: no bloquea la reserva).
+        // 3. Registrar el turno en la base (fuente de verdad del vínculo con la persona).
+        //    - Paciente logueado -> se ata a su paciente.id (id_paciente).
+        //    - Invitado          -> id_paciente NULL + manage_token para gestionarlo.
+        //    Best-effort: si falla (p. ej. la migración fase3 aún no se corrió), la
+        //    reserva del calendario NO se pierde; solo se loguea el problema.
+        const esPaciente = req.session?.isAuthenticated && req.session.user?.role === 'paciente';
+        const idPaciente = esPaciente ? (req.session.user.idRole || null) : null;
+
+        const profNombre = [prof.persona?.nombre, prof.persona?.apellido].filter(Boolean).join(' ') || null;
+        const especialidad = prof.especialidad_profesional?.[0]?.especialidad?.nombre || null;
+
+        let manageToken = null;
+        const turnoRow = {
+            id_profesional: profId,
+            id_paciente: idPaciente,
+            clinica_id: clinicaProf,
+            google_event_id: response.data.id || null,
+            google_calendar_id: calendarId,
+            profesional_nombre: profNombre,
+            especialidad,
+            paciente_nombre: name || null,
+            paciente_email: email || null,
+            paciente_telefono: number ? String(number) : null,
+            inicio: start.dateTime,
+            fin: end.dateTime,
+        };
+        if (!idPaciente) {
+            const { token, hash } = generarTokenGestion();
+            manageToken = token;
+            turnoRow.manage_token_hash = hash;
+        }
+
+        try {
+            await supabase.from('turno').insert(turnoRow);
+        } catch (dbErr) {
+            console.error('Error registrando el turno en la base (la reserva del calendario sí se creó):', dbErr.message);
+        }
+
+        // 4. Email de confirmación (best-effort: no bloquea la reserva).
         const fechaLocal = new Date(start.dateTime).toLocaleString('es-AR', {
             timeZone: 'America/Argentina/Buenos_Aires',
             dateStyle: 'full',
             timeStyle: 'short',
         });
+        const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+        // Enlace de gestión: los invitados reciben su token; los logueados van a "Mis turnos".
+        const gestionHtml = manageToken
+            ? `<p>Para ver o cancelar este turno, entrá a <a href="${baseUrl}/gestionar-turno?token=${manageToken}">este enlace</a>. Guardalo: es personal.</p>`
+            : `<p>Podés ver o cancelar tus turnos desde <a href="${baseUrl}/mis-turnos">Mis turnos</a>.</p>`;
+        const gestionText = manageToken
+            ? `Para ver o cancelar este turno: ${baseUrl}/gestionar-turno?token=${manageToken}`
+            : `Ver o cancelar tus turnos: ${baseUrl}/mis-turnos`;
         sendMail({
             to: email,
             subject: 'Confirmación de tu turno - Agenda Salud',
-            text: `Hola,\n\nTu turno fue agendado para el ${fechaLocal} hs.\n${summary || ''}\n\nGracias por usar Agenda Salud.`,
-            html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${summary || ''}</p><p>Gracias por usar Agenda Salud.</p>`,
+            text: `Hola,\n\nTu turno fue agendado para el ${fechaLocal} hs.\n${summary || ''}\n\n${gestionText}\n\nGracias por usar Agenda Salud.`,
+            html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${summary || ''}</p>${gestionHtml}<p>Gracias por usar Agenda Salud.</p>`,
         }).catch(err => console.error('Error enviando email de confirmación:', err.message));
 
         res.json({ success: true, event: response.data });
@@ -332,51 +369,10 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
     }
 });
 
-// Buscar turnos por email en un calendario.
-app.get('/search-appointment', validate(schemas.calendar.searchAppointment, 'query'), async (req, res) => {
-    const { email, calendarId } = req.query;
-
-    try {
-        const calendar = await authenticate();
-        const response = await calendar.events.list({
-            calendarId,
-            showDeleted: false,
-            singleEvents: true,
-            orderBy: 'startTime',
-        });
-
-        const events = response.data.items || [];
-        const filteredEvents = events.filter(event =>
-            event.description && event.description.includes(email)
-        );
-
-        if (filteredEvents.length > 0) {
-            res.json(filteredEvents);
-        } else {
-            res.status(404).json({ message: 'No se encontraron turnos con los datos proporcionados' });
-        }
-    } catch (error) {
-        console.error('Error buscando turnos:', error.message);
-        res.status(500).json({ error: 'Error al buscar turnos', details: error.message });
-    }
-});
-
-// Eliminar un turno por ID de evento.
-app.delete('/delete-appointment/:eventId', validate(schemas.calendar.deleteAppointmentParams, 'params'), async (req, res) => {
-    const { eventId } = req.params;
-    const calendarId = req.query.calendarId || req.body.calendarId;
-
-    if (!calendarId) return res.status(400).json({ error: 'calendarId no proporcionado' });
-
-    try {
-        const calendar = await authenticate();
-        await calendar.events.delete({ calendarId, eventId });
-        res.json({ message: 'Turno eliminado exitosamente' });
-    } catch (error) {
-        console.error('Error eliminando el turno:', error.message);
-        res.status(500).json({ error: 'Error al eliminar el turno', details: error.message });
-    }
-});
+// El buscador público de turnos por email (/search-appointment) y el borrado directo
+// por eventId (/delete-appointment) se ELIMINARON en la Fase 3: permitían enumerar y
+// cancelar turnos ajenos sin autenticación. Su reemplazo seguro son los endpoints de
+// /api/turnos (mis turnos con sesión; gestión por token para invitados).
 
 // ---------------------------------------------------------------------------
 // Recordatorios de turnos (~24 h antes)
@@ -507,7 +503,7 @@ if (isProd) {
         '/auth', '/hour', '/pacient', '/especialidades', '/profesional',
         '/avatars', '/ortodoncia', '/clinica', '/clinica-publica',
         '/professionals', '/available-slots', '/create-event',
-        '/search-appointment', '/delete-appointment', '/api', '/internal',
+        '/api', '/internal',
     ];
     const isApiPath = (p) =>
         API_PREFIXES.some((pre) => p === pre || p.startsWith(pre + '/'));
@@ -523,7 +519,7 @@ if (isProd) {
 // ---------------------------------------------------------------------------
 // Arranque
 // ---------------------------------------------------------------------------
-if (googleCredentials.client_email) {
+if (isCalendarConfigured()) {
     authenticate()
         .then(() => console.log('Conectado a Google Calendar'))
         .catch(error => console.error('Error al conectar a Google Calendar:', error.message));

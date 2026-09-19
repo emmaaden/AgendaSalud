@@ -77,6 +77,19 @@ module.exports = {
         }),
     },
 
+    miCuenta: {
+        updatePerfil: z.object({
+            nombre: z.string().trim().max(120).optional(),
+            apellido: z.string().trim().max(120).optional(),
+            telefono: z.string().max(30).optional(),
+            direccion: z.string().max(200).optional(),
+            sexo: z.string().max(20).optional(),
+            email: emailOpcional,
+            fechaNacimiento: z.string().max(40).optional(),
+            obraSocial: z.string().max(100).optional(),
+        }),
+    },
+
     profesional: {
         saveDesc: z.object({ descripcion: z.string().max(2000, 'Descripción demasiado larga') }),
         savePrecio: z.object({ precio: z.union([z.string().max(50), z.number()]) }),
@@ -114,6 +127,7 @@ module.exports = {
             summary: z.string().min(1, 'Resumen requerido'),
             email: z.email('Email inválido'),
             number: z.union([z.string().min(1), z.number()]),
+            name: z.string().max(120).optional(),
             // El calendario se deriva del profesional en el server (no se confía en el
             // cliente). Se exige profId; calendarId queda como legacy y se ignora.
             profId: idFlexible,
@@ -122,11 +136,8 @@ module.exports = {
             start: z.object({ dateTime: z.string().min(1, 'Fecha/hora de inicio requerida') }),
             end: z.object({ dateTime: z.string().min(1, 'Fecha/hora de fin requerida') }),
         }),
-        searchAppointment: z.object({
-            email: z.email('Email inválido'),
-            calendarId: z.string().min(1, 'Calendar ID requerido'),
-        }),
-        deleteAppointmentParams: z.object({ eventId: z.string().min(1, 'Evento requerido') }),
-        deleteAppointmentQuery: z.object({ calendarId: z.string().min(1, 'Calendar ID requerido') }),
+        // Nota: el buscador público por email y el borrado directo por eventId se
+        // eliminaron en la Fase 3 (permitían enumerar/cancelar turnos ajenos). La
+        // gestión segura vive en /api/turnos (ver turnosController).
     },
 };

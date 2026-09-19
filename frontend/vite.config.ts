@@ -19,8 +19,6 @@ const API_PREFIXES = [
   '/professionals',
   '/available-slots',
   '/create-event',
-  '/search-appointment',
-  '/delete-appointment',
   '/api',
 ]
 

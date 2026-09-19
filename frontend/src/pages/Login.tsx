@@ -28,10 +28,17 @@ export default function Login() {
   async function onSubmit(values: FormValues) {
     setSubmitting(true)
     try {
-      await api.post("/auth/login", { ...values, role: "profesional" })
+      // El backend detecta el rol (profesional/paciente) desde la base; no se envía.
+      const res = await api.post<{ user?: { role?: string } }>(
+        "/auth/login",
+        values
+      )
       toast.success("Bienvenido/a")
-      // Navegación de página completa al panel legacy (servido por Express).
-      window.location.href = "/dashboard"
+      // Paciente → su área de turnos; profesional → panel. Navegación completa para
+      // que la nueva sesión (cookie httpOnly) se tome en el primer render.
+      const destino =
+        res?.user?.role === "paciente" ? "/mis-turnos" : "/dashboard"
+      window.location.href = destino
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -44,18 +51,18 @@ export default function Login() {
 
   return (
     <AuthShell
-      title="Gestioná tu consultorio desde un solo lugar"
-      subtitle="Accedé a tu agenda, tus pacientes y la configuración de tu clínica."
+      title="Tu salud, organizada en un solo lugar"
+      subtitle="Accedé a tus turnos y tus datos. Si sos profesional, gestioná tu agenda y tu clínica."
       bullets={[
+        "Pacientes: mirá y cancelá tus turnos",
         "Turnos y calendario sincronizados",
         "Historia clínica digital",
-        "Gestión de tu clínica y equipo",
       ]}
     >
       <div className="mb-8">
         <h1 className="text-2xl font-semibold">Iniciar sesión</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ingresá con tu cuenta profesional.
+          Ingresá con tu cuenta de paciente o profesional.
         </p>
       </div>
 

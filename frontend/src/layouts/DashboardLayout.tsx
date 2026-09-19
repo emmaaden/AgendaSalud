@@ -23,8 +23,15 @@ function Guarded() {
     )
   }
 
+  // Sin sesión → login.
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  // El panel es exclusivo de profesionales. Un paciente logueado va a su área.
+  // (El backend además exige rol profesional en cada endpoint del dashboard.)
+  if (user.role !== "profesional") {
+    return <Navigate to="/mis-turnos" replace />
   }
 
   return (

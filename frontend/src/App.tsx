@@ -18,7 +18,10 @@ import NotFound from "@/pages/NotFound"
 
 // Páginas con dependencias pesadas (jsPDF / Supabase) → carga diferida.
 const Turnos = lazy(() => import("@/pages/Turnos"))
-const HistoriaClinica = lazy(() => import("@/pages/HistoriaClinica"))
+const MisTurnos = lazy(() => import("@/pages/MisTurnos"))
+const GestionarTurno = lazy(() => import("@/pages/GestionarTurno"))
+const MiHistoria = lazy(() => import("@/pages/MiHistoria"))
+const MiPerfil = lazy(() => import("@/pages/MiPerfil"))
 const ValorOrtodoncia = lazy(() => import("@/pages/ValorOrtodoncia"))
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"))
 
@@ -55,8 +58,16 @@ function App() {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/turnos" element={<Turnos />} />
+          <Route path="/mis-turnos" element={<MisTurnos />} />
+          <Route path="/mi-perfil" element={<MiPerfil />} />
+          <Route path="/mi-historia" element={<MiHistoria />} />
+          <Route path="/gestionar-turno" element={<GestionarTurno />} />
           <Route path="/planes" element={<Planes />} />
-          <Route path="/historia-clinica" element={<HistoriaClinica />} />
+          {/* Compatibilidad: la vieja historia clínica pública por DNI se retiró. */}
+          <Route
+            path="/historia-clinica"
+            element={<Navigate to="/mi-historia" replace />}
+          />
           <Route path="/valor-ortodoncia" element={<ValorOrtodoncia />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterRole />} />

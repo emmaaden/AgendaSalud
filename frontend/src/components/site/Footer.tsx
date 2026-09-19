@@ -9,7 +9,7 @@ const columns = [
     links: [
       { to: "/turnos", label: "Reservar turno" },
       { to: "/planes", label: "Planes" },
-      { to: "/historia-clinica", label: "Historia clínica" },
+      { to: "/mi-historia", label: "Mi historia clínica" },
       { to: "/valor-ortodoncia", label: "Valor ortodoncia" },
     ],
   },
