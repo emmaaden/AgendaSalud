@@ -27,19 +27,6 @@ function requireRole(...rolesPermitidos) {
     };
 }
 
-// Verifica que el email de la sesión coincide con el email autorizado (admin).
-function requireAdmin(req, res, next) {
-    if (
-        req.session &&
-        req.session.isAuthenticated &&
-        req.session.user &&
-        req.session.user.email === process.env.EMAIL_AUTORIZADO
-    ) {
-        return next();
-    }
-    return res.status(403).json({ error: 'Requiere permisos de administrador' });
-}
-
 // Fase E: staff de una clínica (profesional | recepcion | admin) con una clínica
 // activa fijada en la sesión. Habilita el panel de gestión de turnos. El scoping por
 // clínica lo hace cada controller usando req.session.user.clinicaId (service_role).
@@ -71,4 +58,4 @@ function requireClinicaAdmin(req, res, next) {
     return res.status(403).json({ error: 'Requiere ser administrador de la clínica' });
 }
 
-module.exports = { requireAuth, requireRole, requireAdmin, requireClinicaAdmin, requireStaffClinica };
+module.exports = { requireAuth, requireRole, requireClinicaAdmin, requireStaffClinica };

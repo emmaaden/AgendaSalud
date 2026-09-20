@@ -22,7 +22,7 @@ const miCuentaRoutes = require('./routes/miCuentaRoutes'); // Fase 3: autogesti�
 const certificadoRoutes = require('./routes/certificadoRoutes'); // Fase C: certificados médicos
 const hcRoutes = require('./routes/hcRoutes'); // Fase D: export/import de historias clínicas
 const staffRoutes = require('./routes/staffRoutes'); // Fase E: gestión de turnos por el staff (/staff)
-// (requireAuth/requireAdmin ya no se usan en index.js: el dashboard pasó al SPA)
+// (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
 const { generarTokenGestion } = require('./utils/turnoToken');
@@ -52,13 +52,19 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .map(s => s.trim())
     .filter(Boolean);
 
+// En producción la lista es OBLIGATORIA: con credentials:true no se puede reflejar
+// un origen arbitrario (permitiría requests autenticadas cross-origin). Falla cerrado.
+if (isProd && allowedOrigins.length === 0) {
+    console.error('⛔ ALLOWED_ORIGINS no está definido en producción: se rechazará todo origen cross-origin.');
+}
+
 app.use(cors({
     origin: (origin, cb) => {
-        // Sin origin = same-origin / herramientas locales.
+        // Sin origin = same-origin / herramientas locales (curl, apps móviles).
         if (!origin) return cb(null, true);
-        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-            return cb(null, true);
-        }
+        // En desarrollo, si no hay lista, se permite cualquier origen (comodidad local).
+        if (!isProd && allowedOrigins.length === 0) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
         return cb(new Error('Origen no permitido por CORS'));
     },
     credentials: true
@@ -70,6 +76,11 @@ app.use(express.urlencoded({ extended: true }));
 // Rate limiting general. El limiter estricto de login/register vive en routes/authRoutes.js.
 const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
 app.use(generalLimiter);
+
+// Limiter estricto para la reserva pública de turnos: al crear un turno se dispara un
+// email de confirmación a la dirección indicada, por lo que sin este límite el endpoint
+// podría abusarse para spam / email-bombing con la reputación del dominio remitente.
+const createEventLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 
 // ---------------------------------------------------------------------------
 // Sesiones
@@ -200,6 +211,16 @@ app.get('/api/user', async (req, res) => {
 // no contra Google Calendar. La lógica de slots/solapamiento vive en ese módulo.
 // ---------------------------------------------------------------------------
 
+// Escapa texto para interpolarlo de forma segura dentro de HTML (emails).
+function escapeHtml(s) {
+    return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Normaliza un nombre de día (minúsculas, sin acentos) para comparar.
 function normalizarDia(s) {
     return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -235,7 +256,7 @@ app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), 
         res.json(slots);
     } catch (error) {
         console.error('Error obteniendo slots disponibles:', error.message);
-        res.status(500).json({ error: 'Error al obtener los turnos disponibles', details: error.message });
+        res.status(500).json({ error: 'Error al obtener los turnos disponibles' });
     }
 });
 
@@ -244,7 +265,7 @@ app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), 
 // DERIVA del profesional. La disponibilidad se chequea contra la base (Fase F): si el
 // horario ya está reservado o bloqueado, se rechaza. Si la reserva viene de la página
 // de una clínica (?clinica=<slug>), el profesional debe pertenecer a ella (Fase 2).
-app.post('/create-event', validate(schemas.calendar.createEvent), async (req, res) => {
+app.post('/create-event', createEventLimiter, validate(schemas.calendar.createEvent), async (req, res) => {
     const { summary, start, end, email, number, profId, clinica, name } = req.body;
 
     try {
@@ -333,13 +354,13 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
             to: email,
             subject: 'Confirmación de tu turno - Agenda Salud',
             text: `Hola,\n\nTu turno fue agendado para el ${fechaLocal} hs.\n${summary || ''}\n\n${gestionText}\n\nGracias por usar Agenda Salud.`,
-            html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${summary || ''}</p>${gestionHtml}<p>Gracias por usar Agenda Salud.</p>`,
+            html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${escapeHtml(summary)}</p>${gestionHtml}<p>Gracias por usar Agenda Salud.</p>`,
         }).catch(err => console.error('Error enviando email de confirmación:', err.message));
 
         res.json({ success: true });
     } catch (error) {
         console.error('Error creando turno:', error.message);
-        res.status(500).json({ error: 'Error al crear el turno', details: error.message });
+        res.status(500).json({ error: 'Error al crear el turno' });
     }
 });
 
