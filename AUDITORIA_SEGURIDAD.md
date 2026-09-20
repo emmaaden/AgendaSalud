@@ -352,10 +352,14 @@ CREATE POLICY codigo_activacion_admin_write ON codigo_activacion
 | 6 | ✅ Corregido | `index.js`: limiter dedicado `createEventLimiter` (10 / 15 min) en `/create-event` |
 | 7 | ⚠️ Parcial | Hechos: quitado `details: error.message`, escape HTML del `summary` en emails, password mínimo 8, eliminado código muerto `requireAdmin`. Pendiente: definir una CSP explícita (requiere inventariar los orígenes de scripts del SPA para no romperlo). |
 
-> **ACCIÓN REQUERIDA:** ejecutar `backend/db/faseG_fix_rls.sql` en el SQL Editor de Supabase
-> (es idempotente). Los hallazgos 1–4 **no quedan cerrados hasta correr ese script**, porque
-> viven en la base, no en el código de la app. Verificar luego con los flujos por rol
-> (admin / profesional / recepción / paciente / invitado) y el switch multi-clínica.
+> **APLICADO en Supabase (2026-09-20):** se ejecutaron las migraciones
+> `faseG_fix_rls` (hallazgos 1–4) y `faseG2_revoke_anon` (defensa en profundidad:
+> se revocó todo privilegio del rol `anon` sobre las tablas de negocio; ver
+> `backend/db/faseG2_revoke_anon.sql`). Verificado: las 11 políticas quedaron con el
+> guard de miembro activo y `anon` ya no tiene grants sobre esas tablas.
+>
+> **Advisors de Supabase restantes (WARN, opcionales):** activar *leaked password
+> protection* en Auth, y programar el upgrade de la versión de Postgres.
 
 ---
 
