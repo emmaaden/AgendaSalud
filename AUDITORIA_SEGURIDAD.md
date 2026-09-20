@@ -363,6 +363,27 @@ CREATE POLICY codigo_activacion_admin_write ON codigo_activacion
 
 ---
 
+## Verificación post-remediación (2026-09-20)
+
+Chequeos ejecutados sobre la base de producción tras aplicar las migraciones:
+
+- **Cobertura de RLS:** las **15 tablas** de `public` tienen RLS habilitada y al menos una
+  política. No hay tablas con RLS deshabilitada ni con RLS activa pero sin políticas.
+- **Rol `anon`:** 0 privilegios sobre las tablas de negocio (verificado en
+  `information_schema.role_table_grants`).
+- **Políticas nuevas:** las 11 tablas de `faseG` quedaron con el guard de miembro/admin
+  activo; desapareció la política permisiva `codigo_activacion_tenant`.
+- **Storage:** buckets `certificados` y `firmas` **privados**; la única política de
+  `storage.objects` es `avatar_rw_own` (cada usuario solo su propio avatar). Los buckets
+  sensibles no tienen políticas para `authenticated`/`anon` → solo accesibles por el backend
+  (service_role) vía URLs firmadas.
+- **CSP:** verificada en el navegador (SPA y páginas legacy cargan sin violaciones).
+
+Resultado: el plano de datos (RLS + grants + storage) quedó consistente y sin fugas
+conocidas para los vectores del informe.
+
+---
+
 ## Priorización sugerida
 
 1. **Hallazgos 1 y 2** — aplicar el guard `app_is_clinica_member()` a las políticas RLS
