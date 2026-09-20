@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { User, Stethoscope, ArrowRight } from "lucide-react"
+import { User, Stethoscope, ClipboardList, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container } from "@/components/site/Section"
 
@@ -18,6 +18,13 @@ const roles = [
     description:
       "Administrá tu agenda, tus pacientes y tu clínica desde un panel completo.",
   },
+  {
+    to: "/register/recepcion",
+    icon: ClipboardList,
+    title: "Trabajo en recepción",
+    description:
+      "Gestioná los turnos de la clínica. Necesitás un código de activación.",
+  },
 ]
 
 export default function RegisterRole() {
@@ -30,7 +37,7 @@ export default function RegisterRole() {
         </p>
       </div>
 
-      <div className="mt-10 grid w-full max-w-3xl gap-6 sm:grid-cols-2">
+      <div className="mt-10 grid w-full max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {roles.map((r) => (
           <Link key={r.to} to={r.to} className="group">
             <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:ring-primary/40">

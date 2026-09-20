@@ -14,5 +14,4 @@ router.post('/get-datos-prof', profesionalController.getDatosProf);
 router.post('/save-direc', validate(schemas.profesional.saveDirec), profesionalController.saveDirec);
 router.post('/save-precio', validate(schemas.profesional.savePrecio), profesionalController.savePrecio);
 router.post('/save-desc', validate(schemas.profesional.saveDesc), profesionalController.saveDesc);
-router.post('/save-calenID', validate(schemas.profesional.saveCalenID), profesionalController.saveCalenID);
 module.exports = router;

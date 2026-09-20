@@ -44,7 +44,13 @@ type Miembro = {
   esYo: boolean
 }
 
-type Codigo = { id: number; codigo: string; usado: boolean; creado_en?: string }
+type Codigo = {
+  id: number
+  codigo: string
+  usado: boolean
+  rol?: "profesional" | "recepcion"
+  creado_en?: string
+}
 
 const ROL_META: Record<Rol, { label: string; icon: typeof ShieldCheck }> = {
   admin: { label: "Administrador/a", icon: ShieldCheck },
@@ -103,10 +109,12 @@ export default function Administracion() {
     }
   }
 
-  async function generarCodigo() {
+  async function generarCodigo(rol: "profesional" | "recepcion") {
     setGenerating(true)
     try {
-      const d = await api.post<{ codigo?: string }>("/clinica/generar-codigo")
+      const d = await api.post<{ codigo?: string }>("/clinica/generar-codigo", {
+        rol,
+      })
       toast.success(`Código generado: ${d.codigo}`)
       await cargar()
     } catch {
@@ -269,14 +277,28 @@ export default function Administracion() {
             <h2 className="flex items-center gap-2 text-lg font-semibold">
               <KeyRound className="size-5 text-primary" /> Códigos de activación
             </h2>
-            <Button size="sm" onClick={generarCodigo} disabled={generating}>
-              {generating ? <Loader2 className="animate-spin" /> : <Plus />}
-              Generar
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" disabled={generating}>
+                  {generating ? <Loader2 className="animate-spin" /> : <Plus />}
+                  Generar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Tipo de código</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => generarCodigo("profesional")}>
+                  <Stethoscope /> Profesional
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => generarCodigo("recepcion")}>
+                  <ClipboardList /> Recepción
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Compartí un código disponible con un profesional para que se una a tu
-            clínica al registrarse. Solo se pueden eliminar los que no se usaron.
+            Compartí un código disponible para que alguien se una a tu clínica al
+            registrarse: como profesional o en recepción. Solo se pueden eliminar
+            los que no se usaron.
           </p>
 
           <ul className="mt-5 divide-y divide-border rounded-lg border border-border">
@@ -286,6 +308,9 @@ export default function Administracion() {
                 className="flex items-center gap-3 px-4 py-2.5 text-sm"
               >
                 <code className="font-mono">{c.codigo}</code>
+                <Badge variant="outline" className="font-normal">
+                  {c.rol === "recepcion" ? "Recepción" : "Profesional"}
+                </Badge>
                 <Badge
                   variant={c.usado ? "secondary" : "default"}
                   className="ml-1"

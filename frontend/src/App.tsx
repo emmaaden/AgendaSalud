@@ -11,6 +11,7 @@ import Login from "@/pages/Login"
 import RegisterRole from "@/pages/RegisterRole"
 import RegisterPaciente from "@/pages/RegisterPaciente"
 import RegisterProfesional from "@/pages/RegisterProfesional"
+import RegisterRecepcion from "@/pages/RegisterRecepcion"
 import ForgotPassword from "@/pages/ForgotPassword"
 import Terminos from "@/pages/Terminos"
 import Privacidad from "@/pages/Privacidad"
@@ -29,6 +30,7 @@ const SeleccionarClinica = lazy(() => import("@/pages/SeleccionarClinica"))
 
 // Dashboard (área privada)
 const DashboardHome = lazy(() => import("@/pages/dashboard/Home"))
+const DashboardTurnos = lazy(() => import("@/pages/dashboard/Turnos"))
 const DashboardConfig = lazy(() => import("@/pages/dashboard/Config"))
 const DashboardRegistroClinico = lazy(
   () => import("@/pages/dashboard/RegistroClinico")
@@ -59,6 +61,7 @@ function App() {
         {/* Dashboard (privado, protegido en el cliente) */}
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<DashboardHome />} />
+          <Route path="/dashboard/turnos" element={<DashboardTurnos />} />
           <Route path="/dashboard/config" element={<DashboardConfig />} />
           <Route
             path="/dashboard/registro-clinico"
@@ -91,6 +94,7 @@ function App() {
           <Route path="/register" element={<RegisterRole />} />
           <Route path="/register/paciente" element={<RegisterPaciente />} />
           <Route path="/register/profesional" element={<RegisterProfesional />} />
+          <Route path="/register/recepcion" element={<RegisterRecepcion />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/terminos" element={<Terminos />} />
           <Route path="/privacidad" element={<Privacidad />} />

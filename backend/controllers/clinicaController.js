@@ -36,10 +36,13 @@ exports.info = async (req, res) => {
 };
 
 // Genera un código de activación nuevo para la clínica del admin.
+// Fase E: el código puede apuntar a un rol ('profesional' por defecto | 'recepcion').
 exports.generarCodigo = async (req, res) => {
     try {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica asignada.' });
+
+        const rol = req.body?.rol === 'recepcion' ? 'recepcion' : 'profesional';
 
         const db = await getUserSupabase(req);
         if (!db) return res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.' });
@@ -49,8 +52,8 @@ exports.generarCodigo = async (req, res) => {
             const codigo = generarCodigoAleatorio();
             const { data, error } = await db
                 .from('codigo_activacion')
-                .insert({ codigo, clinica_id: clinicaId })
-                .select('codigo, usado, creado_en')
+                .insert({ codigo, clinica_id: clinicaId, rol })
+                .select('codigo, usado, rol, creado_en')
                 .single();
             if (!error) { inserted = data; break; }
             if (error.code !== '23505') { // 23505 = unique_violation (colisión de código)
@@ -59,7 +62,7 @@ exports.generarCodigo = async (req, res) => {
         }
         if (!inserted) return res.status(500).json({ error: 'No se pudo generar un código único, reintentá.' });
 
-        return res.status(201).json({ message: 'Código generado', codigo: inserted.codigo });
+        return res.status(201).json({ message: 'Código generado', codigo: inserted.codigo, rol: inserted.rol });
     } catch (err) {
         console.error('Error generando código:', err);
         return res.status(500).json({ error: 'Error al generar el código' });
@@ -77,7 +80,7 @@ exports.listarCodigos = async (req, res) => {
 
         const { data, error } = await db
             .from('codigo_activacion')
-            .select('id, codigo, usado, creado_en')
+            .select('id, codigo, usado, rol, creado_en')
             .eq('clinica_id', clinicaId)
             .order('creado_en', { ascending: false });
         if (error) return res.status(400).json({ error: error.message });

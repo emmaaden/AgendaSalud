@@ -19,6 +19,7 @@ const API_PREFIXES = [
   '/admin',
   '/certificados',
   '/hc',
+  '/staff',
   '/professionals',
   '/available-slots',
   '/create-event',

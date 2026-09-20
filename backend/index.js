@@ -21,12 +21,13 @@ const turnosRoutes = require('./routes/turnosRoutes'); // Fase 3: turnos del pac
 const miCuentaRoutes = require('./routes/miCuentaRoutes'); // Fase 3: autogestión del paciente (/api/mi-cuenta)
 const certificadoRoutes = require('./routes/certificadoRoutes'); // Fase C: certificados médicos
 const hcRoutes = require('./routes/hcRoutes'); // Fase D: export/import de historias clínicas
+const staffRoutes = require('./routes/staffRoutes'); // Fase E: gestión de turnos por el staff (/staff)
 // (requireAuth/requireAdmin ya no se usan en index.js: el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
-const { getCalendar, isCalendarConfigured } = require('./utils/googleCalendar');
 const { getMembresiasActivas } = require('./utils/membresias');
 const { generarTokenGestion } = require('./utils/turnoToken');
 const { sendMail, isMailerConfigured } = require('./utils/mailer');
+const { slotsDisponibles, estaLibre } = require('./utils/disponibilidad');
 const { validate } = require('./middleware/validate');
 const schemas = require('./validators/schemas');
 
@@ -125,6 +126,7 @@ app.use('/clinica', clinicaRoutes); // Fase 2: gestión de clínica (rol profesi
 app.use('/admin', adminRoutes); // Fase B: administración de la clínica (solo admin)
 app.use('/certificados', certificadoRoutes); // Fase C: certificados médicos
 app.use('/hc', hcRoutes); // Fase D: export/import de historias clínicas
+app.use('/staff', staffRoutes); // Fase E: gestión de turnos por el staff (recepción/profesional/admin)
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
@@ -157,9 +159,11 @@ app.get('/api/user', async (req, res) => {
         console.error('Error obteniendo nombre en /api/user:', err.message);
     }
 
-    // Fase A (multi-clínica): clínicas del profesional + estado de selección.
+    // Fase A (multi-clínica): clínicas del staff + estado de selección.
+    // Fase E: la recepción también es staff con membresías (sin fila en profesional).
+    const esStaff = u.role === 'profesional' || u.role === 'recepcion';
     let clinicas = [];
-    if (u.role === 'profesional' && u.personaId) {
+    if (esStaff && u.personaId) {
         try {
             const membresias = await getMembresiasActivas(supabase, u.personaId);
             clinicas = membresias.map((m) => ({ clinicaId: m.clinicaId, nombre: m.nombre, rol: m.rol }));
@@ -168,7 +172,7 @@ app.get('/api/user', async (req, res) => {
         }
     }
     // Necesita elegir clínica si tiene varias y todavía no fijó ninguna.
-    const needsClinicSelection = u.role === 'profesional' && !u.clinicaId && clinicas.length > 1;
+    const needsClinicSelection = esStaff && !u.clinicaId && clinicas.length > 1;
 
     res.json({
         user: u.email,
@@ -192,20 +196,14 @@ app.get('/api/user', async (req, res) => {
 // Los .html legacy de backend/dashboard/ se conservan como referencia.
 
 // ---------------------------------------------------------------------------
-// Google Calendar
-// La autenticación vive en utils/googleCalendar.js (compartida con turnosController).
-// `authenticate()` se mantiene como alias local para no tocar los call-sites de abajo.
+// Turnos (Fase F): la disponibilidad se calcula contra la base (utils/disponibilidad),
+// no contra Google Calendar. La lógica de slots/solapamiento vive en ese módulo.
 // ---------------------------------------------------------------------------
-const authenticate = getCalendar;
 
 // Normaliza un nombre de día (minúsculas, sin acentos) para comparar.
 function normalizarDia(s) {
     return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
-
-// Argentina es UTC-3 (sin horario de verano): se usa el offset fijo -03:00.
-const AR_OFFSET = '-03:00';
-const SLOT_MINUTOS = 30;
 
 // Franjas horarias disponibles de un profesional para una fecha dada.
 // Respeta horario_profesional (por día de la semana) y excluye los eventos ya
@@ -214,57 +212,26 @@ app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), 
     const { date, profId } = req.query;
 
     try {
-        // 1. Profesional -> calendario + horarios.
+        // 1. Horarios de atención del profesional (por día de la semana).
         const { data: prof, error: profError } = await supabase
             .from('profesional')
-            .select('id_calendario, horario_profesional ( dia, horario_inicio, horario_fin )')
+            .select('horario_profesional ( dia, horario_inicio, horario_fin )')
             .eq('id', profId)
             .maybeSingle();
 
         if (profError) throw profError;
         if (!prof) return res.status(404).json({ error: 'Profesional no encontrado' });
-        if (!prof.id_calendario) return res.json([]); // sin calendario configurado
 
-        // 2. Horarios del día de la semana pedido.
+        // 2. Franjas del día de la semana pedido.
         const diaSemana = normalizarDia(
-            new Date(`${date}T12:00:00${AR_OFFSET}`)
+            new Date(`${date}T12:00:00-03:00`)
                 .toLocaleDateString('es-AR', { weekday: 'long', timeZone: 'America/Argentina/Buenos_Aires' })
         );
         const franjas = (prof.horario_profesional || []).filter(h => normalizarDia(h.dia) === diaSemana);
         if (franjas.length === 0) return res.json([]); // no atiende ese día
 
-        // 3. Eventos ya agendados ese día.
-        const calendar = await authenticate();
-        const timeMin = new Date(`${date}T00:00:00${AR_OFFSET}`);
-        const timeMax = new Date(`${date}T23:59:59${AR_OFFSET}`);
-        const response = await calendar.events.list({
-            calendarId: prof.id_calendario,
-            timeMin: timeMin.toISOString(),
-            timeMax: timeMax.toISOString(),
-            showDeleted: false,
-            singleEvents: true,
-            orderBy: 'startTime',
-        });
-        const events = response.data.items || [];
-
-        // 4. Generar slots de 30' dentro de cada franja, excluyendo ocupados y pasados.
-        const ahora = new Date();
-        const slots = [];
-        for (const franja of franjas) {
-            let actual = new Date(`${date}T${franja.horario_inicio}${AR_OFFSET}`);
-            const fin = new Date(`${date}T${franja.horario_fin}${AR_OFFSET}`);
-            while (actual < fin) {
-                const slotFin = new Date(actual.getTime() + SLOT_MINUTOS * 60000);
-                const ocupado = events.some(ev => {
-                    const es = new Date(ev.start.dateTime || ev.start.date);
-                    const ee = new Date(ev.end.dateTime || ev.end.date);
-                    return es < slotFin && ee > actual;
-                });
-                if (!ocupado && actual > ahora) slots.push(actual.toISOString());
-                actual = slotFin;
-            }
-        }
-
+        // 3. Slots libres = franjas − turnos reservados − bloqueos (Fase F, contra la base).
+        const slots = await slotsDisponibles(profId, date, franjas);
         res.json(slots);
     } catch (error) {
         console.error('Error obteniendo slots disponibles:', error.message);
@@ -272,21 +239,19 @@ app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), 
     }
 });
 
-// Crear un turno (evento) en el calendario del profesional elegido.
-// El calendario se DERIVA del profesional en el server (no se confía en un calendarId
-// del cliente, que permitiría inyectar eventos en cualquier calendario). Si la reserva
-// viene de la página de una clínica (?clinica=<slug>), el profesional debe pertenecer a
-// ella (aislamiento por tenant, Fase 2).
+// Crear un turno (reserva pública desde la página de turnos).
+// El profesional se toma del body y se valida contra la base; la clínica del turno se
+// DERIVA del profesional. La disponibilidad se chequea contra la base (Fase F): si el
+// horario ya está reservado o bloqueado, se rechaza. Si la reserva viene de la página
+// de una clínica (?clinica=<slug>), el profesional debe pertenecer a ella (Fase 2).
 app.post('/create-event', validate(schemas.calendar.createEvent), async (req, res) => {
-    const { summary, description, start, end, email, number, profId, clinica, name } = req.body;
+    const { summary, start, end, email, number, profId, clinica, name } = req.body;
 
     try {
-        // 1. Profesional -> calendario + clínica + snapshot (nombre/especialidad) desde
-        //    la base, no desde el body.
+        // 1. Profesional -> clínica + snapshot (nombre/especialidad) desde la base.
         const { data: prof, error: profError } = await supabase
             .from('profesional')
             .select(`
-                id_calendario,
                 persona:id_persona ( clinica_id, nombre, apellido ),
                 especialidad_profesional ( especialidad:id_especialidad ( nombre ) )
             `)
@@ -294,9 +259,6 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
             .maybeSingle();
         if (profError) throw profError;
         if (!prof) return res.status(404).json({ error: 'Profesional no encontrado' });
-        if (!prof.id_calendario) {
-            return res.status(400).json({ error: 'El profesional no tiene un calendario configurado.' });
-        }
 
         // clinica_id del turno: se deriva SIEMPRE del profesional (para que aparezca
         // en el panel de su clínica). El slug, si viene, solo valida pertenencia.
@@ -317,23 +279,14 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
             }
         }
 
-        const calendarId = prof.id_calendario;
+        // 3. Verificar que el horario siga libre (turnos reservados + bloqueos).
+        if (!(await estaLibre(profId, start.dateTime, end.dateTime))) {
+            return res.status(409).json({ error: 'Ese horario ya no está disponible. Elegí otro.' });
+        }
 
-        const calendar = await authenticate();
-        const event = {
-            summary,
-            description,
-            start: { dateTime: start.dateTime, timeZone: 'America/Argentina/Buenos_Aires' },
-            end: { dateTime: end.dateTime, timeZone: 'America/Argentina/Buenos_Aires' }
-        };
-
-        const response = await calendar.events.insert({ calendarId, resource: event });
-
-        // 3. Registrar el turno en la base (fuente de verdad del vínculo con la persona).
+        // 4. Registrar el turno (fuente de verdad del vínculo con la persona).
         //    - Paciente logueado -> se ata a su paciente.id (id_paciente).
         //    - Invitado          -> id_paciente NULL + manage_token para gestionarlo.
-        //    Best-effort: si falla (p. ej. la migración fase3 aún no se corrió), la
-        //    reserva del calendario NO se pierde; solo se loguea el problema.
         const esPaciente = req.session?.isAuthenticated && req.session.user?.role === 'paciente';
         const idPaciente = esPaciente ? (req.session.user.idRole || null) : null;
 
@@ -345,8 +298,6 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
             id_profesional: profId,
             id_paciente: idPaciente,
             clinica_id: clinicaProf,
-            google_event_id: response.data.id || null,
-            google_calendar_id: calendarId,
             profesional_nombre: profNombre,
             especialidad,
             paciente_nombre: name || null,
@@ -361,13 +312,10 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
             turnoRow.manage_token_hash = hash;
         }
 
-        try {
-            await supabase.from('turno').insert(turnoRow);
-        } catch (dbErr) {
-            console.error('Error registrando el turno en la base (la reserva del calendario sí se creó):', dbErr.message);
-        }
+        const { error: insError } = await supabase.from('turno').insert(turnoRow);
+        if (insError) throw insError;
 
-        // 4. Email de confirmación (best-effort: no bloquea la reserva).
+        // 5. Email de confirmación (best-effort: no bloquea la reserva).
         const fechaLocal = new Date(start.dateTime).toLocaleString('es-AR', {
             timeZone: 'America/Argentina/Buenos_Aires',
             dateStyle: 'full',
@@ -388,10 +336,10 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
             html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${summary || ''}</p>${gestionHtml}<p>Gracias por usar Agenda Salud.</p>`,
         }).catch(err => console.error('Error enviando email de confirmación:', err.message));
 
-        res.json({ success: true, event: response.data });
+        res.json({ success: true });
     } catch (error) {
-        console.error('Error creando evento:', error.message);
-        res.status(500).json({ error: 'Error al crear evento', details: error.message });
+        console.error('Error creando turno:', error.message);
+        res.status(500).json({ error: 'Error al crear el turno', details: error.message });
     }
 });
 
@@ -402,18 +350,12 @@ app.post('/create-event', validate(schemas.calendar.createEvent), async (req, re
 
 // ---------------------------------------------------------------------------
 // Recordatorios de turnos (~24 h antes)
-// Recorre los calendarios de los profesionales, busca los turnos que empiezan en
-// ~24 h y envía un email de recordatorio al paciente (email tomado de la
-// descripción del evento). Marca el evento (extendedProperties) para no repetir.
+// Recorre la tabla `turno` (Fase F: ya no Google Calendar): busca los turnos
+// reservados que empiezan en ~24 h y todavía no fueron avisados, y envía un email
+// de recordatorio al paciente. Marca `recordatorio_enviado` para no repetir.
 // ---------------------------------------------------------------------------
 const REMINDER_MIN_H = 23; // ventana: entre 23 y 25 h a futuro
 const REMINDER_MAX_H = 25;
-
-function extraerEmail(desc) {
-    if (!desc) return null;
-    const m = String(desc).match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
-    return m ? m[0] : null;
-}
 
 async function sendUpcomingReminders() {
     if (!isMailerConfigured()) {
@@ -421,71 +363,42 @@ async function sendUpcomingReminders() {
         return { sent: 0, reason: 'mailer-no-configurado' };
     }
 
-    const { data: profs, error } = await supabase
-        .from('profesional')
-        .select('id_calendario')
-        .not('id_calendario', 'is', null);
+    const now = new Date();
+    const desde = new Date(now.getTime() + REMINDER_MIN_H * 3600 * 1000);
+    const hasta = new Date(now.getTime() + REMINDER_MAX_H * 3600 * 1000);
+
+    const { data: turnos, error } = await supabase
+        .from('turno')
+        .select('id, inicio, paciente_email, paciente_nombre, profesional_nombre, especialidad')
+        .eq('estado', 'reservado')
+        .eq('recordatorio_enviado', false)
+        .gte('inicio', desde.toISOString())
+        .lte('inicio', hasta.toISOString());
     if (error) throw error;
 
-    const calendar = await authenticate();
-    const now = new Date();
-    const timeMin = new Date(now.getTime() + REMINDER_MIN_H * 3600 * 1000);
-    const timeMax = new Date(now.getTime() + REMINDER_MAX_H * 3600 * 1000);
-
     let sent = 0;
-    for (const p of profs || []) {
-        if (!p.id_calendario) continue;
-        let items = [];
+    for (const t of turnos || []) {
+        if (!t.paciente_email) continue;
+
+        const fechaLocal = new Date(t.inicio).toLocaleString('es-AR', {
+            timeZone: 'America/Argentina/Buenos_Aires',
+            dateStyle: 'full',
+            timeStyle: 'short',
+        });
+        const con = t.profesional_nombre ? ` con ${t.profesional_nombre}` : '';
+        const esp = t.especialidad ? ` (${t.especialidad})` : '';
+
         try {
-            const resp = await calendar.events.list({
-                calendarId: p.id_calendario,
-                timeMin: timeMin.toISOString(),
-                timeMax: timeMax.toISOString(),
-                singleEvents: true,
-                orderBy: 'startTime',
-                showDeleted: false,
+            await sendMail({
+                to: t.paciente_email,
+                subject: 'Recordatorio de tu turno - Agenda Salud',
+                text: `Hola,\n\nTe recordamos tu turno${con}${esp} para el ${fechaLocal} hs.\n\nAgenda Salud.`,
+                html: `<p>Hola,</p><p>Te recordamos tu turno${con}${esp} para el <strong>${fechaLocal} hs</strong>.</p><p>Agenda Salud.</p>`,
             });
-            items = resp.data.items || [];
+            await supabase.from('turno').update({ recordatorio_enviado: true }).eq('id', t.id);
+            sent++;
         } catch (e) {
-            console.error('Recordatorios: error listando calendario', p.id_calendario, e.message);
-            continue;
-        }
-
-        for (const ev of items) {
-            if (!ev.start || !ev.start.dateTime) continue;
-            const yaAvisado = ev.extendedProperties && ev.extendedProperties.private
-                && ev.extendedProperties.private.reminded === 'true';
-            if (yaAvisado) continue;
-
-            const email = extraerEmail(ev.description);
-            if (!email) continue;
-
-            const fechaLocal = new Date(ev.start.dateTime).toLocaleString('es-AR', {
-                timeZone: 'America/Argentina/Buenos_Aires',
-                dateStyle: 'full',
-                timeStyle: 'short',
-            });
-
-            try {
-                await sendMail({
-                    to: email,
-                    subject: 'Recordatorio de tu turno - Agenda Salud',
-                    text: `Hola,\n\nTe recordamos tu turno para el ${fechaLocal} hs.\n${ev.summary || ''}\n\nAgenda Salud.`,
-                    html: `<p>Hola,</p><p>Te recordamos tu turno para el <strong>${fechaLocal} hs</strong>.</p><p>${ev.summary || ''}</p><p>Agenda Salud.</p>`,
-                });
-                await calendar.events.patch({
-                    calendarId: p.id_calendario,
-                    eventId: ev.id,
-                    resource: {
-                        extendedProperties: {
-                            private: { ...((ev.extendedProperties && ev.extendedProperties.private) || {}), reminded: 'true' },
-                        },
-                    },
-                });
-                sent++;
-            } catch (e) {
-                console.error('Recordatorios: fallo enviando a', email, e.message);
-            }
+            console.error('Recordatorios: fallo enviando a', t.paciente_email, e.message);
         }
     }
 
@@ -528,6 +441,7 @@ if (isProd) {
     const API_PREFIXES = [
         '/auth', '/hour', '/pacient', '/especialidades', '/profesional',
         '/avatars', '/ortodoncia', '/clinica', '/clinica-publica',
+        '/admin', '/certificados', '/hc', '/staff',
         '/professionals', '/available-slots', '/create-event',
         '/api', '/internal',
     ];
@@ -545,14 +459,6 @@ if (isProd) {
 // ---------------------------------------------------------------------------
 // Arranque
 // ---------------------------------------------------------------------------
-if (isCalendarConfigured()) {
-    authenticate()
-        .then(() => console.log('Conectado a Google Calendar'))
-        .catch(error => console.error('Error al conectar a Google Calendar:', error.message));
-} else {
-    console.warn('⚠️  Credenciales de Google no configuradas: los turnos por calendario no funcionarán.');
-}
-
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

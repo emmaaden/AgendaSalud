@@ -7,7 +7,7 @@ const { validate } = require('../middleware/validate');
 const schemas = require('../validators/schemas');
 
 // Rate-limit estricto SOLO para las operaciones sensibles de credenciales.
-// (get-area / get-calenID / save-area quedan bajo el limiter general de index.js.)
+// (get-area / save-area quedan bajo el limiter general de index.js.)
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 
 router.post('/register', authLimiter, validate(schemas.auth.register), authController.register);
@@ -26,8 +26,5 @@ router.post('/get-area', requireAuth, authController.getArea);
 
 // Asignar especialidad al profesional autenticado.
 router.post('/save-area', requireRole('profesional'), validate(schemas.auth.saveArea), authController.saveArea);
-
-// id_calendario por id de profesional (público: página de turnos).
-router.post('/get-calenID', validate(schemas.auth.getCalenID), authController.getCalenID);
 
 module.exports = router;

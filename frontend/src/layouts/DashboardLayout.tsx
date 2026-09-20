@@ -14,6 +14,7 @@ function ScrollToTop() {
 
 function Guarded() {
   const { user, loading } = useAuth()
+  const { pathname } = useLocation()
 
   if (loading) {
     return (
@@ -28,15 +29,21 @@ function Guarded() {
     return <Navigate to="/login" replace />
   }
 
-  // El panel es exclusivo de profesionales. Un paciente logueado va a su área.
-  // (El backend además exige rol profesional en cada endpoint del dashboard.)
-  if (user.role !== "profesional") {
+  // El panel es del staff (profesional/admin y recepción). Un paciente va a su área.
+  // (El backend además exige el rol correspondiente en cada endpoint.)
+  if (user.role !== "profesional" && user.role !== "recepcion") {
     return <Navigate to="/mis-turnos" replace />
   }
 
   // Fase A: con varias clínicas y ninguna activa todavía → elegir primero.
   if (user.needsClinicSelection) {
     return <Navigate to="/seleccionar-clinica" replace />
+  }
+
+  // Fase E: la recepción SOLO gestiona turnos. Cualquier otra ruta del dashboard
+  // la mandamos a su panel (además el backend bloquea los endpoints de profesional).
+  if (user.rol === "recepcion" && !pathname.startsWith("/dashboard/turnos")) {
+    return <Navigate to="/dashboard/turnos" replace />
   }
 
   return (

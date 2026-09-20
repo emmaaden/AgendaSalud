@@ -11,30 +11,13 @@
 
 const { supabase } = require('../config/supabaseClient');
 const { getUserSupabase } = require('../middleware/userSupabase');
-const { getCalendar, isCalendarConfigured } = require('../utils/googleCalendar');
 const { hashToken } = require('../utils/turnoToken');
 
 const ERR_SESION = { status: 401, body: { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' } };
 
-// Campos seguros que se devuelven al cliente (nunca el token ni ids internos de google).
+// Campos seguros que se devuelven al cliente (nunca el token ni ids internos).
 const SELECT_PACIENTE =
     'id, inicio, fin, estado, profesional_nombre, especialidad, paciente_nombre';
-
-// Borra el evento de Google Calendar (best-effort: si falla, se loguea y se sigue,
-// para no dejar el turno "a medio cancelar" desde el punto de vista del usuario).
-async function borrarEventoCalendar(turno) {
-    if (!isCalendarConfigured()) return;
-    if (!turno.google_event_id || !turno.google_calendar_id) return;
-    try {
-        const calendar = await getCalendar();
-        await calendar.events.delete({
-            calendarId: turno.google_calendar_id,
-            eventId: turno.google_event_id,
-        });
-    } catch (err) {
-        console.error('Error borrando evento de calendario al cancelar turno:', err.message);
-    }
-}
 
 // ---------------------------------------------------------------------------
 // GET /api/turnos/mios  (paciente logueado)
@@ -100,7 +83,7 @@ exports.cancelarPropio = async (req, res) => {
         // La RLS filtra a los turnos del paciente: si no es suyo, no aparece.
         const { data: turno, error } = await db
             .from('turno')
-            .select('id, estado, google_event_id, google_calendar_id')
+            .select('id, estado')
             .eq('id', id)
             .maybeSingle();
         if (error) throw error;
@@ -108,8 +91,6 @@ exports.cancelarPropio = async (req, res) => {
         if (turno.estado === 'cancelado') {
             return res.json({ message: 'El turno ya estaba cancelado.' });
         }
-
-        await borrarEventoCalendar(turno);
 
         const { error: updError } = await db
             .from('turno')
@@ -159,7 +140,7 @@ exports.cancelarPorToken = async (req, res) => {
 
         const { data: turno, error } = await supabase
             .from('turno')
-            .select('id, estado, google_event_id, google_calendar_id')
+            .select('id, estado')
             .eq('manage_token_hash', hashToken(token))
             .maybeSingle();
         if (error) throw error;
@@ -167,8 +148,6 @@ exports.cancelarPorToken = async (req, res) => {
         if (turno.estado === 'cancelado') {
             return res.json({ message: 'El turno ya estaba cancelado.' });
         }
-
-        await borrarEventoCalendar(turno);
 
         const { error: updError } = await supabase
             .from('turno')

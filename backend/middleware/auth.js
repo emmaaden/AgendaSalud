@@ -40,6 +40,23 @@ function requireAdmin(req, res, next) {
     return res.status(403).json({ error: 'Requiere permisos de administrador' });
 }
 
+// Fase E: staff de una clínica (profesional | recepcion | admin) con una clínica
+// activa fijada en la sesión. Habilita el panel de gestión de turnos. El scoping por
+// clínica lo hace cada controller usando req.session.user.clinicaId (service_role).
+function requireStaffClinica(req, res, next) {
+    const u = req.session && req.session.isAuthenticated && req.session.user;
+    if (!u) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+    if (u.role !== 'profesional' && u.role !== 'recepcion') {
+        return res.status(403).json({ error: 'No autorizado para esta acción' });
+    }
+    if (!u.clinicaId) {
+        return res.status(400).json({ error: 'No tenés una clínica activa seleccionada.' });
+    }
+    return next();
+}
+
 // Verifica que el profesional autenticado sea admin de su clínica (Fase 2).
 function requireClinicaAdmin(req, res, next) {
     if (
@@ -54,4 +71,4 @@ function requireClinicaAdmin(req, res, next) {
     return res.status(403).json({ error: 'Requiere ser administrador de la clínica' });
 }
 
-module.exports = { requireAuth, requireRole, requireAdmin, requireClinicaAdmin };
+module.exports = { requireAuth, requireRole, requireAdmin, requireClinicaAdmin, requireStaffClinica };

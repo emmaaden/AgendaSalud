@@ -10,7 +10,6 @@ import {
   MapPin,
   DollarSign,
   FileText,
-  CalendarCog,
   Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -34,7 +33,6 @@ import { useAuth } from "@/contexts/AuthContext"
 type Datos = {
   nombre?: string
   apellido?: string
-  id_calendario?: string
   direccion?: string
   descripcion?: string
   precio?: string | number
@@ -86,7 +84,7 @@ export default function Config() {
     <Container className="py-8 sm:py-12">
       <h1 className="text-2xl font-semibold sm:text-3xl">Configuración</h1>
       <p className="mt-1 text-muted-foreground">
-        Administrá tu perfil, tu calendario y tus horarios de atención.
+        Administrá tu perfil y tus horarios de atención.
       </p>
 
       {/* Cabecera de perfil */}
@@ -110,7 +108,6 @@ export default function Config() {
       <Tabs defaultValue="perfil" className="mt-6">
         <TabsList>
           <TabsTrigger value="perfil">Perfil</TabsTrigger>
-          <TabsTrigger value="calendario">Calendario</TabsTrigger>
           <TabsTrigger value="horarios">Horarios</TabsTrigger>
         </TabsList>
 
@@ -119,14 +116,6 @@ export default function Config() {
             datos={datos}
             idRole={user?.idRole ?? 0}
             onSaved={(patch) => setDatos((d) => ({ ...d, ...patch }))}
-          />
-        </TabsContent>
-
-        <TabsContent value="calendario">
-          <CalendarioEditor
-            idCalendario={datos.id_calendario || ""}
-            idRole={user?.idRole ?? 0}
-            onSaved={(v) => setDatos((d) => ({ ...d, id_calendario: v }))}
           />
         </TabsContent>
 
@@ -384,85 +373,6 @@ function SaveRow({
         </Field>
       </CardContent>
     </Card>
-  )
-}
-
-/* --------------------------- Calendario --------------------------- */
-function CalendarioEditor({
-  idCalendario,
-  idRole,
-  onSaved,
-}: {
-  idCalendario: string
-  idRole: number
-  onSaved: (v: string) => void
-}) {
-  const [value, setValue] = useState(idCalendario)
-  const [saving, setSaving] = useState(false)
-  useEffect(() => setValue(idCalendario), [idCalendario])
-
-  async function guardar() {
-    setSaving(true)
-    try {
-      await api.post("/profesional/save-calenID", {
-        user_id: idRole,
-        calendarid: value,
-      })
-      toast.success("Calendario actualizado")
-      onSaved(value)
-    } catch {
-      toast.error("No se pudo guardar el calendario.")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const embedId = idCalendario ? idCalendario.split("@")[0] : ""
-
-  return (
-    <div className="mt-4 space-y-4">
-      <Card>
-        <CardContent className="p-5">
-          <Field
-            label="ID de calendario de Google"
-            htmlFor="calendarid"
-            hint="Es el identificador del calendario del profesional (sin @group.calendar.google.com)."
-          >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <span className="mt-0 hidden text-muted-foreground sm:block">
-                <CalendarCog className="size-5" />
-              </span>
-              <Input
-                id="calendarid"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                className="h-10 flex-1"
-              />
-              <Button onClick={guardar} disabled={saving} size="lg">
-                {saving ? <Loader2 className="animate-spin" /> : <Save />}
-                Guardar
-              </Button>
-            </div>
-          </Field>
-        </CardContent>
-      </Card>
-
-      {embedId ? (
-        <Card>
-          <CardContent className="p-0">
-            <iframe
-              title="Calendario"
-              src={`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(embedId)}%40group.calendar.google.com&ctz=America%2FArgentina%2FMendoza`}
-              className="h-[600px] w-full rounded-xl border-0"
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Configurá el ID de calendario para ver tu agenda embebida.
-        </p>
-      )}
-    </div>
   )
 }
 

@@ -24,7 +24,7 @@ module.exports = {
             password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
             dni,
             nombre,
-            role: z.enum(['PACIENTE', 'PROFESIONAL'], 'Rol inválido'),
+            role: z.enum(['PACIENTE', 'PROFESIONAL', 'RECEPCION'], 'Rol inválido'),
             // Fase 2: onboarding del profesional (una de las dos).
             nombreClinica: z.string().trim().max(120).optional(),
             activationCode: z.string().trim().max(40).optional(),
@@ -33,6 +33,10 @@ module.exports = {
                 || (d.nombreClinica && d.nombreClinica.length > 0)
                 || (d.activationCode && d.activationCode.length > 0),
             { message: 'Indicá el nombre de la clínica nueva o un código de activación', path: ['nombreClinica'] }
+        ).refine(
+            // Fase E: la recepción SOLO se une por código (no crea clínicas).
+            d => d.role !== 'RECEPCION' || (d.activationCode && d.activationCode.length > 0),
+            { message: 'La recepción se une con un código de activación', path: ['activationCode'] }
         ),
         login: z.object({
             email: z.email('Email inválido'),
@@ -45,9 +49,6 @@ module.exports = {
         saveArea: z.object({
             especialidad: idFlexible,
         }),
-        getCalenID: z.object({
-            id: idFlexible,
-        }),
         selectClinica: z.object({
             clinicaId: z.uuid('Clínica inválida'),
         }),
@@ -57,6 +58,36 @@ module.exports = {
         actualizarMiembro: z.object({
             activo: z.boolean().optional(),
             rol: z.enum(['admin', 'profesional', 'recepcion']).optional(),
+        }),
+    },
+
+    clinica: {
+        // Fase E: el código puede apuntar a un rol (profesional | recepcion).
+        generarCodigo: z.object({
+            rol: z.enum(['profesional', 'recepcion']).optional(),
+        }),
+    },
+
+    // Fase E: gestión de turnos por el staff (recepción/profesional/admin).
+    staff: {
+        crearTurno: z.object({
+            profId: idFlexible,
+            start: z.object({ dateTime: z.string().min(1, 'Fecha/hora de inicio requerida') }),
+            end: z.object({ dateTime: z.string().min(1, 'Fecha/hora de fin requerida') }),
+            nombre: z.string().trim().min(1, 'Nombre del paciente requerido').max(120),
+            email: z.email('Email inválido'),
+            telefono: z.union([z.string().max(30), z.number()]).optional(),
+            dni: z.string().trim().max(20).optional(),
+        }),
+        reprogramar: z.object({
+            start: z.object({ dateTime: z.string().min(1, 'Fecha/hora de inicio requerida') }),
+            end: z.object({ dateTime: z.string().min(1, 'Fecha/hora de fin requerida') }),
+        }),
+        crearBloqueo: z.object({
+            profId: idFlexible,
+            inicio: z.string().min(1, 'Inicio requerido'),
+            fin: z.string().min(1, 'Fin requerido'),
+            motivo: z.string().max(200).optional(),
         }),
     },
 
@@ -118,7 +149,6 @@ module.exports = {
         saveDesc: z.object({ descripcion: z.string().max(2000, 'Descripción demasiado larga') }),
         savePrecio: z.object({ precio: z.union([z.string().max(50), z.number()]) }),
         saveDirec: z.object({ direccion: z.string().max(200, 'Dirección demasiado larga') }),
-        saveCalenID: z.object({ calendarid: z.string().min(1, 'Calendar ID requerido').max(200) }),
     },
 
     horario: {

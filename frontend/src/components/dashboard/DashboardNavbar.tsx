@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   FileCheck2,
   FolderDown,
+  CalendarClock,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -36,8 +37,17 @@ import { Logo } from "@/components/site/Logo"
 import { HELP_URL } from "@/lib/site"
 import { useAuth } from "@/contexts/AuthContext"
 
+// Enlace de gestión de turnos (Fase E): lo ve todo el staff.
+const TURNOS_LINK = {
+  to: "/dashboard/turnos",
+  label: "Turnos",
+  icon: CalendarClock,
+  end: false,
+}
+
 const LINKS = [
   { to: "/dashboard", label: "Inicio", icon: LayoutDashboard, end: true },
+  TURNOS_LINK,
   { to: "/dashboard/config", label: "Configuración", icon: Settings, end: false },
   {
     to: "/dashboard/registro-clinico",
@@ -72,7 +82,13 @@ export function DashboardNavbar() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
-  const links = user?.esAdmin ? [...LINKS, ADMIN_LINK] : LINKS
+  // Fase E: la recepción SOLO ve el panel de turnos.
+  const links =
+    user?.rol === "recepcion"
+      ? [TURNOS_LINK]
+      : user?.esAdmin
+        ? [...LINKS, ADMIN_LINK]
+        : LINKS
 
   async function handleLogout() {
     await logout()

@@ -32,22 +32,46 @@ exports.register = async (req, res) => {
         const tieneCodigo = activationCode && String(activationCode).trim();
         const tieneNombreClinica = nombreClinica && String(nombreClinica).trim();
 
+        // Resuelve un código de activación validando que apunte al rol esperado.
+        // Fase E: el código lleva `rol` ('profesional' | 'recepcion'). Un código de
+        // recepción no puede usarse para crear un profesional, y viceversa.
+        async function resolverCodigo(rolEsperado) {
+            const { data: cod, error: codErr } = await supabase
+                .from("codigo_activacion")
+                .select("id, clinica_id, usado, rol")
+                .eq("codigo", String(activationCode).trim())
+                .maybeSingle();
+            if (codErr) throw codErr;
+            if (!cod || cod.usado) {
+                return { error: "Código de activación inválido o ya utilizado." };
+            }
+            // Compat: los códigos previos a la Fase E no tienen rol -> 'profesional'.
+            if ((cod.rol || 'profesional') !== rolEsperado) {
+                return { error: "El código no corresponde a este tipo de cuenta." };
+            }
+            return { cod };
+        }
+
         if (role === "PROFESIONAL") {
             if (tieneCodigo) {
-                const { data: cod, error: codErr } = await supabase
-                    .from("codigo_activacion")
-                    .select("id, clinica_id, usado")
-                    .eq("codigo", String(activationCode).trim())
-                    .maybeSingle();
-                if (codErr) throw codErr;
-                if (!cod || cod.usado) {
-                    return res.status(400).json({ error: "Código de activación inválido o ya utilizado." });
-                }
-                clinicaId = cod.clinica_id;
-                codigoRow = cod;
+                const r = await resolverCodigo('profesional');
+                if (r.error) return res.status(400).json({ error: r.error });
+                clinicaId = r.cod.clinica_id;
+                codigoRow = r.cod;
             } else if (!tieneNombreClinica) {
                 return res.status(400).json({ error: "Debés crear una clínica nueva o ingresar un código de activación." });
             }
+        }
+
+        if (role === "RECEPCION") {
+            // La recepción SOLO se une por código (no crea clínicas).
+            if (!tieneCodigo) {
+                return res.status(400).json({ error: "La recepción se une con un código de activación." });
+            }
+            const r = await resolverCodigo('recepcion');
+            if (r.error) return res.status(400).json({ error: r.error });
+            clinicaId = r.cod.clinica_id;
+            codigoRow = r.cod;
         }
 
         // Creamos usuario en Supabase Auth (cliente anon: si el signUp devolviera sesión
@@ -159,6 +183,28 @@ exports.register = async (req, res) => {
             }
         }
 
+        if (role === "RECEPCION") {
+            // Fase E: la recepción NO tiene fila en `profesional` (no es un profesional:
+            // sin matrícula ni especialidad). Su pertenencia y permisos viven en la
+            // membresía. La clínica activa se resuelve luego a partir de ella.
+            const { error: err_mem } = await supabase
+                .from("membresia")
+                .insert([{
+                    id_persona,
+                    clinica_id: clinicaId,
+                    rol: 'recepcion',
+                    activo: true,
+                }]);
+            if (err_mem) throw err_mem;
+
+            if (codigoRow) {
+                await supabase
+                    .from("codigo_activacion")
+                    .update({ usado: true, usado_por: userId })
+                    .eq("id", codigoRow.id);
+            }
+        }
+
         res.json({ message: "Registro exitoso", user: { id: userId, email: user.email, role } });
 
     } catch (err) {
@@ -210,11 +256,8 @@ exports.login = async (req, res) => {
             role = "paciente";
             idRole = pacRow.id;
         }
-
-        // 3. Si no está asociado a ningún rol.
-        if (!role) {
-            return res.status(403).json({ error: "El usuario no tiene rol asignado" });
-        }
+        // 3. Sin fila en profesional/paciente puede ser RECEPCIÓN (Fase E): se confirma
+        //    más abajo con las membresías activas. No cortamos acá.
 
         // 4. Guardar los tokens de Supabase (Fase 2c: operar por-JWT bajo RLS).
         if (data.session) {
@@ -246,13 +289,18 @@ exports.login = async (req, res) => {
         }
 
         if (membresias.length === 0) {
-            // Sin membresía activa: dado de baja en todas sus clínicas, o cuenta legacy
-            // sin backfill. No puede operar.
+            // Sin membresía activa: dado de baja en todas sus clínicas, cuenta legacy
+            // sin backfill, o un usuario sin ningún rol. No puede operar.
             req.session.destroy(() => {});
             return res.status(403).json({
-                error: "No tenés una clínica activa asignada. Contactá al administrador.",
+                error: role
+                    ? "No tenés una clínica activa asignada. Contactá al administrador."
+                    : "El usuario no tiene rol asignado",
             });
         }
+
+        // Fase E: sin fila en `profesional` pero con membresía activa => RECEPCIÓN.
+        if (!role) role = "recepcion";
 
         if (membresias.length === 1) {
             const m = membresias[0];
@@ -390,28 +438,6 @@ exports.forgotPassword = async (req, res) => {
     } catch (err) {
         console.error('Error en forgot-password:', err);
         return res.json(respuestaGenerica);
-    }
-};
-
-// id_calendario de un profesional a partir de su id (público: lo usa la página de turnos).
-exports.getCalenID = async (req, res) => {
-    try {
-        const { id } = req.body;
-        if (!id) return res.status(400).json({ error: 'id de profesional no proporcionado' });
-
-        const { data, error } = await supabase
-            .from('profesional')
-            .select('id_calendario')
-            .eq('id', id)
-            .maybeSingle();
-
-        if (error) return res.status(400).json({ error: error.message });
-        if (!data) return res.status(404).json({ error: 'Profesional no encontrado' });
-
-        return res.json({ calendarid: data.id_calendario });
-    } catch (err) {
-        console.error('Error en get-calenID:', err);
-        return res.status(500).json({ error: 'Error al obtener el calendario' });
     }
 };
 

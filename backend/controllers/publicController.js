@@ -50,7 +50,7 @@ exports.clinicaPublica = async (req, res) => {
 // GET /professionals[?clinica=<slug>]
 // Lista, agrupado por área/especialidad, los profesionales disponibles.
 // Con ?clinica=<slug> filtra a los profesionales de esa clínica (aislamiento por tenant).
-// Respuesta: [ { area, professionals: [ { id, nombre, id_calendario } ] } ]
+// Respuesta: [ { area, professionals: [ { id, nombre } ] } ]
 exports.listProfessionals = async (req, res) => {
     try {
         // Filtro por clínica (si viene el slug).
@@ -66,7 +66,7 @@ exports.listProfessionals = async (req, res) => {
             .from('especialidad_profesional')
             .select(`
                 especialidad:id_especialidad ( nombre ),
-                profesional:id_profesional ( id, id_calendario, persona ( nombre, apellido ) )
+                profesional:id_profesional ( id, persona ( nombre, apellido ) )
             `);
         if (error) throw error;
 
@@ -82,7 +82,7 @@ exports.listProfessionals = async (req, res) => {
                 .join(' ');
 
             if (!porArea.has(area)) porArea.set(area, []);
-            porArea.get(area).push({ id: p.id, nombre, id_calendario: p.id_calendario || null });
+            porArea.get(area).push({ id: p.id, nombre });
         }
 
         const result = [...porArea.entries()].map(([area, professionals]) => ({ area, professionals }));

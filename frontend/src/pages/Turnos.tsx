@@ -70,8 +70,6 @@ export default function Turnos() {
 
   const [area, setArea] = useState("")
   const [profId, setProfId] = useState("")
-  const [calendarId, setCalendarId] = useState("")
-  const [loadingCal, setLoadingCal] = useState(false)
 
   useEffect(() => {
     const url = clinica
@@ -104,31 +102,10 @@ export default function Turnos() {
     }))
   }, [areas, area])
 
-  async function selectProfessional(id: string) {
-    setProfId(id)
-    setCalendarId("")
-    if (!id) return
-    setLoadingCal(true)
-    try {
-      const d = await api.post<{ calendarid?: string }>("/auth/get-calenID", {
-        id,
-      })
-      setCalendarId(d.calendarid || "")
-      if (!d.calendarid) {
-        toast.warning("Este profesional no tiene un calendario configurado.")
-      }
-    } catch {
-      toast.error("No se pudo obtener el calendario del profesional.")
-    } finally {
-      setLoadingCal(false)
-    }
-  }
-
   function reset() {
     setView("menu")
     setArea("")
     setProfId("")
-    setCalendarId("")
   }
 
   const profName =
@@ -218,7 +195,6 @@ export default function Turnos() {
                         onValueChange={(v) => {
                           setArea(v)
                           setProfId("")
-                          setCalendarId("")
                         }}
                         options={areaOptions}
                         placeholder={
@@ -230,7 +206,7 @@ export default function Turnos() {
                       <SelectField
                         id="prof"
                         value={profId}
-                        onValueChange={selectProfessional}
+                        onValueChange={setProfId}
                         options={profOptions}
                         disabled={!area}
                         placeholder={
@@ -239,16 +215,10 @@ export default function Turnos() {
                       />
                     </Field>
                   </div>
-                  {loadingCal && (
-                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin" /> Cargando
-                      disponibilidad…
-                    </p>
-                  )}
                 </CardContent>
               </Card>
 
-              {profId && calendarId && !loadingCal && view === "reservar" && (
+              {profId && view === "reservar" && (
                 <ReservarForm
                   profId={profId}
                   profName={profName}

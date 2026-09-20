@@ -23,7 +23,6 @@ exports.getDatosProf = async (req, res) => {
                     direccion,
                     telefono,
                     matricula,
-                    id_calendario,
                     descripcion,
                     precio
                 )
@@ -46,7 +45,6 @@ exports.getDatosProf = async (req, res) => {
             descripcion: data.profesional[0].descripcion,
             precio: data.profesional[0].precio,
             direccion: data.profesional[0].direccion,
-            id_calendario: data.profesional[0].id_calendario,
         });
     } catch (err) {
         console.error("Error interno del servidor:", err);
@@ -171,30 +169,3 @@ exports.saveDirec = async (req, res) => {
     }
 };
 
-// CalendarID
-exports.saveCalenID = async (req, res) => {
-    try {
-        const { calendarid } = req.body;
-        const user_id = req.session.user.idRole; // profesional.id
-
-        const db = await getUserSupabase(req);
-        if (!db) return res.status(401).json(ERR_SESION);
-
-        const { data, error } = await db
-            .from('profesional')
-            .update({ id_calendario: calendarid })
-            .eq('id', user_id)
-            .select();
-
-        if (error) {
-            return res.status(400).json({ error: error.message });
-        }
-        if (!data) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
-        }
-
-        res.status(200).json({ message: 'Id calendar guardado exitosamente', calendarid });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al guardar el calendarid', details: error.message });
-    }
-};
