@@ -42,9 +42,62 @@ if (isProd) {
     app.set('trust proxy', 1); // necesario para cookies 'secure' detrás de un proxy/https
 }
 
-// CSP se deja desactivada por ahora porque el frontend usa CDNs e inline scripts.
-// TODO (Fase 3): definir una Content-Security-Policy explícita.
+// Helmet para las cabeceras de seguridad; la CSP la definimos aparte (abajo) para
+// poder variarla por tipo de página (SPA estricta vs. .html legacy).
 app.use(helmet({ contentSecurityPolicy: false }));
+
+// ---------------------------------------------------------------------------
+// Content-Security-Policy
+// ---------------------------------------------------------------------------
+// El SPA (build de Vite) sirve TODOS sus scripts desde el mismo origen (/assets/*.js,
+// sin scripts inline), así que recibe una política ESTRICTA (script-src 'self'). Las
+// páginas .html legacy de backend/public todavía cargan CDNs e incluyen <script> inline,
+// por lo que reciben una política más LAXA (con 'unsafe-inline' y la allowlist de CDNs).
+// Supabase se agrega a connect-src/img-src para el flujo de auth (reset de contraseña)
+// y para las URLs públicas de avatares.
+const SUPABASE_ORIGIN = (() => {
+    try { return new URL(process.env.SUPABASE_URL).origin; } catch { return ''; }
+})();
+
+const CSP_STRICT = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'", // React/Radix inyectan estilos inline en runtime
+    "font-src 'self' data:",
+    `img-src 'self' data: blob: ${SUPABASE_ORIGIN}`.trim(),
+    `connect-src 'self' ${SUPABASE_ORIGIN}`.trim(),
+    "worker-src 'self' blob:",
+].join('; ');
+
+// Allowlist de CDNs que usan las páginas legacy (bootstrap, jsdelivr, jquery, fontawesome).
+const LEGACY_SCRIPT = 'https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com https://kit.fontawesome.com https://ka-f.fontawesome.com';
+const LEGACY_STYLE = 'https://cdn.jsdelivr.net https://fonts.googleapis.com';
+const LEGACY_FONT = 'https://fonts.gstatic.com https://cdn.jsdelivr.net https://ka-f.fontawesome.com';
+const CSP_LEGACY = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    `script-src 'self' 'unsafe-inline' ${LEGACY_SCRIPT}`,
+    `style-src 'self' 'unsafe-inline' ${LEGACY_STYLE}`,
+    `font-src 'self' data: ${LEGACY_FONT}`,
+    `img-src 'self' data: blob: ${SUPABASE_ORIGIN}`.trim(),
+    `connect-src 'self' ${SUPABASE_ORIGIN} https://ka-f.fontawesome.com`.trim(),
+    "worker-src 'self' blob:",
+].join('; ');
+
+app.use((req, res, next) => {
+    // Las páginas legacy se piden con extensión .html explícita; el SPA usa rutas sin .html
+    // (y su index.html lo sirve el fallback en req.path sin .html) → política estricta.
+    const esLegacyHtml = req.path.toLowerCase().endsWith('.html');
+    res.setHeader('Content-Security-Policy', esLegacyHtml ? CSP_LEGACY : CSP_STRICT);
+    next();
+});
 
 // CORS con lista blanca de orígenes (ALLOWED_ORIGINS separados por coma).
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
@@ -58,16 +111,29 @@ if (isProd && allowedOrigins.length === 0) {
     console.error('⛔ ALLOWED_ORIGINS no está definido en producción: se rechazará todo origen cross-origin.');
 }
 
-app.use(cors({
-    origin: (origin, cb) => {
-        // Sin origin = same-origin / herramientas locales (curl, apps móviles).
-        if (!origin) return cb(null, true);
-        // En desarrollo, si no hay lista, se permite cualquier origen (comodidad local).
-        if (!isProd && allowedOrigins.length === 0) return cb(null, true);
-        if (allowedOrigins.includes(origin)) return cb(null, true);
-        return cb(new Error('Origen no permitido por CORS'));
-    },
-    credentials: true
+// Formato "delegado" para poder comparar el Origin contra el propio host (same-origin):
+// el SPA se sirve del mismo origen que la API, y esas requests deben permitirse SIEMPRE.
+// El cross-origin real requiere estar en ALLOWED_ORIGINS (en prod falla cerrado).
+// Se responde origin:false (sin cabeceras CORS) en vez de lanzar Error, para que el
+// navegador bloquee la respuesta sin ensuciar los logs con stack traces.
+app.use(cors((req, cb) => {
+    const origin = req.header('Origin');
+    const permitir = { origin: true, credentials: true };
+
+    // Sin Origin = navegación GET same-origin / herramientas locales (curl, apps).
+    if (!origin) return cb(null, permitir);
+
+    // Mismo origen que el servidor (el propio SPA): siempre permitido.
+    const selfOrigin = `${req.protocol}://${req.get('host')}`;
+    if (origin === selfOrigin) return cb(null, permitir);
+
+    // En desarrollo, sin lista configurada, se permite cualquier origen (comodidad local).
+    if (!isProd && allowedOrigins.length === 0) return cb(null, permitir);
+
+    // Cross-origin: solo si está en la lista blanca.
+    if (allowedOrigins.includes(origin)) return cb(null, permitir);
+
+    return cb(null, { origin: false }); // origen no permitido: el navegador lo bloquea
 }));
 
 app.use(express.json());

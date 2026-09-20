@@ -350,7 +350,7 @@ CREATE POLICY codigo_activacion_admin_write ON codigo_activacion
 | 4 | ✅ Corregido (falta correr SQL) | `faseG_fix_rls.sql`: `horario_profesional` — escritura solo del profesional dueño |
 | 5 | ✅ Corregido | `index.js`: CORS falla cerrado en producción si `ALLOWED_ORIGINS` está vacío |
 | 6 | ✅ Corregido | `index.js`: limiter dedicado `createEventLimiter` (10 / 15 min) en `/create-event` |
-| 7 | ⚠️ Parcial | Hechos: quitado `details: error.message`, escape HTML del `summary` en emails, password mínimo 8, eliminado código muerto `requireAdmin`. Pendiente: definir una CSP explícita (requiere inventariar los orígenes de scripts del SPA para no romperlo). |
+| 7 | ✅ Corregido | Quitado `details: error.message`, escape HTML del `summary` en emails, password mínimo 8, eliminado código muerto `requireAdmin`, y **CSP explícita** (estricta para el SPA, relajada con allowlist de CDNs para las `.html` legacy). Verificado en el navegador: SPA y páginas legacy cargan sin violaciones de CSP. |
 
 > **APLICADO en Supabase (2026-09-20):** se ejecutaron las migraciones
 > `faseG_fix_rls` (hallazgos 1–4) y `faseG2_revoke_anon` (defensa en profundidad:
