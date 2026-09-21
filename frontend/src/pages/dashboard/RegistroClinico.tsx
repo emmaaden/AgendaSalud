@@ -76,7 +76,9 @@ export default function RegistroClinico() {
       .catch(() => {})
   }, [user?.email])
 
-  const isOdonto = area === "Dentista"
+  // La especialidad odontológica se llama "Odontología" en la base; aceptamos
+  // también "Dentista" y variantes de mayúsculas por robustez.
+  const isOdonto = /odonto|dentista/i.test(area)
 
   return (
     <Container className="py-8 sm:py-12">
@@ -537,6 +539,12 @@ function BuscarPaciente({
                   <p><span className="font-medium text-muted-foreground">Diagnóstico: </span>{e.diagnostico}</p>
                   <p><span className="font-medium text-muted-foreground">Tratamiento: </span>{e.tratamiento}</p>
                 </div>
+                {e.dientes && e.dientes.length > 0 && (
+                  <div className="mt-4 border-t border-border pt-4">
+                    <p className="mb-2 text-sm font-medium text-muted-foreground">Odontograma</p>
+                    <Odontogram value={e.dientes} readOnly />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

@@ -14,8 +14,7 @@
 // profundidad (y para dar errores claros), pero ya no es lo único que aísla los datos.
 
 const { getUserSupabase } = require('../middleware/userSupabase');
-
-const ESTADOS_DIENTE = ['sano', 'caries', 'tratado', 'falta'];
+const { filasParaRegistro, serializarDiente } = require('../utils/odontograma');
 
 // Mensaje uniforme cuando la sesión no tiene (o perdió) el token de Supabase.
 const ERR_SESION = { status: 401, body: { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' } };
@@ -132,19 +131,10 @@ async function insertRegistro(db, idPaciente, prof, body) {
         .single();
     if (regError) throw regError;
 
-    if (Array.isArray(dientes) && dientes.length > 0) {
-        const rows = dientes
-            .filter(d => d && d.numero)
-            .map(d => ({
-                id_registro: reg.id,
-                numero: String(d.numero),
-                estado: ESTADOS_DIENTE.includes(d.estado) ? d.estado : 'sano',
-                notas: d.notas || null,
-            }));
-        if (rows.length > 0) {
-            const { error: dienteError } = await db.from('registro_diente').insert(rows);
-            if (dienteError) throw dienteError;
-        }
+    const rows = filasParaRegistro(reg.id, dientes);
+    if (rows.length > 0) {
+        const { error: dienteError } = await db.from('registro_diente').insert(rows);
+        if (dienteError) throw dienteError;
     }
 
     return reg.id;
@@ -285,7 +275,7 @@ exports.getDataPacient = async (req, res) => {
 
         const { data: registros, error: regError } = await db
             .from('registro_clinico')
-            .select('id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, registro_diente(numero, estado, notas)')
+            .select('id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, registro_diente(numero, condicion, cara, estado, notas)')
             .eq('id_paciente', paciente.id)
             .order('fecha', { ascending: true });
         if (regError) throw regError;
@@ -297,11 +287,7 @@ exports.getDataPacient = async (req, res) => {
             sintomas: r.sintomas || '',
             diagnostico: r.diagnostico || '',
             tratamiento: r.tratamiento || '',
-            dientes: (r.registro_diente || []).map(d => ({
-                numero: d.numero,
-                estado: d.estado,
-                notas: d.notas || '',
-            })),
+            dientes: (r.registro_diente || []).map(serializarDiente),
         }));
 
         const fechaApertura = registros && registros.length > 0 ? fmtFecha(registros[0].fecha) : '';

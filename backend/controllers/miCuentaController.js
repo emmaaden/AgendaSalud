@@ -10,6 +10,7 @@
 // Las rutas pasan por requireRole('paciente') (ver routes/miCuentaRoutes.js).
 
 const { supabase } = require('../config/supabaseClient');
+const { serializarDiente } = require('../utils/odontograma');
 
 // Campos de persona que el paciente puede editar (NO dni / id_auth / clinica_id).
 const CAMPOS_PERSONA = ['nombre', 'apellido', 'telefono', 'direccion', 'sexo'];
@@ -154,7 +155,7 @@ exports.exportHistoria = async (req, res) => {
 
         const { data: registros, error } = await supabase
             .from('registro_clinico')
-            .select('id, fecha, profesional_nombre, area, sintomas, diagnostico, tratamiento, registro_diente(numero, estado, notas)')
+            .select('id, fecha, profesional_nombre, area, sintomas, diagnostico, tratamiento, registro_diente(numero, condicion, cara, estado, notas)')
             .eq('id_paciente', paciente.id)
             .order('fecha', { ascending: true });
         if (error) throw error;
@@ -183,9 +184,7 @@ exports.exportHistoria = async (req, res) => {
                     sintomas: r.sintomas || null,
                     diagnostico: r.diagnostico || null,
                     tratamiento: r.tratamiento || null,
-                    odontograma: (r.registro_diente || []).map((d) => ({
-                        numero: d.numero, estado: d.estado, notas: d.notas || null,
-                    })),
+                    odontograma: (r.registro_diente || []).map(serializarDiente),
                 })),
             }],
         };
@@ -213,7 +212,7 @@ exports.getHistoria = async (req, res) => {
 
         const { data: registros, error: regError } = await supabase
             .from('registro_clinico')
-            .select('id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, registro_diente(numero, estado, notas)')
+            .select('id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, registro_diente(numero, condicion, cara, estado, notas)')
             .eq('id_paciente', paciente.id)
             .order('fecha', { ascending: true });
         if (regError) throw regError;
@@ -225,11 +224,7 @@ exports.getHistoria = async (req, res) => {
             sintomas: r.sintomas || '',
             diagnostico: r.diagnostico || '',
             tratamiento: r.tratamiento || '',
-            dientes: (r.registro_diente || []).map(d => ({
-                numero: d.numero,
-                estado: d.estado,
-                notas: d.notas || '',
-            })),
+            dientes: (r.registro_diente || []).map(serializarDiente),
         }));
 
         const fechaApertura = registros && registros.length > 0 ? fmtFecha(registros[0].fecha) : '';

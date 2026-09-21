@@ -11,9 +11,14 @@ const emailOpcional = z.union([z.email('Email inválido'), z.literal('')]).optio
 const textoOpcional = z.string().max(4000, 'Texto demasiado largo').optional();
 const idFlexible = z.union([z.string().min(1), z.number()]);
 
+// Un hallazgo del odontograma. Permisivo a propósito: el backend hace clamp de
+// `condicion`/`cara`/`estado` contra las listas válidas (ver pacienteController).
+// Se acepta el `estado` legacy (sano/caries/tratado/falta) por compatibilidad.
 const dienteSchema = z.object({
     numero: z.union([z.string(), z.number()]),
-    estado: z.enum(['sano', 'caries', 'tratado', 'falta']).optional(),
+    condicion: z.string().max(40).optional(),
+    cara: z.string().max(20).nullable().optional(),
+    estado: z.string().max(20).optional(),
     notas: z.string().max(1000).optional(),
 });
 

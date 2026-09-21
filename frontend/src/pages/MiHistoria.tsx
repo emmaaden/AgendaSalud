@@ -8,6 +8,7 @@ import { Container, PageHero } from "@/components/site/Section"
 import { api } from "@/lib/api"
 import { useUser } from "@/hooks/useUser"
 import { downloadPatientHistoryPdf, type Paciente } from "@/lib/patientPdf"
+import { Odontogram } from "@/components/dashboard/Odontogram"
 
 export default function MiHistoria() {
   const { user, loading: loadingUser } = useUser()
@@ -190,6 +191,14 @@ export default function MiHistoria() {
                             {e.tratamiento}
                           </p>
                         </div>
+                        {e.dientes && e.dientes.length > 0 && (
+                          <div className="mt-4 border-t border-border pt-4">
+                            <p className="mb-2 text-sm font-medium text-muted-foreground">
+                              Odontograma
+                            </p>
+                            <Odontogram value={e.dientes} readOnly />
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

@@ -12,6 +12,7 @@
 // por el id del profesional). El guard requireRole('profesional') protege las rutas.
 
 const { supabase } = require('../config/supabaseClient');
+const { filasParaRegistro, serializarDiente } = require('../utils/odontograma');
 
 const FORMATO = 'agendasalud.hc';
 const VERSION = '1.0';
@@ -50,7 +51,7 @@ async function construirExport(clinicaId, pacienteIds, meta) {
 
         const { data: regs, error: rErr } = await supabase
             .from('registro_clinico')
-            .select('id, id_paciente, fecha, profesional_nombre, area, sintomas, diagnostico, tratamiento, registro_diente ( numero, estado, notas )')
+            .select('id, id_paciente, fecha, profesional_nombre, area, sintomas, diagnostico, tratamiento, registro_diente ( numero, condicion, cara, estado, notas )')
             .in('id_paciente', pacienteIds)
             .eq('clinica_id', clinicaId)
             .order('fecha', { ascending: true });
@@ -65,9 +66,7 @@ async function construirExport(clinicaId, pacienteIds, meta) {
                 sintomas: r.sintomas || null,
                 diagnostico: r.diagnostico || null,
                 tratamiento: r.tratamiento || null,
-                odontograma: (r.registro_diente || []).map((d) => ({
-                    numero: d.numero, estado: d.estado, notas: d.notas || null,
-                })),
+                odontograma: (r.registro_diente || []).map(serializarDiente),
             });
         }
     }
@@ -275,20 +274,12 @@ exports.importar = async (req, res) => {
                         throw rErr;
                     }
 
-                    const dientes = Array.isArray(r.odontograma) ? r.odontograma : [];
-                    if (dientes.length) {
-                        const rows = dientes
-                            .filter((d) => d && d.numero != null)
-                            .map((d) => ({
-                                id_registro: nuevoReg.id,
-                                numero: String(d.numero),
-                                estado: ['sano', 'caries', 'tratado', 'falta'].includes(d.estado) ? d.estado : 'sano',
-                                notas: d.notas || null,
-                            }));
-                        if (rows.length) {
-                            const { error: dErr } = await supabase.from('registro_diente').insert(rows);
-                            if (dErr) throw dErr;
-                        }
+                    // Odontograma: acepta el formato nuevo (condicion/cara/estado) y el
+                    // legacy (estado = sano/caries/tratado/falta) vía normalizarDiente.
+                    const rows = filasParaRegistro(nuevoReg.id, r.odontograma);
+                    if (rows.length) {
+                        const { error: dErr } = await supabase.from('registro_diente').insert(rows);
+                        if (dErr) throw dErr;
                     }
                     if (origenId) yaImportados.add(origenId);
                     resumen.registrosImportados++;

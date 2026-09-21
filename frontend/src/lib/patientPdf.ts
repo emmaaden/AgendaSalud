@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf"
+import { describeDiente, type Diente } from "@/lib/odontograma"
 
 export type HistoryEntry = {
   profesional: string
@@ -7,7 +8,7 @@ export type HistoryEntry = {
   sintomas: string
   diagnostico: string
   tratamiento: string
-  dientes?: { numero: string; estado: string; notas?: string }[]
+  dientes?: Diente[]
 }
 
 export type Paciente = {
@@ -101,10 +102,22 @@ export function downloadPatientHistoryPdf(p: Paciente) {
     if (entry.dientes && entry.dientes.length) {
       line("")
       line("Odontograma:", true)
+      // Agrupado por diente, ordenado por número FDI.
+      const porDiente = new Map<string, typeof entry.dientes>()
       entry.dientes.forEach((d) => {
         const n = d.numero.replace("tooth-", "")
-        line(`  · Diente ${n}: ${d.estado}${d.notas ? ` (${d.notas})` : ""}`)
+        if (!porDiente.has(n)) porDiente.set(n, [])
+        porDiente.get(n)!.push(d)
       })
+      ;[...porDiente.keys()]
+        .sort((a, b) => Number(a) - Number(b))
+        .forEach((n) => {
+          const hallazgos = porDiente.get(n)!
+          line(`  Diente ${n}:`, true)
+          hallazgos.forEach((d) => {
+            doc.splitTextToSize(`    - ${describeDiente(d)}`, 175).forEach((l: string) => line(l))
+          })
+        })
     }
     if (y > maxHeight) {
       doc.addPage()
