@@ -22,6 +22,7 @@ const miCuentaRoutes = require('./routes/miCuentaRoutes'); // Fase 3: autogesti�
 const certificadoRoutes = require('./routes/certificadoRoutes'); // Fase C: certificados médicos
 const hcRoutes = require('./routes/hcRoutes'); // Fase D: export/import de historias clínicas
 const staffRoutes = require('./routes/staffRoutes'); // Fase E: gestión de turnos por el staff (/staff)
+const estudioRoutes = require('./routes/estudioRoutes'); // Fase I: mis estudios del paciente (/estudios)
 // (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
@@ -204,6 +205,7 @@ app.use('/admin', adminRoutes); // Fase B: administración de la clínica (solo 
 app.use('/certificados', certificadoRoutes); // Fase C: certificados médicos
 app.use('/hc', hcRoutes); // Fase D: export/import de historias clínicas
 app.use('/staff', staffRoutes); // Fase E: gestión de turnos por el staff (recepción/profesional/admin)
+app.use('/estudios', estudioRoutes); // Fase I: repositorio de estudios del paciente + compartir
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
@@ -528,7 +530,7 @@ if (isProd) {
     const API_PREFIXES = [
         '/auth', '/hour', '/pacient', '/especialidades', '/profesional',
         '/avatars', '/ortodoncia', '/clinica', '/clinica-publica',
-        '/admin', '/certificados', '/hc', '/staff',
+        '/admin', '/certificados', '/hc', '/staff', '/estudios',
         '/professionals', '/available-slots', '/create-event',
         '/api', '/internal',
     ];

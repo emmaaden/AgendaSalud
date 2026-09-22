@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   FileCheck2,
   FolderDown,
+  FolderHeart,
   CalendarClock,
 } from "lucide-react"
 import { cn } from "cn"
@@ -65,6 +66,12 @@ const LINKS = [
     to: "/dashboard/historias",
     label: "Historias",
     icon: FolderDown,
+    end: false,
+  },
+  {
+    to: "/dashboard/estudios",
+    label: "Compartidos",
+    icon: FolderHeart,
     end: false,
   },
 ]
