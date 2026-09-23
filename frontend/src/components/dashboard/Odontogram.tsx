@@ -26,6 +26,8 @@ import {
   type Estado,
 } from "@/lib/odontograma"
 
+import { useMediaQuery } from "@/hooks/useMediaQuery"
+
 export type { Diente } from "@/lib/odontograma"
 
 // --- Geometría del dibujo ---
@@ -73,6 +75,7 @@ export function Odontogram({
   onChange?: (d: Diente[]) => void
   readOnly?: boolean
 }) {
+  const compacto = useMediaQuery("(max-width: 639px)")
   const [tool, setTool] = useState<string>("caries")
   const [estado, setEstado] = useState<Estado>("pendiente")
   const [denticion, setDenticion] = useState<"adulto" | "nino">("adulto")
@@ -148,6 +151,38 @@ export function Odontogram({
 
   const width = PADX * 2 + filas.superior.length * STRIDE
   const dividerX = PADX + (filas.superior.length / 2) * STRIDE - (STRIDE - S) / 2
+
+  // En pantallas angostas la arcada completa obligaría a un scroll horizontal de más
+  // del doble del ancho: la partimos por la línea media y apilamos las dos mitades.
+  const mitad = filas.superior.length / 2
+  const mitades: {
+    key: string
+    label: string | null
+    superior: string[]
+    inferior: string[]
+  }[] = compacto
+    ? [
+        {
+          key: "derecha",
+          label: "Lado derecho del paciente",
+          superior: filas.superior.slice(0, mitad),
+          inferior: filas.inferior.slice(0, mitad),
+        },
+        {
+          key: "izquierda",
+          label: "Lado izquierdo del paciente",
+          superior: filas.superior.slice(mitad),
+          inferior: filas.inferior.slice(mitad),
+        },
+      ]
+    : [
+        {
+          key: "completo",
+          label: null,
+          superior: filas.superior,
+          inferior: filas.inferior,
+        },
+      ]
 
   function renderDiente(numero: string, i: number, isUpper: boolean) {
     const x = PADX + i * STRIDE
@@ -422,27 +457,38 @@ export function Odontogram({
         </div>
       )}
 
-      <div className={cn("overflow-x-auto", !readOnly && "mt-4")}>
-        <svg
-          id="odontogramaSVG"
-          viewBox={`0 0 ${width} ${TOTAL_H}`}
-          role="group"
-          aria-label="Odontograma"
-          className="mx-auto block max-w-full text-muted-foreground"
-          style={{ minWidth: Math.min(width, 620) }}
-        >
-          <line
-            x1={dividerX}
-            y1={4}
-            x2={dividerX}
-            y2={TOTAL_H - 4}
-            stroke="var(--border)"
-            strokeWidth={1.5}
-            strokeDasharray="4 4"
-          />
-          {filas.superior.map((n, i) => renderDiente(n, i, true))}
-          {filas.inferior.map((n, i) => renderDiente(n, i, false))}
-        </svg>
+      <div className={cn("space-y-4 overflow-x-auto", !readOnly && "mt-4")}>
+        {mitades.map((m) => (
+          <div key={m.key}>
+            {m.label && (
+              <p className="mb-1 text-center text-xs font-medium text-muted-foreground">
+                {m.label}
+              </p>
+            )}
+            <svg
+              id={m.key === "completo" ? "odontogramaSVG" : undefined}
+              viewBox={`0 0 ${PADX * 2 + m.superior.length * STRIDE} ${TOTAL_H}`}
+              role="group"
+              aria-label={m.label ? `Odontograma — ${m.label}` : "Odontograma"}
+              className="mx-auto block max-w-full text-muted-foreground"
+              style={compacto ? undefined : { minWidth: Math.min(width, 620) }}
+            >
+              {m.key === "completo" && (
+                <line
+                  x1={dividerX}
+                  y1={4}
+                  x2={dividerX}
+                  y2={TOTAL_H - 4}
+                  stroke="var(--border)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
+                />
+              )}
+              {m.superior.map((n, i) => renderDiente(n, i, true))}
+              {m.inferior.map((n, i) => renderDiente(n, i, false))}
+            </svg>
+          </div>
+        ))}
       </div>
 
       <Legend />

@@ -33,8 +33,8 @@ const columns = [
 export function Footer() {
   return (
     <footer className="border-t border-border bg-muted/40">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-        <div className="space-y-3">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="space-y-3 sm:col-span-2 md:col-span-1">
           <Logo />
           <p className="max-w-xs text-sm text-muted-foreground">
             Turnos online, historia clínica digital y gestión para profesionales
@@ -51,9 +51,9 @@ export function Footer() {
             </a>
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="inline-flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-2 break-all text-muted-foreground transition-colors hover:text-foreground"
             >
-              <Mail className="size-4" /> {CONTACT_EMAIL}
+              <Mail className="size-4 shrink-0" /> {CONTACT_EMAIL}
             </a>
           </div>
         </div>

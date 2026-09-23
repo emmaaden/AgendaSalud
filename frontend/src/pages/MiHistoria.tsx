@@ -114,7 +114,7 @@ export default function MiHistoria() {
           ) : (
             <>
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center gap-3">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary">
                       <User className="size-6" />
@@ -151,7 +151,7 @@ export default function MiHistoria() {
                   {paciente.history.map((e, i) => (
                     <Card key={i}>
                       <CardContent className="p-5">
-                        <div className="flex flex-wrap justify-between gap-2 border-b border-border pb-3">
+                        <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-2">
                           <span className="text-sm">
                             <span className="font-medium text-muted-foreground">
                               Profesional:{" "}

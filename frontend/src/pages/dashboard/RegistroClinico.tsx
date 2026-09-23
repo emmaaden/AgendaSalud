@@ -139,7 +139,7 @@ function MenuCard({
   return (
     <button onClick={onClick} className="group text-left">
       <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
             <Icon className="size-6" />
           </div>
@@ -223,7 +223,7 @@ function RegistrarPaciente({
 
       <form onSubmit={guardar} className="space-y-6">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <h2 className="flex items-center gap-2 font-semibold">
               <User className="size-5 text-primary" /> Datos personales
             </h2>
@@ -265,7 +265,7 @@ function RegistrarPaciente({
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <h2 className="flex items-center gap-2 font-semibold">
               <Stethoscope className="size-5 text-primary" /> Primera consulta
             </h2>
@@ -285,7 +285,7 @@ function RegistrarPaciente({
 
         {isOdonto && (
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <h2 className="font-semibold">Odontograma</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Tocá un diente para registrar su estado.
@@ -415,7 +415,7 @@ function BuscarPaciente({
           <ArrowLeft /> Volver
         </Button>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <form onSubmit={buscar} className="flex flex-col gap-3 sm:flex-row">
               <Input
                 type="number"
@@ -460,7 +460,7 @@ function BuscarPaciente({
       </div>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary">
               <User className="size-6" />
@@ -483,7 +483,7 @@ function BuscarPaciente({
 
       {/* Nueva consulta */}
       <Card className="mt-6">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <h3 className="flex items-center gap-2 font-semibold">
             <Stethoscope className="size-5 text-primary" /> Nueva consulta
           </h3>

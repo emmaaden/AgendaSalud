@@ -61,12 +61,12 @@ export default function Planes() {
       />
 
       <Container className="py-16">
-        <div className="grid items-stretch gap-6 lg:grid-cols-3">
+        <div className="grid items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
             <div
               key={plan.name}
               className={cn(
-                "relative flex flex-col rounded-2xl border bg-card p-8 ring-1 ring-foreground/5 transition-shadow duration-200 ease-out",
+                "relative flex flex-col rounded-2xl border bg-card p-6 ring-1 ring-foreground/5 transition-shadow duration-200 ease-out sm:p-8",
                 plan.featured
                   ? "border-primary shadow-xl lg:-mt-4 lg:mb-4"
                   : "border-border hover:shadow-md"

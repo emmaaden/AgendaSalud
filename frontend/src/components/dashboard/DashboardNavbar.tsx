@@ -15,6 +15,7 @@ import {
   FolderDown,
   FolderHeart,
   CalendarClock,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -85,6 +86,11 @@ const ADMIN_LINK = {
   end: false,
 }
 
+// La barra vive dentro de un contenedor de 1152 px como máximo, así que los ocho
+// enlaces con etiqueta nunca entran: los tres de uso diario quedan a la vista y el
+// resto se agrupa en "Más".
+const PRINCIPALES = ["/dashboard", "/dashboard/turnos", "/dashboard/registro-clinico"]
+
 export function DashboardNavbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -97,6 +103,9 @@ export function DashboardNavbar() {
       : user?.esAdmin
         ? [...LINKS, ADMIN_LINK]
         : LINKS
+
+  const principales = links.filter((l) => PRINCIPALES.includes(l.to))
+  const secundarios = links.filter((l) => !PRINCIPALES.includes(l.to))
 
   async function handleLogout() {
     await logout()
@@ -127,8 +136,8 @@ export function DashboardNavbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Logo to="/dashboard" />
-          <nav className="hidden items-center gap-1 md:flex">
-            {links.map((l) => (
+          <nav className="hidden items-center gap-1 lg:flex">
+            {principales.map((l) => (
               <NavLink
                 key={l.to}
                 to={l.to}
@@ -144,12 +153,34 @@ export function DashboardNavbar() {
                 {l.label}
               </NavLink>
             ))}
+            {secundarios.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-muted-foreground"
+                  >
+                    Más <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  {secundarios.map((l) => (
+                    <DropdownMenuItem key={l.to} asChild>
+                      <NavLink to={l.to} end={l.end}>
+                        <l.icon /> {l.label}
+                      </NavLink>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
         </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <div className="hidden items-center gap-2 md:flex">
+          <div className="hidden items-center gap-2 lg:flex">
             <Button asChild variant="ghost" size="sm">
               <a href={HELP_URL} target="_blank" rel="noreferrer">
                 <LifeBuoy /> Ayuda
@@ -206,7 +237,7 @@ export function DashboardNavbar() {
 
           {/* Móvil */}
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild className="md:hidden">
+            <SheetTrigger asChild className="lg:hidden">
               <Button variant="outline" size="icon" aria-label="Abrir menú">
                 <Menu />
               </Button>

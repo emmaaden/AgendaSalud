@@ -122,7 +122,7 @@ export default function MisTurnos() {
         <div className="mx-auto max-w-2xl space-y-8">
           {/* Datos del paciente + accesos */}
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-4">
                 <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary">
                   <User className="size-6" />

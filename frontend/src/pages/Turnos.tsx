@@ -133,7 +133,7 @@ export default function Turnos() {
             <div className="grid gap-4 sm:grid-cols-2">
               <button onClick={() => setView("reservar")} className="group text-left">
                 <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                       <CalendarPlus className="size-6" />
                     </div>
@@ -153,7 +153,7 @@ export default function Turnos() {
                 className="group text-left"
               >
                 <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                       {user?.role === "paciente" ? (
                         <ListChecks className="size-6" />
@@ -377,7 +377,7 @@ function ReservarForm({
 
   return (
     <Card className="mt-6">
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <h2 className="text-lg font-semibold">Datos del turno</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Con {profName}. Elegí la fecha y completá tus datos.

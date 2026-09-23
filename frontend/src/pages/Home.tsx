@@ -281,7 +281,7 @@ function HeroStats() {
   }
 
   return (
-    <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
+    <dl className="mt-10 grid max-w-md grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
       {stats.map((s) => (
         // dt = etiqueta, dd = valor; flex-col-reverse muestra el valor arriba.
         <div key={s.label} className="flex flex-col-reverse">

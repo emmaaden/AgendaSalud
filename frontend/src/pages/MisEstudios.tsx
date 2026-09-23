@@ -179,7 +179,7 @@ export default function MisEstudios() {
 
       <Container className="py-12">
         <div className="mx-auto max-w-3xl">
-          <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <Button asChild variant="ghost">
               <Link to="/mis-turnos">
                 <ArrowLeft /> Volver a mi cuenta
@@ -211,7 +211,7 @@ export default function MisEstudios() {
               {estudios.map((e) => (
                 <li key={e.id}>
                   <Card>
-                    <CardContent className="flex flex-wrap items-center gap-4 p-4">
+                    <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
                       <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                         {e.esImagen ? (
                           <ImageIcon className="size-5" />
@@ -220,8 +220,8 @@ export default function MisEstudios() {
                         )}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-2 font-medium">
-                          <span className="truncate">{e.titulo}</span>
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+                          <span className="min-w-0 break-words">{e.titulo}</span>
                           <Badge variant="secondary" className="font-normal">
                             {CATEGORIA_LABEL[e.categoria] ?? e.categoria}
                           </Badge>
@@ -241,7 +241,7 @@ export default function MisEstudios() {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex w-full items-center justify-end gap-1.5 sm:w-auto">
                         <Button
                           variant="outline"
                           size="sm"
@@ -388,7 +388,7 @@ function SubirDialog({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Subir estudio</DialogTitle>
           <DialogDescription>
@@ -563,7 +563,7 @@ function CompartirDialog({
 
   return (
     <Dialog open={!!estudio} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Compartir estudio</DialogTitle>
           <DialogDescription className="truncate">

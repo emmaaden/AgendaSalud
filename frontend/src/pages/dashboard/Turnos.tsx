@@ -232,8 +232,8 @@ export default function TurnosDashboard() {
           {turnos.map((t) => (
             <li key={t.id}>
               <Card>
-                <CardContent className="flex flex-wrap items-center gap-4 p-4">
-                  <div className="min-w-0 flex-1">
+                <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
+                  <div className="min-w-0 basis-full sm:flex-1 sm:basis-56">
                     <p className="flex items-center gap-2 font-medium">
                       <User className="size-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">
@@ -252,8 +252,8 @@ export default function TurnosDashboard() {
                         </span>
                       )}
                       {t.pacienteEmail && (
-                        <span className="inline-flex items-center gap-1">
-                          <Mail className="size-3.5" /> {t.pacienteEmail}
+                        <span className="inline-flex min-w-0 items-center gap-1 break-all">
+                          <Mail className="size-3.5 shrink-0" /> {t.pacienteEmail}
                         </span>
                       )}
                       {t.pacienteTelefono && (
@@ -264,7 +264,7 @@ export default function TurnosDashboard() {
                     </div>
                   </div>
 
-                  <div className="min-w-0">
+                  <div className="min-w-0 basis-full sm:basis-44">
                     <p className="flex items-center gap-1.5 text-sm">
                       <Stethoscope className="size-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">
@@ -272,12 +272,13 @@ export default function TurnosDashboard() {
                       </span>
                     </p>
                     {t.especialidad && (
-                      <p className="pl-6 text-xs text-muted-foreground">
+                      <p className="truncate pl-6 text-xs text-muted-foreground">
                         {t.especialidad}
                       </p>
                     )}
                   </div>
 
+                  <div className="ml-auto flex items-center gap-3">
                   <div className="text-sm">
                     <p className="font-medium">{formatFechaHora(t.inicio)}</p>
                     <p className="text-xs text-muted-foreground">hs</p>
@@ -327,6 +328,7 @@ export default function TurnosDashboard() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </CardContent>
               </Card>
             </li>
@@ -562,7 +564,7 @@ function NuevoTurnoDialog({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Nuevo turno</DialogTitle>
           <DialogDescription>
@@ -696,7 +698,7 @@ function ReprogramarDialog({
 
   return (
     <Dialog open={!!turno} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Reprogramar turno</DialogTitle>
           <DialogDescription>
@@ -922,7 +924,7 @@ function NuevoBloqueoDialog({
         onOpenChange(o)
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Nuevo bloqueo</DialogTitle>
           <DialogDescription>

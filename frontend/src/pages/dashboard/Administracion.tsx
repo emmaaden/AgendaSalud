@@ -168,7 +168,7 @@ export default function Administracion() {
 
       {/* Profesionales / miembros */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Users className="size-5 text-primary" /> Profesionales
           </h2>
@@ -193,7 +193,7 @@ export default function Administracion() {
                   <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                     <Icon className="size-5" />
                   </span>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 basis-40">
                     <p className="flex items-center gap-2 font-medium">
                       <span className="truncate">{nombre}</span>
                       {m.esYo && (
@@ -209,6 +209,7 @@ export default function Administracion() {
                     </p>
                   </div>
 
+                  <div className="ml-auto flex items-center gap-2">
                   <Badge variant={m.activo ? "default" : "secondary"}>
                     {m.activo ? "Activo" : "De baja"}
                   </Badge>
@@ -258,6 +259,7 @@ export default function Administracion() {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </li>
               )
             })}
@@ -272,10 +274,11 @@ export default function Administracion() {
 
       {/* Códigos de activación */}
       <Card className="mt-6">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <KeyRound className="size-5 text-primary" /> Códigos de activación
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
+              <KeyRound className="size-5 shrink-0 text-primary" /> Códigos de
+              activación
             </h2>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -305,16 +308,13 @@ export default function Administracion() {
             {codigos.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm"
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 text-sm"
               >
-                <code className="font-mono">{c.codigo}</code>
+                <code className="min-w-0 truncate font-mono">{c.codigo}</code>
                 <Badge variant="outline" className="font-normal">
                   {c.rol === "recepcion" ? "Recepción" : "Profesional"}
                 </Badge>
-                <Badge
-                  variant={c.usado ? "secondary" : "default"}
-                  className="ml-1"
-                >
+                <Badge variant={c.usado ? "secondary" : "default"}>
                   {c.usado ? "Usado" : "Disponible"}
                 </Badge>
                 <div className="ml-auto flex items-center gap-1">

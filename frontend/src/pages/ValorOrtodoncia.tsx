@@ -120,7 +120,7 @@ export default function ValorOrtodoncia() {
 
           {resultado && (
             <Card className="mt-6">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center gap-2 text-primary">
                   <Smile className="size-5" />
                   <h2 className="font-semibold">Resultados</h2>
