@@ -50,7 +50,7 @@ export default function MiHistoria() {
 
   if (loadingUser) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <Loader2 className="size-6 animate-spin text-primary" />
       </div>
     )

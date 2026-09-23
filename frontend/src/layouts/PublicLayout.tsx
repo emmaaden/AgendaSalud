@@ -14,7 +14,7 @@ function ScrollToTop() {
 
 export function PublicLayout() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       <ScrollToTop />
       <Navbar />
       <main className="flex-1">

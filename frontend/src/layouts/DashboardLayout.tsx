@@ -19,7 +19,7 @@ function Guarded() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <Loader2 className="size-7 animate-spin text-primary" />
       </div>
     )
@@ -48,7 +48,7 @@ function Guarded() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-dvh flex-col bg-muted/30">
       <ScrollToTop />
       <DashboardNavbar />
       <main className="flex-1">

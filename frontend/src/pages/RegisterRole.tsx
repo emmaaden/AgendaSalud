@@ -29,7 +29,7 @@ const roles = [
 
 export default function RegisterRole() {
   return (
-    <Container className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-16">
+    <Container className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center py-16">
       <div className="text-center">
         <h1 className="text-3xl font-semibold sm:text-4xl">Crear cuenta</h1>
         <p className="mt-3 text-muted-foreground">

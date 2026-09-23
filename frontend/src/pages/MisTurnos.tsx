@@ -72,7 +72,7 @@ export default function MisTurnos() {
   // Gating por rol: mientras carga la sesión, spinner; si no es paciente, al login.
   if (loadingUser) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <Loader2 className="size-6 animate-spin text-primary" />
       </div>
     )

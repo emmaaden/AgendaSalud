@@ -217,7 +217,7 @@ export default function TurnosDashboard() {
 
       {/* Lista */}
       {loading ? (
-        <div className="flex min-h-[30vh] items-center justify-center">
+        <div className="flex min-h-[30dvh] items-center justify-center">
           <Loader2 className="size-6 animate-spin text-primary" />
         </div>
       ) : turnos.length === 0 ? (
@@ -783,7 +783,7 @@ function BloqueosPanel({ profesionales }: { profesionales: Profesional[] }) {
       </div>
 
       {loading ? (
-        <div className="flex min-h-[30vh] items-center justify-center">
+        <div className="flex min-h-[30dvh] items-center justify-center">
           <Loader2 className="size-6 animate-spin text-primary" />
         </div>
       ) : bloqueos.length === 0 ? (

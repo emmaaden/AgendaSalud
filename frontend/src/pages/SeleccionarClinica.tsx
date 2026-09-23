@@ -75,14 +75,14 @@ export default function SeleccionarClinica() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30">
+      <div className="flex min-h-dvh items-center justify-center bg-muted/30">
         <Loader2 className="size-7 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-dvh flex-col bg-muted/30">
       <header className="border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
           <Logo to="/dashboard" />
