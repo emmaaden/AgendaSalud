@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel profesional — Agenda Salud</title>
+  <link rel="icon" type="image/png" href="img/ico.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="theme.css">
+  <script src="https://kit.fontawesome.com/b1ae749c97.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg as-navbar py-2">
+    <div class="container">
+      <a class="as-brand" href="/dashboard">
+        <img src="img/ico.png" alt="" class="as-brand__mark"> Agenda Salud
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashNav"
+        aria-controls="dashNav" aria-expanded="false" aria-label="Abrir menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="dashNav">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1 mt-3 mt-lg-0">
+          <li class="nav-item"><a class="as-nav-link active" href="/dashboard"><i class="fa-solid fa-house"></i> Inicio</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="/dashboardConfig"><i class="fa-solid fa-gear"></i> Configuración</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="/dashboardRegistroClinico"><i class="fa-solid fa-notes-medical"></i> Registro clínico</a></li>
+          <li class="nav-item"><a class="as-nav-link" href="https://wa.me/2615930274"><i class="fa-brands fa-whatsapp"></i> Ayuda</a></li>
+          <li class="nav-item"><button id="logout" class="as-nav-link as-nav-link--danger border-0 bg-transparent"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</button></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Encabezado -->
+  <div class="as-dash-head">
+    <div class="container">
+      <h1 id="userName" class="as-page-title">¡Bienvenido a tu panel profesional!</h1>
+      <p class="as-page-sub">Gestioná tu agenda, tu perfil y las historias clínicas de tus pacientes.</p>
+    </div>
+  </div>
+
+  <!-- Accesos principales -->
+  <div class="container my-5">
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="as-action">
+          <div class="as-action__icon"><i class="fa-solid fa-calendar-check"></i></div>
+          <h5>Calendario</h5>
+          <p>Editá el ID de tu calendario profesional para gestionar tus turnos.</p>
+          <a href="/dashboardConfig#editCalen" class="as-btn as-btn-primary">Gestionar calendario</a>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="as-action">
+          <div class="as-action__icon as-action__icon--green"><i class="fa-regular fa-user"></i></div>
+          <h5>Perfil</h5>
+          <p>Configurá tu perfil, horarios de atención y precio de la consulta.</p>
+          <a href="/dashboardConfig" class="as-btn as-btn-ghost">Gestionar perfil</a>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="as-action">
+          <div class="as-action__icon as-action__icon--amber"><i class="fa-solid fa-notes-medical"></i></div>
+          <h5>Registro clínico</h5>
+          <p>Accedé al historial clínico y registrá la información de tus pacientes.</p>
+          <a href="/dashboardRegistroClinico" class="as-btn as-btn-ghost">Ver registro</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gestión de clínica (solo admin de la clínica) -->
+  <div class="container my-5" id="clinicaAdmin" style="display:none;">
+    <h2 class="mb-1">Gestión de la clínica</h2>
+    <p class="as-text-muted mb-4">Administrá tu clínica y los códigos de acceso para nuevos profesionales.</p>
+    <div class="card">
+      <div class="card-body p-4">
+        <p class="mb-3"><strong>Clínica:</strong> <span id="clinicaNombre">—</span></p>
+        <div class="mb-4" id="clinicaLinkBox" style="display:none;">
+          <label class="form-label mb-1"><strong>Link público de turnos</strong></label>
+          <p class="as-text-muted mb-2">Compartí este enlace con tus pacientes para que reserven turnos en tu clínica.</p>
+          <div class="input-group">
+            <input type="text" class="form-control" id="clinicaLink" readonly>
+            <button class="as-btn as-btn-secondary" id="btnCopiarLink" type="button">
+              <i class="fa-solid fa-copy"></i> Copiar
+            </button>
+          </div>
+        </div>
+        <button id="btnGenerarCodigo" class="as-btn as-btn-primary mb-2">
+          <i class="fa-solid fa-key"></i> Generar código de activación
+        </button>
+        <p class="as-text-muted">Compartí un código con un profesional para que se una a tu clínica al registrarse.</p>
+        <h5 class="mt-3 mb-3">Códigos</h5>
+        <ul id="listaCodigos" class="list-group"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección de Ayuda -->
+  <div class="container my-5">
+    <h2 class="mb-1">¿Necesitás ayuda?</h2>
+    <p class="as-text-muted mb-4">Consejos rápidos para aprovechar la plataforma.</p>
+    <div class="card">
+      <div class="card-body p-4">
+        <ul class="list-unstyled mb-4">
+          <li class="mb-3 d-flex gap-2"><i class="fa-solid fa-circle-check text-success mt-1"></i> Verificá que tus horarios de atención estén correctamente configurados.</li>
+          <li class="mb-3 d-flex gap-2"><i class="fa-solid fa-circle-check text-success mt-1"></i> Mantené el registro clínico de tus pacientes actualizado.</li>
+          <li class="mb-0 d-flex gap-2"><i class="fa-solid fa-circle-check text-success mt-1"></i> Confirmá los turnos para evitar confusiones.</li>
+        </ul>
+        <div class="d-flex flex-wrap gap-4">
+          <span><i class="fa-solid fa-envelope text-brand" style="color:var(--as-brand-600)"></i> <strong>Email:</strong> <a href="mailto:soporte@agendasalud.com" class="text-decoration-none">soporte@agendasalud.com</a></span>
+          <span><i class="fa-brands fa-whatsapp text-success"></i> <strong>WhatsApp:</strong> <a href="https://wa.me/2615930274" class="text-decoration-none">2615930274</a></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer text-center py-4 mt-5 border-top">
+    <p class="mb-1">&copy; 2024 Agenda Salud. Todos los derechos reservados.</p>
+    <div>
+      <a href="terminos-condiciones.html">Términos de servicio</a> · <a href="politica-privacidad.html">Política de privacidad</a>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/dashboard.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.getElementById('logout').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        if (response.ok) {
+          window.location.href = '/login.html';
+        } else {
+          console.error('Error al cerrar sesión');
+        }
+      } catch (error) {
+        console.error('Error en la conexión:', error);
+      }
+    });
+  </script>
+</body>
+
+</html>

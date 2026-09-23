@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro de profesional — Agenda Salud</title>
+  <link rel="icon" type="image/png" href="img/ico.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="theme.css" />
+</head>
+
+<body>
+  <div class="as-auth">
+    <aside class="as-auth__aside">
+      <a href="index.html" class="as-auth__brand">
+        <img src="img/ico.png" alt=""> Agenda Salud
+      </a>
+      <div class="as-auth__pitch">
+        <h2>Creá tu cuenta profesional</h2>
+        <p>Ofrecé una mejor experiencia a tus pacientes y organizá tu agenda desde un solo lugar.</p>
+        <ul class="as-auth__list">
+          <li><i class="bi bi-calendar-week"></i> Turnos sincronizados con tu calendario</li>
+          <li><i class="bi bi-folder2-open"></i> Historia clínica y odontograma</li>
+          <li><i class="bi bi-hospital"></i> Creá o unite a una clínica</li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="as-auth__main">
+      <div class="as-auth__panel as-auth__panel--wide">
+        <div class="as-auth__mobilebrand">
+          <img src="img/ico.png" alt=""> Agenda Salud
+        </div>
+
+        <h1 class="as-auth__title">Registro de profesional</h1>
+        <p class="as-auth__sub">Completá tus datos para crear la cuenta.</p>
+
+        <form id="registerForm" novalidate>
+          <div class="as-form-grid">
+            <div class="form-floating">
+              <select id="onboardingMode" class="form-select">
+                <option value="crear" selected>Crear una clínica nueva</option>
+                <option value="codigo">Unirme a una clínica (código)</option>
+              </select>
+              <label for="onboardingMode">Clínica</label>
+            </div>
+
+            <div class="form-floating" id="nombreClinicaWrap">
+              <input type="text" class="form-control" id="nombreClinica" placeholder="Nombre de la clínica" />
+              <label for="nombreClinica">Nombre de la clínica</label>
+            </div>
+
+            <div class="form-floating" id="activationCodeWrap" style="display:none;">
+              <input type="text" class="form-control" id="activationCode" placeholder="Codigo de Activacion" />
+              <label for="activationCode">Código de Activación</label>
+            </div>
+
+            <div class="form-floating">
+              <select id="registerEspecialidad" name="registerEspecialidad" class="form-select" required>
+                <option value="" selected disabled>Selecciona una Especialidad</option>
+              </select>
+              <label for="registerEspecialidad">Especialidad</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="text" class="form-control" id="registerNombre" placeholder="Nombre" required />
+              <label for="registerNombre">Nombre</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="text" class="form-control" id="registerApellido" placeholder="Apellido" required />
+              <label for="registerApellido">Apellido</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="number" class="form-control" id="registerDNI" placeholder="14562435" required />
+              <label for="registerDNI">DNI</label>
+            </div>
+
+            <div class="form-floating">
+              <select id="registerSexo" name="registerSexo" class="form-select" required>
+                <option value="" selected disabled>Seleccione su sexo</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <label for="registerSexo">Sexo</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="date" class="form-control" id="registerFechaNacimiento" placeholder="Fecha de Nacimiento" required />
+              <label for="registerFechaNacimiento">Fecha de Nacimiento</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="text" class="form-control" id="registerMatricula" placeholder="Matricula" required />
+              <label for="registerMatricula">Matrícula</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="number" class="form-control" id="registerTelefono" placeholder="2614562345" required />
+              <label for="registerTelefono">Teléfono</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="text" class="form-control" id="registerDireccion" placeholder="San Jose 1234, Buenos Aires" required />
+              <label for="registerDireccion">Dirección</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="email" class="form-control" id="registerEmail" placeholder="name@example.com" required />
+              <label for="registerEmail">Email</label>
+            </div>
+
+            <div class="form-floating">
+              <input type="password" class="form-control" id="registerPassword" placeholder="Password" required />
+              <label for="registerPassword">Contraseña</label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2 mt-4">Crear cuenta</button>
+        </form>
+
+        <p class="as-auth__foot">¿Ya tenés cuenta? <a href="login.html">Iniciar sesión</a></p>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/registerProfesional.js"></script>
+  <script>
+    // Validación nativa: no envía si faltan campos y marca los inválidos.
+    document.getElementById('registerForm').addEventListener('submit', function (e) {
+      const form = e.target;
+      if (!form.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+        form.classList.add('was-validated');
+        const firstInvalid = form.querySelector(':invalid');
+        if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  </script>
+</body>
+</html>
