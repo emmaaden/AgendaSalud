@@ -13,6 +13,7 @@ router.use(requireStaffClinica);
 
 router.get('/turnos', recepcionController.listarTurnos);
 router.get('/profesionales', recepcionController.listarProfesionales);
+router.get('/horarios', recepcionController.listarHorarios);
 router.post('/turnos', validate(schemas.staff.crearTurno), recepcionController.crearTurno);
 router.post('/turnos/:id/cancelar', recepcionController.cancelarTurno);
 router.post('/turnos/:id/reprogramar', validate(schemas.staff.reprogramar), recepcionController.reprogramarTurno);
