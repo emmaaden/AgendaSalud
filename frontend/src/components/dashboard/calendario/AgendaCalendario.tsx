@@ -33,6 +33,7 @@ import {
   NuevoTurnoDialog,
   ReprogramarDialog,
   opcionesProfesional,
+  SLOT_MS,
   type Bloqueo,
   type Profesional,
   type Turno,
@@ -90,6 +91,7 @@ export function AgendaCalendario({
   const [reprogramar, setReprogramar] = useState<Turno | null>(null)
   const [cancelar, setCancelar] = useState<Turno | null>(null)
   const [bloqueoSel, setBloqueoSel] = useState<Bloqueo | null>(null)
+  const [moviendo, setMoviendo] = useState<{ turno: Turno; iso: string } | null>(null)
   const [accion, setAccion] = useState(false)
 
   // Un profesional entra a ver SU agenda; recepción, la del primero de la lista.
@@ -180,6 +182,31 @@ export function AgendaCalendario({
       toast.error(
         err instanceof ApiError ? err.message : "No se pudo reenviar."
       )
+    } finally {
+      setAccion(false)
+    }
+  }
+
+  async function confirmarMover() {
+    if (!moviendo) return
+    setAccion(true)
+    const inicio = new Date(moviendo.iso)
+    try {
+      await api.post(`/staff/turnos/${moviendo.turno.id}/reprogramar`, {
+        start: { dateTime: inicio.toISOString() },
+        end: {
+          dateTime: new Date(inicio.getTime() + SLOT_MS).toISOString(),
+        },
+      })
+      toast.success("Turno movido. Se avisó al paciente por email.")
+      setMoviendo(null)
+      refrescar()
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "No se pudo mover el turno."
+      )
+      // Puede haberse ocupado mientras tanto: recargamos para mostrar la verdad.
+      cargar()
     } finally {
       setAccion(false)
     }
@@ -307,6 +334,7 @@ export function AgendaCalendario({
               }}
               onTurno={setDetalle}
               onBloqueo={setBloqueoSel}
+              onMover={(turno, iso) => setMoviendo({ turno, iso })}
             />
           </CardContent>
         </Card>
@@ -314,7 +342,9 @@ export function AgendaCalendario({
 
       <p className="text-xs text-muted-foreground">
         Tocá un hueco libre para agendar, o un turno para reprogramarlo o cancelarlo.
-        Las zonas rayadas son bloqueos y las grises, fuera del horario de atención.
+        También podés arrastrar un turno hasta otro horario libre (en el celular,
+        mantenelo apretado primero). Las zonas rayadas son bloqueos y las grises,
+        fuera del horario de atención.
       </p>
 
       <NuevoTurnoDialog
@@ -405,6 +435,34 @@ export function AgendaCalendario({
               }}
             >
               <Ban /> Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmar el arrastre: mover avisa al paciente por email */}
+      <Dialog open={!!moviendo} onOpenChange={(o) => !o && setMoviendo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mover el turno</DialogTitle>
+            <DialogDescription>
+              {moviendo?.turno.pacienteNombre || "El paciente"} pasa del{" "}
+              {moviendo ? formatFechaHora(moviendo.turno.inicio) : ""} al{" "}
+              {moviendo ? formatFechaHora(moviendo.iso) : ""} hs. Se le avisará por
+              email.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMoviendo(null)}
+              disabled={accion}
+            >
+              Volver
+            </Button>
+            <Button onClick={confirmarMover} disabled={accion}>
+              {accion ? <Loader2 className="animate-spin" /> : <CalendarCog />}
+              Mover turno
             </Button>
           </DialogFooter>
         </DialogContent>
