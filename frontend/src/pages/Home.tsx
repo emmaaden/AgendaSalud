@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Container } from "@/components/site/Section"
 import { api } from "@/lib/api"
 import { useUser } from "@/hooks/useUser"
@@ -250,6 +251,50 @@ function ProximoTurnoCard() {
   )
 }
 
+// Cantidad real de especialidades con al menos un profesional (misma fuente que
+// la página de turnos). Si no se puede obtener, la estadística no se muestra:
+// nunca un número inventado.
+function useEspecialidadesActivas() {
+  const [total, setTotal] = useState<number | null | "error">(null)
+  useEffect(() => {
+    api
+      .get<{ area: string }[]>("/professionals")
+      .then((d) => setTotal(Array.isArray(d) ? d.length : "error"))
+      .catch(() => setTotal("error"))
+  }, [])
+  return total
+}
+
+function HeroStats() {
+  const especialidades = useEspecialidadesActivas()
+  const stats: { label: string; value: React.ReactNode }[] = [
+    { label: "Online", value: "100%" },
+    { label: "Disponible", value: "24/7" },
+  ]
+  if (especialidades === null) {
+    stats.push({
+      label: "Especialidades",
+      value: <Skeleton className="h-8 w-10" aria-label="Cargando" />,
+    })
+  } else if (especialidades !== "error" && especialidades > 0) {
+    stats.push({ label: "Especialidades", value: especialidades })
+  }
+
+  return (
+    <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
+      {stats.map((s) => (
+        // dt = etiqueta, dd = valor; flex-col-reverse muestra el valor arriba.
+        <div key={s.label} className="flex flex-col-reverse">
+          <dt className="text-sm text-muted-foreground">{s.label}</dt>
+          <dd className="text-2xl font-semibold text-foreground tabular-nums">
+            {s.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 export default function Home() {
   return (
     <>
@@ -291,20 +336,7 @@ export default function Home() {
                 </Link>
               </Button>
             </div>
-            <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
-              {[
-                { k: "100%", v: "Online" },
-                { k: "24/7", v: "Disponible" },
-                { k: "+", v: "Especialidades" },
-              ].map((s) => (
-                <div key={s.v}>
-                  <dt className="text-2xl font-semibold text-foreground">
-                    {s.k}
-                  </dt>
-                  <dd className="text-sm text-muted-foreground">{s.v}</dd>
-                </div>
-              ))}
-            </dl>
+            <HeroStats />
           </div>
 
           <div className="relative">

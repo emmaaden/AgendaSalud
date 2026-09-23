@@ -182,9 +182,9 @@ export function Odontogram({
     ]
 
     function fillCara(cara: string) {
-      if (ausente) return "#e5e7eb"
+      if (ausente) return "var(--muted)"
       const f = findings.find((d) => d.cara === cara)
-      return f ? ESTADO_COLOR[(f.estado as Estado) || "realizado"] || "#fff" : "#ffffff"
+      return f ? ESTADO_COLOR[(f.estado as Estado) || "realizado"] || "var(--card)" : "var(--card)"
     }
 
     function describirCara(cara: string) {
@@ -251,7 +251,7 @@ export function Odontogram({
             key={k}
             points={poly(z.pts)}
             fill={fillCara(z.cara)}
-            stroke="#cbd5e1"
+            stroke="var(--border)"
             strokeWidth={1}
             style={{ cursor }}
             onClick={() => aplicarCara(numero, z.cara)}
@@ -265,7 +265,7 @@ export function Odontogram({
           width={S - IN * 2}
           height={S - IN * 2}
           fill={fillCara(meta.centro)}
-          stroke="#cbd5e1"
+          stroke="var(--border)"
           strokeWidth={1}
           style={{ cursor }}
           onClick={() => aplicarCara(numero, meta.centro)}
@@ -436,7 +436,7 @@ export function Odontogram({
             y1={4}
             x2={dividerX}
             y2={TOTAL_H - 4}
-            stroke="#e2e8f0"
+            stroke="var(--border)"
             strokeWidth={1.5}
             strokeDasharray="4 4"
           />

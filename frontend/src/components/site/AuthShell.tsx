@@ -52,7 +52,7 @@ export function AuthShell({
             </ul>
           )}
         </div>
-        <p className="relative text-xs text-primary-foreground/60">
+        <p className="relative text-xs text-primary-foreground/85">
           © {new Date().getFullYear()} AgendaSalud
         </p>
       </aside>
