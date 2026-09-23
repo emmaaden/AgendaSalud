@@ -38,6 +38,7 @@ import {
   type Turno,
 } from "@/components/dashboard/turnos-dialogs"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
+import { useAuth } from "@/contexts/AuthContext"
 import {
   diasDelMes,
   formatFecha,
@@ -72,6 +73,7 @@ export function AgendaCalendario({
   /** Para que la pestaña de lista se entere de los cambios. */
   onCambio?: () => void
 }) {
+  const { user } = useAuth()
   const compacto = useMediaQuery("(max-width: 639px)")
   const [profId, setProfId] = useState("")
   const [vista, setVista] = useState<Vista>(compacto ? "dia" : "semana")
@@ -90,10 +92,12 @@ export function AgendaCalendario({
   const [bloqueoSel, setBloqueoSel] = useState<Bloqueo | null>(null)
   const [accion, setAccion] = useState(false)
 
-  // Primer profesional disponible por defecto.
+  // Un profesional entra a ver SU agenda; recepción, la del primero de la lista.
   useEffect(() => {
-    if (!profId && profesionales.length) setProfId(String(profesionales[0].id))
-  }, [profesionales, profId])
+    if (profId || !profesionales.length) return
+    const propio = profesionales.find((p) => p.id === user?.idRole)
+    setProfId(String((propio ?? profesionales[0]).id))
+  }, [profesionales, profId, user?.idRole])
 
   // En celular la semana no entra: se arranca por el día.
   useEffect(() => {
