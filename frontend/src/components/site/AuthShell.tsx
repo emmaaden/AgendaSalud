@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom"
 import { Check } from "lucide-react"
 import { Logo } from "./Logo"
 
@@ -62,9 +61,7 @@ export function AuthShell({
       <div className="flex flex-col justify-center px-4 py-10 sm:px-8">
         <div className="mx-auto w-full max-w-md">
           <div className="mb-8 lg:hidden">
-            <Link to="/">
-              <Logo />
-            </Link>
+            <Logo />
           </div>
           {children}
         </div>

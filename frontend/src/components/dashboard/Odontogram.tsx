@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type KeyboardEvent } from "react"
 import { Eraser, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -52,6 +52,16 @@ const CON_SIMBOLO = new Set(["ausente", "extraccion", "corona", "endodoncia"])
 
 function poly(pts: number[][]) {
   return pts.map((p) => p.join(",")).join(" ")
+}
+
+// Enter / Espacio activan los elementos SVG con role="button" (igual que un <button>).
+function onActivate(fn: () => void) {
+  return (e: KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      fn()
+    }
+  }
 }
 
 export function Odontogram({
@@ -177,13 +187,52 @@ export function Odontogram({
       return f ? ESTADO_COLOR[(f.estado as Estado) || "realizado"] || "#fff" : "#ffffff"
     }
 
+    function describirCara(cara: string) {
+      const base = `Diente ${numero}, cara ${CARA_LABEL[cara] ?? cara}`
+      if (ausente) return `${base}: ausente`
+      const f = findings.find((d) => d.cara === cara)
+      return f
+        ? `${base}: ${condicionLabel(f.condicion)}, ${ESTADO_LABEL[(f.estado as Estado) || "realizado"]}`
+        : base
+    }
+
     const cursor = readOnly ? "default" : "pointer"
+    // Solo las caras editables entran al orden de tabulación.
+    const caraProps = (cara: string) =>
+      readOnly
+        ? {}
+        : {
+            role: "button",
+            tabIndex: 0,
+            "aria-label": describirCara(cara),
+            onKeyDown: onActivate(() => aplicarCara(numero, cara)),
+            className: "outline-none focus-visible:stroke-ring focus-visible:stroke-2",
+          }
 
     return (
-      <g key={numero}>
+      <g key={numero} role="group" aria-label={`Diente ${numero}`}>
         {/* Número (abre el detalle) */}
-        <g style={{ cursor: "pointer" }} onClick={() => setDetalle(numero)}>
-          <rect x={x} y={numY - 9} width={S} height={12} fill="transparent" />
+        <g
+          role="button"
+          tabIndex={0}
+          aria-label={`Ver detalle del diente ${numero}${
+            findings.length ? ` (${findings.length} hallazgos)` : ""
+          }`}
+          className="group outline-none"
+          style={{ cursor: "pointer" }}
+          onClick={() => setDetalle(numero)}
+          onKeyDown={onActivate(() => setDetalle(numero))}
+        >
+          <rect
+            x={x}
+            y={numY - 10}
+            width={S}
+            height={14}
+            rx={3}
+            fill="transparent"
+            strokeWidth={1.5}
+            className="stroke-transparent group-focus-visible:stroke-ring"
+          />
           <text
             x={x + S / 2}
             y={numY}
@@ -206,6 +255,7 @@ export function Odontogram({
             strokeWidth={1}
             style={{ cursor }}
             onClick={() => aplicarCara(numero, z.cara)}
+            {...caraProps(z.cara)}
           />
         ))}
         {/* Cara central (oclusal / incisal) */}
@@ -219,6 +269,7 @@ export function Odontogram({
           strokeWidth={1}
           style={{ cursor }}
           onClick={() => aplicarCara(numero, meta.centro)}
+          {...caraProps(meta.centro)}
         />
 
         {/* Símbolos de diente completo (no interceptan el click) */}
@@ -297,9 +348,10 @@ export function Odontogram({
                 <button
                   key={e}
                   type="button"
+                  aria-pressed={estado === e}
                   onClick={() => setEstado(e)}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium transition-colors",
+                    "px-3 py-1.5 text-sm font-medium transition-colors pointer-coarse:min-h-11",
                     estado === e ? "text-white" : "bg-background hover:bg-muted"
                   )}
                   style={estado === e ? { background: ESTADO_COLOR[e] } : undefined}
@@ -315,9 +367,10 @@ export function Odontogram({
                 <button
                   key={d}
                   type="button"
+                  aria-pressed={denticion === d}
                   onClick={() => setDenticion(d)}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium transition-colors",
+                    "px-3 py-1.5 text-sm font-medium transition-colors pointer-coarse:min-h-11",
                     denticion === d
                       ? "bg-primary text-primary-foreground"
                       : "bg-background hover:bg-muted"
@@ -346,9 +399,10 @@ export function Odontogram({
             <div>
               <button
                 type="button"
+                aria-pressed={tool === "borrar"}
                 onClick={() => seleccionarTool("borrar")}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors pointer-coarse:min-h-11",
                   tool === "borrar"
                     ? "border-foreground bg-foreground text-background"
                     : "border-border bg-background hover:bg-muted"
@@ -363,7 +417,7 @@ export function Odontogram({
             <Info className="mt-0.5 size-3.5 shrink-0" />
             Elegí un estado y una condición, y tocá una cara del diente (o el diente,
             para condiciones completas). Tocá el número del diente para ver el detalle
-            y agregar notas.
+            y agregar notas. Con teclado: Tab para moverte y Enter para aplicar.
           </p>
         </div>
       )}
@@ -372,6 +426,8 @@ export function Odontogram({
         <svg
           id="odontogramaSVG"
           viewBox={`0 0 ${width} ${TOTAL_H}`}
+          role="group"
+          aria-label="Odontograma"
           className="mx-auto block max-w-full text-muted-foreground"
           style={{ minWidth: Math.min(width, 620) }}
         >
@@ -474,9 +530,10 @@ function ToolGroup({
           <button
             key={key}
             type="button"
+            aria-pressed={tool === key}
             onClick={() => onPick(key)}
             className={cn(
-              "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+              "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors pointer-coarse:min-h-10 pointer-coarse:px-3",
               tool === key
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-background hover:bg-muted"

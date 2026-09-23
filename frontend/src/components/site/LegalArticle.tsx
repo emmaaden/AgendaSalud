@@ -20,7 +20,7 @@ export function LegalArticle({
     <>
       <PageHero eyebrow="Legal" title={title} />
       <Container className="py-12">
-        <article className="mx-auto max-w-3xl">
+        <article className="mx-auto max-w-2xl">
           <p className="text-muted-foreground">{intro}</p>
 
           <div className="mt-8 space-y-8">

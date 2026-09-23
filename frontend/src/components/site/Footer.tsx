@@ -60,9 +60,9 @@ export function Footer() {
 
         {columns.map((col) => (
           <div key={col.title}>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">
+            <h2 className="mb-3 text-sm font-semibold text-foreground">
               {col.title}
-            </h3>
+            </h2>
             <ul className="space-y-2 text-sm">
               {col.links.map((l) => (
                 <li key={l.to}>

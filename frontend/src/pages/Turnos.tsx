@@ -132,12 +132,12 @@ export default function Turnos() {
           {view === "menu" && (
             <div className="grid gap-4 sm:grid-cols-2">
               <button onClick={() => setView("reservar")} className="group text-left">
-                <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:ring-primary/40">
+                <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
                   <CardContent className="p-6">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                       <CalendarPlus className="size-6" />
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold">Agendar turno</h3>
+                    <h2 className="mt-4 text-lg font-semibold">Agendar turno</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Reservá una nueva consulta con el profesional que elijas.
                     </p>
@@ -152,7 +152,7 @@ export default function Turnos() {
                 to={user?.role === "paciente" ? "/mis-turnos" : "/login"}
                 className="group text-left"
               >
-                <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:ring-primary/40">
+                <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
                   <CardContent className="p-6">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                       {user?.role === "paciente" ? (
@@ -161,7 +161,7 @@ export default function Turnos() {
                         <LogIn className="size-6" />
                       )}
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold">Mis turnos</h3>
+                    <h2 className="mt-4 text-lg font-semibold">Mis turnos</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {user?.role === "paciente"
                         ? "Consultá o cancelá tus turnos desde tu cuenta."
@@ -378,7 +378,7 @@ function ReservarForm({
   return (
     <Card className="mt-6">
       <CardContent className="p-6">
-        <h3 className="text-lg font-semibold">Datos del turno</h3>
+        <h2 className="text-lg font-semibold">Datos del turno</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Con {profName}. Elegí la fecha y completá tus datos.
         </p>

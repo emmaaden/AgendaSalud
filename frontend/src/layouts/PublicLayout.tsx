@@ -1,7 +1,8 @@
-import { useEffect } from "react"
+import { Suspense, useEffect } from "react"
 import { Outlet, useLocation } from "react-router-dom"
 import { Navbar } from "@/components/site/Navbar"
 import { Footer } from "@/components/site/Footer"
+import { PageLoader } from "@/components/site/PageLoader"
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -17,7 +18,10 @@ export function PublicLayout() {
       <ScrollToTop />
       <Navbar />
       <main className="flex-1">
-        <Outlet />
+        {/* Suspense acá: mientras carga una página lazy, navbar y footer quedan visibles. */}
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
       <Footer />
     </div>

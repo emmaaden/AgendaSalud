@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Loader2,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container } from "@/components/site/Section"
@@ -105,6 +106,30 @@ function formatCorto(iso: string) {
   })
 }
 
+// Contenedor y encabezado de la tarjeta del hero. Van fuera de ProximoTurnoCard
+// para que React no los trate como componentes nuevos en cada render.
+function HeroShell({ children }: { children: React.ReactNode }) {
+  return (
+    <Card className="mx-auto max-w-md shadow-xl ring-foreground/5">
+      <CardContent className="space-y-4 p-6">{children}</CardContent>
+    </Card>
+  )
+}
+
+function HeroHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
+        <CalendarClock className="size-6" />
+      </div>
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      </div>
+    </div>
+  )
+}
+
 // Tarjeta del hero. Antes mostraba un turno ficticio a todo el mundo; ahora es
 // consciente de la sesión: el paciente logueado ve SU próximo turno real, y quien
 // no tiene sesión ve una invitación a entrar o reservar.
@@ -125,55 +150,37 @@ function ProximoTurnoCard() {
       .finally(() => setLoadingTurno(false))
   }, [esPaciente])
 
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <Card className="mx-auto max-w-md shadow-xl ring-foreground/5">
-      <CardContent className="space-y-4 p-6">{children}</CardContent>
-    </Card>
-  )
-
-  const Header = ({ title, subtitle }: { title: string; subtitle: string }) => (
-    <div className="flex items-center gap-3">
-      <div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-        <CalendarClock className="size-6" />
-      </div>
-      <div>
-        <p className="font-medium">{title}</p>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      </div>
-    </div>
-  )
-
   if (loading || (esPaciente && loadingTurno)) {
     return (
-      <Shell>
-        <Header title="Próximo turno" subtitle="Cargando…" />
+      <HeroShell>
+        <HeroHeader title="Próximo turno" subtitle="Cargando…" />
         <div className="flex justify-center py-6">
           <Loader2 className="size-6 animate-spin text-primary" />
         </div>
-      </Shell>
+      </HeroShell>
     )
   }
 
   // Profesional logueado: atajo al panel.
   if (user && !esPaciente) {
     return (
-      <Shell>
-        <Header title="Hola de nuevo" subtitle="Tu panel te espera" />
+      <HeroShell>
+        <HeroHeader title="Hola de nuevo" subtitle="Tu panel te espera" />
         <Button asChild className="w-full" size="lg">
           <a href="/dashboard">
             <LayoutDashboard /> Ir al panel
           </a>
         </Button>
-      </Shell>
+      </HeroShell>
     )
   }
 
   // Paciente logueado con un turno próximo real.
   if (esPaciente && turno) {
     return (
-      <Shell>
-        <Header title="Tu próximo turno" subtitle="Asociado a tu cuenta" />
-        <div className="rounded-xl border border-border bg-muted/40 p-4">
+      <HeroShell>
+        <HeroHeader title="Tu próximo turno" subtitle="Asociado a tu cuenta" />
+        <div className="border-t border-border pt-4">
           <p className="text-sm text-muted-foreground">
             {turno.especialidad || "Consulta"}
           </p>
@@ -185,9 +192,9 @@ function ProximoTurnoCard() {
               <CalendarClock className="size-4 text-primary" />{" "}
               {formatCorto(turno.inicio)} hs
             </span>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
               Reservado
-            </span>
+            </Badge>
           </div>
         </div>
         <Button asChild className="w-full" size="lg">
@@ -195,38 +202,38 @@ function ProximoTurnoCard() {
             Ver mis turnos <ArrowRight />
           </Link>
         </Button>
-      </Shell>
+      </HeroShell>
     )
   }
 
   // Paciente logueado sin turnos próximos.
   if (esPaciente) {
     return (
-      <Shell>
-        <Header title="Tu próximo turno" subtitle="Asociado a tu cuenta" />
-        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+      <HeroShell>
+        <HeroHeader title="Tu próximo turno" subtitle="Asociado a tu cuenta" />
+        <p className="border-t border-border pt-4 text-center text-sm text-muted-foreground">
           No tenés turnos próximos.
-        </div>
+        </p>
         <Button asChild className="w-full" size="lg">
           <Link to="/turnos">
             <CalendarPlus /> Reservar ahora
           </Link>
         </Button>
-      </Shell>
+      </HeroShell>
     )
   }
 
   // Sin sesión.
   return (
-    <Shell>
-      <Header
+    <HeroShell>
+      <HeroHeader
         title="Tu próximo turno"
         subtitle="Iniciá sesión para verlo acá"
       />
-      <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Con tu cuenta, tus turnos y tus datos quedan en un solo lugar: los ves y
         los cancelás cuando quieras.
-      </div>
+      </p>
       <div className="grid gap-2 sm:grid-cols-2">
         <Button asChild size="lg" variant="outline">
           <Link to="/login">
@@ -239,7 +246,7 @@ function ProximoTurnoCard() {
           </Link>
         </Button>
       </div>
-    </Shell>
+    </HeroShell>
   )
 }
 

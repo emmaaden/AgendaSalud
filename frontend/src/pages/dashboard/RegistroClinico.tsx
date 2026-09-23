@@ -138,12 +138,12 @@ function MenuCard({
 }) {
   return (
     <button onClick={onClick} className="group text-left">
-      <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:ring-primary/40">
+      <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
         <CardContent className="p-6">
           <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
             <Icon className="size-6" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+          <h2 className="mt-4 text-lg font-semibold">{title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
           <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
             Continuar <ArrowRight className="size-4" />
@@ -224,9 +224,9 @@ function RegistrarPaciente({
       <form onSubmit={guardar} className="space-y-6">
         <Card>
           <CardContent className="p-6">
-            <h3 className="flex items-center gap-2 font-semibold">
+            <h2 className="flex items-center gap-2 font-semibold">
               <User className="size-5 text-primary" /> Datos personales
-            </h3>
+            </h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Field label="Nombre y apellido" htmlFor="nombre" required>
                 <Input id="nombre" className="h-10" value={form.nombre} onChange={set("nombre")} />
@@ -266,9 +266,9 @@ function RegistrarPaciente({
 
         <Card>
           <CardContent className="p-6">
-            <h3 className="flex items-center gap-2 font-semibold">
+            <h2 className="flex items-center gap-2 font-semibold">
               <Stethoscope className="size-5 text-primary" /> Primera consulta
-            </h3>
+            </h2>
             <div className="mt-4 space-y-4">
               <Field label="Síntomas" htmlFor="sintomas">
                 <Textarea id="sintomas" rows={2} value={form.sintomas} onChange={set("sintomas")} />
@@ -286,7 +286,7 @@ function RegistrarPaciente({
         {isOdonto && (
           <Card>
             <CardContent className="p-6">
-              <h3 className="font-semibold">Odontograma</h3>
+              <h2 className="font-semibold">Odontograma</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Tocá un diente para registrar su estado.
               </p>

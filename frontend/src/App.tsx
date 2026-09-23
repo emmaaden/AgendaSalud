@@ -1,21 +1,24 @@
 import { Suspense, lazy } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
-import { Loader2 } from "lucide-react"
 import { PublicLayout } from "@/layouts/PublicLayout"
 import { DashboardLayout } from "@/layouts/DashboardLayout"
 import { Toaster } from "@/components/ui/sonner"
+import { PageLoader } from "@/components/site/PageLoader"
 
+// Carga inicial: solo lo que ve quien llega al sitio.
 import Home from "@/pages/Home"
-import Planes from "@/pages/Planes"
 import Login from "@/pages/Login"
-import RegisterRole from "@/pages/RegisterRole"
-import RegisterPaciente from "@/pages/RegisterPaciente"
-import RegisterProfesional from "@/pages/RegisterProfesional"
-import RegisterRecepcion from "@/pages/RegisterRecepcion"
-import ForgotPassword from "@/pages/ForgotPassword"
-import Terminos from "@/pages/Terminos"
-import Privacidad from "@/pages/Privacidad"
 import NotFound from "@/pages/NotFound"
+
+// Páginas públicas de visita ocasional → carga diferida.
+const Planes = lazy(() => import("@/pages/Planes"))
+const RegisterRole = lazy(() => import("@/pages/RegisterRole"))
+const RegisterPaciente = lazy(() => import("@/pages/RegisterPaciente"))
+const RegisterProfesional = lazy(() => import("@/pages/RegisterProfesional"))
+const RegisterRecepcion = lazy(() => import("@/pages/RegisterRecepcion"))
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"))
+const Terminos = lazy(() => import("@/pages/Terminos"))
+const Privacidad = lazy(() => import("@/pages/Privacidad"))
 
 // Páginas con dependencias pesadas (jsPDF / Supabase) → carga diferida.
 const Turnos = lazy(() => import("@/pages/Turnos"))
@@ -48,14 +51,6 @@ const DashboardHistorias = lazy(
 const DashboardEstudios = lazy(
   () => import("@/pages/dashboard/EstudiosCompartidos")
 )
-
-function PageLoader() {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <Loader2 className="size-6 animate-spin text-primary" />
-    </div>
-  )
-}
 
 function App() {
   return (

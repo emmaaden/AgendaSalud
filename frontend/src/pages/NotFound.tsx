@@ -41,7 +41,7 @@ export default function NotFound() {
 
       <button
         onClick={() => window.history.back()}
-        className="mt-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="mt-8 inline-flex items-center gap-1.5 pointer-coarse:min-h-11 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
         Volver atrás

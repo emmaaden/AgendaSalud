@@ -66,7 +66,7 @@ export default function Planes() {
             <div
               key={plan.name}
               className={cn(
-                "relative flex flex-col rounded-2xl border bg-card p-8 ring-1 ring-foreground/5 transition-all",
+                "relative flex flex-col rounded-2xl border bg-card p-8 ring-1 ring-foreground/5 transition-shadow duration-200 ease-out",
                 plan.featured
                   ? "border-primary shadow-xl lg:-mt-4 lg:mb-4"
                   : "border-border hover:shadow-md"
@@ -77,7 +77,7 @@ export default function Planes() {
                   <Star className="size-3.5" /> Recomendado
                 </span>
               )}
-              <h3 className="text-lg font-semibold">{plan.name}</h3>
+              <h2 className="text-lg font-semibold">{plan.name}</h2>
               <div className="mt-2 flex items-baseline gap-1">
                 <span className="text-4xl font-semibold">${plan.price}</span>
                 <span className="text-sm text-muted-foreground">/ mes</span>

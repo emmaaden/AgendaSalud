@@ -97,12 +97,12 @@ export default function DashboardHome() {
       <div className="grid gap-4 md:grid-cols-3">
         {accesos.map((a) => (
           <Link key={a.title} to={a.to} className="group">
-            <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:ring-primary/40">
+            <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
               <CardContent className="flex h-full flex-col p-6">
                 <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <a.icon className="size-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">{a.title}</h3>
+                <h2 className="mt-4 text-lg font-semibold">{a.title}</h2>
                 <p className="mt-1 flex-1 text-sm text-muted-foreground">
                   {a.description}
                 </p>

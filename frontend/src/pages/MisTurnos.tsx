@@ -12,6 +12,7 @@ import {
   FileCheck2,
   FolderHeart,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container, PageHero } from "@/components/site/Section"
@@ -238,9 +239,9 @@ export default function MisTurnos() {
                           {formatFecha(t.inicio)} hs
                         </span>
                         {t.estado === "cancelado" && (
-                          <span className="ml-auto rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                          <Badge variant="destructive" className="ml-auto">
                             Cancelado
-                          </span>
+                          </Badge>
                         )}
                       </li>
                     ))}

@@ -1,8 +1,9 @@
-import { useEffect } from "react"
+import { Suspense, useEffect } from "react"
 import { Outlet, useLocation, Navigate } from "react-router-dom"
 import { Loader2 } from "lucide-react"
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 import { DashboardNavbar } from "@/components/dashboard/DashboardNavbar"
+import { PageLoader } from "@/components/site/PageLoader"
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -51,7 +52,10 @@ function Guarded() {
       <ScrollToTop />
       <DashboardNavbar />
       <main className="flex-1">
-        <Outlet />
+        {/* Suspense acá: mientras carga una página lazy, el navbar queda visible. */}
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )
