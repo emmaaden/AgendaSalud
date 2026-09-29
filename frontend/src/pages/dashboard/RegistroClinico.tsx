@@ -14,9 +14,9 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field } from "@/components/form/Field"
+import { DictationTextarea } from "@/components/form/DictationTextarea"
 import { SelectField } from "@/components/form/SelectField"
 import { Container } from "@/components/site/Section"
 import {
@@ -271,13 +271,13 @@ function RegistrarPaciente({
             </h2>
             <div className="mt-4 space-y-4">
               <Field label="Síntomas" htmlFor="sintomas">
-                <Textarea id="sintomas" rows={2} value={form.sintomas} onChange={set("sintomas")} />
+                <DictationTextarea id="sintomas" rows={2} value={form.sintomas} onValueChange={(v) => setForm((f) => ({ ...f, sintomas: v }))} />
               </Field>
               <Field label="Diagnóstico" htmlFor="diagnostico">
-                <Textarea id="diagnostico" rows={2} value={form.diagnostico} onChange={set("diagnostico")} />
+                <DictationTextarea id="diagnostico" rows={2} value={form.diagnostico} onValueChange={(v) => setForm((f) => ({ ...f, diagnostico: v }))} />
               </Field>
               <Field label="Tratamiento" htmlFor="tratamiento">
-                <Textarea id="tratamiento" rows={2} value={form.tratamiento} onChange={set("tratamiento")} />
+                <DictationTextarea id="tratamiento" rows={2} value={form.tratamiento} onValueChange={(v) => setForm((f) => ({ ...f, tratamiento: v }))} />
               </Field>
             </div>
           </CardContent>
@@ -489,13 +489,13 @@ function BuscarPaciente({
           </h3>
           <div className="mt-4 space-y-4">
             <Field label="Síntomas" htmlFor="s-sintomas">
-              <Textarea id="s-sintomas" rows={2} value={sintomas} onChange={(e) => setSintomas(e.target.value)} />
+              <DictationTextarea id="s-sintomas" rows={2} value={sintomas} onValueChange={setSintomas} />
             </Field>
             <Field label="Diagnóstico" htmlFor="s-diagnostico">
-              <Textarea id="s-diagnostico" rows={2} value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)} />
+              <DictationTextarea id="s-diagnostico" rows={2} value={diagnostico} onValueChange={setDiagnostico} />
             </Field>
             <Field label="Tratamiento" htmlFor="s-tratamiento">
-              <Textarea id="s-tratamiento" rows={2} value={tratamiento} onChange={(e) => setTratamiento(e.target.value)} />
+              <DictationTextarea id="s-tratamiento" rows={2} value={tratamiento} onValueChange={setTratamiento} />
             </Field>
             {isOdonto && (
               <div>
