@@ -26,6 +26,8 @@ type ReconocedorCtor = new () => Reconocedor
 
 function getCtor(): ReconocedorCtor | undefined {
   if (typeof window === "undefined") return undefined
+  // Brave expone la API pero no tiene servicio de voz: siempre falla.
+  if ("brave" in navigator) return undefined
   const w = window as unknown as {
     SpeechRecognition?: ReconocedorCtor
     webkitSpeechRecognition?: ReconocedorCtor
@@ -87,7 +89,11 @@ export function useDictado() {
         else if (e.error === "audio-capture")
           toast.error("No se detectó ningún micrófono.")
         else if (e.error === "network")
-          toast.error("El dictado necesita conexión a internet.")
+          // Chromium sin el servicio de voz de Google (Opera, Vivaldi, apps
+          // Electron…) expone la API pero siempre falla con "network".
+          toast.error(
+            "Este navegador no pudo conectarse al servicio de dictado. Usá Chrome o Edge."
+          )
         else toast.error("No se pudo usar el dictado por voz.")
       }
 
