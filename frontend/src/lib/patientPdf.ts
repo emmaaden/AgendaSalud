@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf"
 import { describeDiente, type Diente } from "@/lib/odontograma"
+import { LOGO_PDF } from "@/lib/brandMark"
 
 export type HistoryEntry = {
   profesional: string
@@ -25,17 +26,46 @@ export type Paciente = {
   history: HistoryEntry[]
 }
 
+/** Dibuja el logo horizontal (vectorial) con su esquina superior izquierda en (x, y), en mm. */
+function drawLogo(doc: jsPDF, x: number, y: number, height: number) {
+  const k = height / LOGO_PDF.height
+  for (const { rgb, d } of LOGO_PDF.parts) {
+    const ops: { op: string; c: number[] }[] = []
+    const tokens = d.match(/[MLCZ]|-?\d*\.?\d+/g) ?? []
+    let cmd = ""
+    let nums: number[] = []
+    const flush = () => {
+      if (!cmd) return
+      const pts = nums.map((n, i) => (i % 2 === 0 ? x + n * k : y + n * k))
+      ops.push({ op: cmd === "Z" ? "h" : cmd.toLowerCase(), c: pts })
+    }
+    for (const t of tokens) {
+      if (/[MLCZ]/.test(t)) {
+        flush()
+        cmd = t
+        nums = []
+      } else nums.push(Number(t))
+    }
+    flush()
+    doc.setFillColor(...rgb)
+    doc.path(ops)
+    doc.fill()
+  }
+}
+
 /** Genera y descarga el PDF del historial clínico de un paciente. */
 export function downloadPatientHistoryPdf(p: Paciente) {
   const doc = new jsPDF()
-  doc.setFontSize(20)
-  doc.setFont("helvetica", "bold")
-  doc.text("AgendaSalud", 105, 20, { align: "center" })
-  doc.setFontSize(14)
+  drawLogo(doc, 10, 15, 10)
+  doc.setFontSize(12)
   doc.setFont("helvetica", "normal")
-  doc.text("Historial clínico del paciente", 105, 30, { align: "center" })
+  doc.setTextColor(96, 109, 125)
+  doc.text("Historial clínico del paciente", 200, 23, { align: "right" })
+  doc.setTextColor(0, 0, 0)
+  doc.setDrawColor(29, 92, 170)
   doc.setLineWidth(0.5)
   doc.line(10, 35, 200, 35)
+  doc.setDrawColor(0, 0, 0)
 
   const left: [string, string][] = [
     ["Nombre", p.fullName ?? "N/A"],

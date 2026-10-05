@@ -28,10 +28,7 @@ export function AuthShell({
           aria-hidden
           className="pointer-events-none absolute -bottom-32 -left-16 size-80 rounded-full bg-white/10 blur-2xl"
         />
-        <Logo
-          to="/"
-          className="relative text-primary-foreground [&_span.text-primary]:text-primary-foreground"
-        />
+        <Logo to="/" inverted className="relative self-start" />
         <div className="relative max-w-md">
           <h2 className="font-heading text-3xl font-semibold leading-tight">
             {title}
