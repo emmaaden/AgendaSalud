@@ -5,13 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useDictado } from "@/hooks/useDictado"
 
-/** Puntuación dictada: "punto", "coma", "punto y aparte", etc. */
+/**
+ * Puntuación dictada: "punto", "coma", "punto y aparte", etc. Whisper ya
+ * puntúa solo ("fiebre, punto y aparte."), así que cada comando absorbe la
+ * puntuación que lo rodea para no duplicarla.
+ */
 function aplicarComandos(texto: string) {
   // \b de JS no entiende acentos ("puntó"): delimitamos por letras Unicode.
-  const cmd = (palabras: string, despues = "") =>
-    new RegExp(String.raw`\s*(?<!\p{L})(?:${palabras})(?!\p{L})` + despues, "giu")
+  const cmd = (palabras: string, despues = "[.,;:]?") =>
+    new RegExp(String.raw`[\s.,;:]*(?<!\p{L})(?:${palabras})(?!\p{L})` + despues, "giu")
   return texto
-    .replace(cmd("punto y aparte|nueva l[ií]nea", String.raw`\s*`), "\n")
+    .replace(cmd("punto y aparte|nueva l[ií]nea", String.raw`[\s.,;:]*`), "\n")
     .replace(cmd("punto y coma"), ";")
     .replace(cmd("dos puntos"), ":")
     .replace(cmd("punto"), ".")
@@ -30,7 +34,7 @@ function unirDictado(previo: string, frase: string) {
   return base + espacio + t
 }
 
-/** Textarea con botón de micrófono para dictar (Web Speech API). */
+/** Textarea con botón de micrófono para dictar (motor propio, ver useDictado). */
 export function DictationTextarea({
   value,
   onValueChange,
@@ -80,7 +84,7 @@ export function DictationTextarea({
           onClick={() =>
             listening
               ? stop()
-              : start((frase) => {
+              : void start((frase) => {
                   // Puede llegar más de una frase antes del próximo render.
                   valueRef.current = unirDictado(valueRef.current, frase)
                   onValueChange(valueRef.current)
@@ -90,7 +94,7 @@ export function DictationTextarea({
           {listening ? <MicOff /> : <Mic />}
         </Button>
       </div>
-      {listening && (
+      {(listening || interim) && (
         <p aria-live="polite" className="min-h-4 text-xs text-muted-foreground italic">
           {interim || "Escuchando…"}
         </p>

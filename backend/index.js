@@ -23,6 +23,7 @@ const certificadoRoutes = require('./routes/certificadoRoutes'); // Fase C: cert
 const hcRoutes = require('./routes/hcRoutes'); // Fase D: export/import de historias clínicas
 const staffRoutes = require('./routes/staffRoutes'); // Fase E: gestión de turnos por el staff (/staff)
 const estudioRoutes = require('./routes/estudioRoutes'); // Fase I: mis estudios del paciente (/estudios)
+const dictadoRoutes = require('./routes/dictadoRoutes'); // dictado por voz con whisper.cpp local (/dictado)
 // (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
@@ -141,7 +142,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting general. El limiter estricto de login/register vive en routes/authRoutes.js.
-const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+// /dictado tiene su propio limiter (manda un tramo de audio cada pocos segundos).
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    skip: (req) => req.path.startsWith('/dictado'),
+});
 app.use(generalLimiter);
 
 // Limiter estricto para la reserva pública de turnos: al crear un turno se dispara un
@@ -206,6 +212,7 @@ app.use('/certificados', certificadoRoutes); // Fase C: certificados médicos
 app.use('/hc', hcRoutes); // Fase D: export/import de historias clínicas
 app.use('/staff', staffRoutes); // Fase E: gestión de turnos por el staff (recepción/profesional/admin)
 app.use('/estudios', estudioRoutes); // Fase I: repositorio de estudios del paciente + compartir
+app.use('/dictado', dictadoRoutes); // dictado por voz (proxy al whisper.cpp local)
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
