@@ -15,6 +15,8 @@ router.get('/registros/:id', verAuditoria, auditoriaController.detalleRegistro);
 router.get('/filtros', verAuditoria, auditoriaController.filtros);
 router.get('/bitacora', verAuditoria, validate(schemas.auditoria.bitacora, 'query'), auditoriaController.bitacora);
 router.get('/resumen', verAuditoria, validate(schemas.auditoria.resumen, 'query'), auditoriaController.resumen);
+// Fase K: cruce de asistencia (turnos vs. registros).
+router.get('/cruce', verAuditoria, validate(schemas.auditoria.cruce, 'query'), auditoriaController.cruce);
 
 // Revisar un registro: solo el auditor.
 router.post('/registros/:id/revision', requireRolClinica('auditor'), validate(schemas.auditoria.revisar), auditoriaController.revisar);

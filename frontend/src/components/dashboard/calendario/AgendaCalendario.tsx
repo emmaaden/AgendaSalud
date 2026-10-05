@@ -122,7 +122,7 @@ export function AgendaCalendario({
     try {
       const [t, b, h] = await Promise.all([
         api.get<{ turnos: Turno[] }>(
-          `/staff/turnos?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&profId=${profId}&estado=reservado`
+          `/staff/turnos?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&profId=${profId}&estado=vigentes`
         ),
         api.get<{ bloqueos: Bloqueo[] }>(
           `/staff/bloqueos?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}&profId=${profId}`

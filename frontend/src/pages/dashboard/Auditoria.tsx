@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/accordion"
 import { Container } from "@/components/site/Section"
 import { Odontogram } from "@/components/dashboard/Odontogram"
+import { CodificacionResumen } from "@/components/form/CodificacionEditor"
+import { AutorizacionesLista } from "@/components/dashboard/AutorizacionesLista"
 import { api, ApiError } from "@/lib/api"
 import { formatFecha, formatFechaHora, hoyAR, sumarDias } from "@/lib/fecha"
 import {
@@ -167,13 +169,28 @@ export default function Auditoria() {
       </div>
 
       <Tabs defaultValue="bandeja">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 h-auto flex-wrap">
           <TabsTrigger value="bandeja">Bandeja</TabsTrigger>
+          <TabsTrigger value="autorizaciones">Autorizaciones</TabsTrigger>
+          <TabsTrigger value="asistencia">Asistencia</TabsTrigger>
           <TabsTrigger value="bitacora">Bitácora</TabsTrigger>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
         </TabsList>
         <TabsContent value="bandeja">
           <Bandeja puedeRevisar={esAuditor} />
+        </TabsContent>
+        <TabsContent value="autorizaciones">
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <AutorizacionesLista
+                modo={esAuditor ? "auditor" : "admin"}
+                estadoInicial={esAuditor ? "pendiente" : "todas"}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="asistencia">
+          <Asistencia />
         </TabsContent>
         <TabsContent value="bitacora">
           <Bitacora />
@@ -192,13 +209,14 @@ type FiltrosBandeja = {
   desde: string
   hasta: string
   idProfesional: string
-  obraSocial: string
+  idObraSocial: string
+  cie10: string
   estado: string
 }
 
 type OpcionesFiltro = {
   profesionales: { id: number; nombre: string }[]
-  obrasSociales: string[]
+  obrasSociales: { id: number | null; nombre: string }[]
   alcanceObraSocial: string | null
 }
 
@@ -207,7 +225,8 @@ function Bandeja({ puedeRevisar }: { puedeRevisar: boolean }) {
     desde: sumarDias(hoyAR(), -30),
     hasta: hoyAR(),
     idProfesional: TODOS,
-    obraSocial: TODOS,
+    idObraSocial: TODOS,
+    cie10: "",
     // El auditor arranca por lo que le falta revisar; el admin ve todo.
     estado: puedeRevisar ? "pendiente" : TODOS,
   })
@@ -216,6 +235,8 @@ function Bandeja({ puedeRevisar }: { puedeRevisar: boolean }) {
   const [cargando, setCargando] = useState(true)
   const [opciones, setOpciones] = useState<OpcionesFiltro | null>(null)
   const [abierto, setAbierto] = useState<string | null>(null)
+  // El código CIE-10 se aplica al confirmar (Enter o al salir del campo).
+  const [cie10Borrador, setCie10Borrador] = useState("")
 
   useEffect(() => {
     api
@@ -253,7 +274,7 @@ function Bandeja({ puedeRevisar }: { puedeRevisar: boolean }) {
   return (
     <Card>
       <CardContent className="p-4 sm:p-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <div className="grid gap-1.5">
             <Label htmlFor="b-desde">Desde</Label>
             <Input
@@ -299,22 +320,38 @@ function Bandeja({ puedeRevisar }: { puedeRevisar: boolean }) {
               <Input id="b-os" value={opciones.alcanceObraSocial} disabled />
             ) : (
               <Select
-                value={filtros.obraSocial}
-                onValueChange={(v) => setFiltro("obraSocial", v)}
+                value={filtros.idObraSocial}
+                onValueChange={(v) => setFiltro("idObraSocial", v)}
               >
                 <SelectTrigger id="b-os" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={TODOS}>Todas</SelectItem>
-                  {opciones?.obrasSociales.map((os) => (
-                    <SelectItem key={os} value={os}>
-                      {os}
-                    </SelectItem>
-                  ))}
+                  {opciones?.obrasSociales
+                    .filter((os) => os.id != null)
+                    .map((os) => (
+                      <SelectItem key={os.id} value={String(os.id)}>
+                        {os.nombre}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             )}
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="b-cie10">CIE-10</Label>
+            <Input
+              id="b-cie10"
+              value={cie10Borrador}
+              placeholder="Ej.: K02"
+              maxLength={8}
+              onChange={(e) => setCie10Borrador(e.target.value.toUpperCase())}
+              onBlur={() => setFiltro("cie10", cie10Borrador.trim())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setFiltro("cie10", cie10Borrador.trim())
+              }}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="b-estado">Estado</Label>
@@ -347,6 +384,7 @@ function Bandeja({ puedeRevisar }: { puedeRevisar: boolean }) {
                   <TableHead>Paciente</TableHead>
                   <TableHead>Obra social</TableHead>
                   <TableHead>Profesional</TableHead>
+                  <TableHead>CIE-10</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">
                     <span className="sr-only">Acciones</span>
@@ -365,6 +403,9 @@ function Bandeja({ puedeRevisar }: { puedeRevisar: boolean }) {
                     <TableCell>
                       <p>{r.profesional || "—"}</p>
                       {r.area && <p className="text-xs text-muted-foreground">{r.area}</p>}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {r.codigos?.length ? r.codigos.join(", ") : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       <EstadoBadge estado={r.estado} />
@@ -539,6 +580,8 @@ function DetalleRegistroSheet({
                 {pac.edad !== null ? ` · ${pac.edad} años` : ""}
                 {pac.sexo ? ` · ${pac.sexo}` : ""}
                 {` · ${pac.obraSocial || "Sin obra social"}`}
+                {pac.nroAfiliado ? ` · Afiliado ${pac.nroAfiliado}` : ""}
+                {pac.plan ? ` · Plan ${pac.plan}` : ""}
               </p>
               <div className="mt-2">
                 <EstadoBadge estado={reg.estado} />
@@ -550,6 +593,16 @@ function DetalleRegistroSheet({
               <Campo titulo="Síntomas / motivo" texto={reg.sintomas} />
               <Campo titulo="Diagnóstico" texto={reg.diagnostico} />
               <Campo titulo="Tratamiento" texto={reg.tratamiento} />
+              {((reg.diagnosticos?.length ?? 0) > 0 || (reg.practicas?.length ?? 0) > 0) ? (
+                <div>
+                  <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    Codificación
+                  </p>
+                  <CodificacionResumen diagnosticos={reg.diagnosticos} practicas={reg.practicas} />
+                </div>
+              ) : (
+                <Campo titulo="Codificación" texto="Sin diagnósticos ni prácticas codificados." />
+              )}
             </div>
 
             {reg.dientes.length > 0 && (
@@ -958,6 +1011,208 @@ function Resumen() {
               )}
             </CardContent>
           </Card>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+/* =============================== Asistencia =============================== */
+
+type TurnoCruce = {
+  id: number
+  inicio: string
+  estado: string
+  profesional: string
+  paciente: string
+  invitado: boolean
+}
+
+type DatosCruce = {
+  desde: string
+  hasta: string
+  resumen: { turnos: number; atendidos: number; ausentes: number; sinMarcar: number; registros: number }
+  turnosSinRegistro: TurnoCruce[]
+  ausentesConRegistro: TurnoCruce[]
+  registrosSinTurno: { id: string; fecha: string; profesional: string; paciente: string }[]
+  truncado: boolean
+}
+
+const ESTADO_TURNO: Record<string, string> = {
+  reservado: "Sin marcar",
+  atendido: "Atendido",
+  ausente: "Ausente",
+}
+
+function ListaCruce({
+  titulo,
+  descripcion,
+  vacio,
+  children,
+  cantidad,
+}: {
+  titulo: string
+  descripcion: string
+  vacio: string
+  cantidad: number
+  children: React.ReactNode
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4 sm:p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          {titulo}
+          <Badge variant={cantidad > 0 ? "destructive" : "outline"}>{cantidad}</Badge>
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">{descripcion}</p>
+        {cantidad === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">{vacio}</p>
+        ) : (
+          <div className="mt-4">{children}</div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function Asistencia() {
+  const [desde, setDesde] = useState(sumarDias(hoyAR(), -30))
+  const [hasta, setHasta] = useState(hoyAR())
+  const [datos, setDatos] = useState<DatosCruce | null>(null)
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    let activo = true
+    setCargando(true)
+    api
+      .get<DatosCruce>(`/auditoria/cruce${qs({ desde, hasta })}`)
+      .then((d) => activo && setDatos(d))
+      .catch((err) => toast.error(mensajeError(err, "No se pudo cruzar turnos y registros.")))
+      .finally(() => activo && setCargando(false))
+    return () => {
+      activo = false
+    }
+  }, [desde, hasta])
+
+  const filaTurno = (t: TurnoCruce) => (
+    <TableRow key={t.id}>
+      <TableCell className="whitespace-nowrap">{formatFechaHora(t.inicio)}</TableCell>
+      <TableCell>
+        {t.paciente || "—"}
+        {t.invitado && <span className="text-xs text-muted-foreground"> · sin cuenta</span>}
+      </TableCell>
+      <TableCell>{t.profesional || "—"}</TableCell>
+      <TableCell>
+        <Badge variant="outline">{ESTADO_TURNO[t.estado] ?? t.estado}</Badge>
+      </TableCell>
+    </TableRow>
+  )
+
+  const cabeceraTurno = (
+    <TableHeader>
+      <TableRow>
+        <TableHead>Turno</TableHead>
+        <TableHead>Paciente</TableHead>
+        <TableHead>Profesional</TableHead>
+        <TableHead>Asistencia</TableHead>
+      </TableRow>
+    </TableHeader>
+  )
+
+  return (
+    <div className="grid gap-6">
+      <div className="grid max-w-md gap-3 sm:grid-cols-2">
+        <div className="grid gap-1.5">
+          <Label htmlFor="c-desde">Desde</Label>
+          <Input id="c-desde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="c-hasta">Hasta</Label>
+          <Input
+            id="c-hasta"
+            type="date"
+            value={hasta}
+            max={hoyAR()}
+            onChange={(e) => setHasta(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {cargando && !datos ? (
+        <Cargando />
+      ) : datos ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              ["Turnos", datos.resumen.turnos],
+              ["Atendidos", datos.resumen.atendidos],
+              ["Ausentes", datos.resumen.ausentes],
+              ["Sin marcar", datos.resumen.sinMarcar],
+              ["Registros", datos.resumen.registros],
+            ].map(([label, n]) => (
+              <Card key={label}>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums">{n}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Se emparejan por profesional, paciente y día. Los turnos de personas sin cuenta
+            se vinculan por email cuando es posible.
+            {datos.truncado ? " El período es muy largo: acotá las fechas." : ""}
+          </p>
+
+          <ListaCruce
+            titulo="Turnos sin registro clínico"
+            descripcion="Turnos atendidos o sin marcar en los que no se cargó la consulta."
+            vacio="Todos los turnos tienen su registro."
+            cantidad={datos.turnosSinRegistro.length}
+          >
+            <Table>
+              {cabeceraTurno}
+              <TableBody>{datos.turnosSinRegistro.map(filaTurno)}</TableBody>
+            </Table>
+          </ListaCruce>
+
+          <ListaCruce
+            titulo="Registros sin turno"
+            descripcion="Consultas cargadas sin un turno ese día con ese profesional."
+            vacio="Todos los registros tienen su turno."
+            cantidad={datos.registrosSinTurno.length}
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Paciente</TableHead>
+                  <TableHead>Profesional</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {datos.registrosSinTurno.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="whitespace-nowrap">{formatFechaHora(r.fecha)}</TableCell>
+                    <TableCell>{r.paciente || "—"}</TableCell>
+                    <TableCell>{r.profesional || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ListaCruce>
+
+          <ListaCruce
+            titulo="Ausentes con registro"
+            descripcion="Turnos marcados como ausente que igual tienen una consulta cargada."
+            vacio="No hay inconsistencias."
+            cantidad={datos.ausentesConRegistro.length}
+          >
+            <Table>
+              {cabeceraTurno}
+              <TableBody>{datos.ausentesConRegistro.map(filaTurno)}</TableBody>
+            </Table>
+          </ListaCruce>
         </>
       ) : null}
     </div>

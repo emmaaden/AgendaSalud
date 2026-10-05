@@ -18,6 +18,8 @@ router.post('/turnos', validate(schemas.staff.crearTurno), recepcionController.c
 router.post('/turnos/:id/cancelar', recepcionController.cancelarTurno);
 router.post('/turnos/:id/reprogramar', validate(schemas.staff.reprogramar), recepcionController.reprogramarTurno);
 router.post('/turnos/:id/reenviar-confirmacion', recepcionController.reenviarConfirmacion);
+// Fase K: asistencia (atendido / ausente).
+router.post('/turnos/:id/asistencia', validate(schemas.staff.asistencia), recepcionController.marcarAsistencia);
 
 // Bloqueos de horario (ausencias).
 router.get('/bloqueos', recepcionController.listarBloqueos);

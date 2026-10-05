@@ -16,6 +16,9 @@ import {
   Phone,
   Plus,
   Trash2,
+  UserCheck,
+  UserX,
+  Undo2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +51,7 @@ import {
   CancelarTurnoDialog,
   NuevoTurnoDialog,
   ReprogramarDialog,
+  ESTADO_TURNO,
   type Bloqueo,
   type Profesional,
   type Turno,
@@ -56,6 +60,8 @@ import {
 const ESTADOS = [
   { value: "todos", label: "Todos los estados" },
   { value: "reservado", label: "Reservados" },
+  { value: "atendido", label: "Atendidos" },
+  { value: "ausente", label: "Ausentes" },
   { value: "cancelado", label: "Cancelados" },
 ]
 
@@ -104,6 +110,22 @@ export default function TurnosDashboard() {
       .then((d) => setProfesionales(d.profesionales || []))
       .catch(() => {})
   }, [])
+
+  // Fase K: asistencia ('reservado' quita la marca).
+  async function marcarAsistencia(t: Turno, nuevo: "atendido" | "ausente" | "reservado") {
+    setAccion(t.id)
+    try {
+      const d = await api.post<{ turno: Turno }>(`/staff/turnos/${t.id}/asistencia`, { estado: nuevo })
+      setTurnos((ts) => ts.map((x) => (x.id === t.id ? d.turno : x)))
+      toast.success(
+        nuevo === "atendido" ? "Marcado como atendido." : nuevo === "ausente" ? "Marcado como ausente." : "Marca de asistencia quitada."
+      )
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "No se pudo registrar la asistencia.")
+    } finally {
+      setAccion(null)
+    }
+  }
 
   async function reenviar(t: Turno) {
     setAccion(t.id)
@@ -239,10 +261,8 @@ export default function TurnosDashboard() {
                     <p className="text-xs text-muted-foreground">hs</p>
                   </div>
 
-                  <Badge
-                    variant={t.estado === "reservado" ? "default" : "secondary"}
-                  >
-                    {t.estado === "reservado" ? "Reservado" : "Cancelado"}
+                  <Badge variant={ESTADO_TURNO[t.estado]?.variant ?? "secondary"}>
+                    {ESTADO_TURNO[t.estado]?.label ?? t.estado}
                   </Badge>
 
                   <DropdownMenu>
@@ -260,15 +280,38 @@ export default function TurnosDashboard() {
                         )}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuContent align="end" className="w-56">
+                      {/* Fase K: asistencia, solo para turnos que ya empezaron. */}
+                      {t.estado !== "cancelado" && new Date(t.inicio).getTime() <= Date.now() && (
+                        <>
+                          <DropdownMenuItem
+                            disabled={t.estado === "atendido"}
+                            onSelect={() => marcarAsistencia(t, "atendido")}
+                          >
+                            <UserCheck /> Marcar atendido
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={t.estado === "ausente"}
+                            onSelect={() => marcarAsistencia(t, "ausente")}
+                          >
+                            <UserX /> Marcar ausente
+                          </DropdownMenuItem>
+                          {t.estado !== "reservado" && (
+                            <DropdownMenuItem onSelect={() => marcarAsistencia(t, "reservado")}>
+                              <Undo2 /> Quitar marca
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
                       <DropdownMenuItem
-                        disabled={t.estado === "cancelado"}
+                        disabled={t.estado !== "reservado"}
                         onSelect={() => setReprogramar(t)}
                       >
                         <CalendarCog /> Reprogramar
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        disabled={t.estado === "cancelado" || !t.pacienteEmail}
+                        disabled={t.estado !== "reservado" || !t.pacienteEmail}
                         onSelect={() => reenviar(t)}
                       >
                         <Mail /> Reenviar confirmación
@@ -276,7 +319,7 @@ export default function TurnosDashboard() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         variant="destructive"
-                        disabled={t.estado === "cancelado"}
+                        disabled={t.estado !== "reservado"}
                         onSelect={() => setCancelar(t)}
                       >
                         <Ban /> Cancelar turno

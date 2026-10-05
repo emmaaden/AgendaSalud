@@ -175,6 +175,11 @@ export function formatFecha(iso: string | Date): string {
   }
 }
 
+/** Fecha calendario "YYYY-MM-DD" (sin hora) -> "26 de septiembre de 2026", sin correrse de día. */
+export function formatDia(ymd: string): string {
+  return formatFecha(`${ymd}T12:00:00${AR_OFFSET}`)
+}
+
 /** "26 sept" */
 export function formatDiaMes(iso: string | Date): string {
   return fmtDiaMes.format(new Date(iso))

@@ -3,6 +3,7 @@
 
 // Fase 2c: opera con el cliente por-JWT (RLS por clinica_id a nivel Postgres).
 const { getUserSupabase } = require('../middleware/userSupabase');
+const { resolverObraSocial } = require('../utils/cobertura');
 
 // Código legible sin caracteres ambiguos (0/O, 1/I).
 function generarCodigoAleatorio() {
@@ -44,7 +45,15 @@ exports.generarCodigo = async (req, res) => {
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica asignada.' });
 
         const rol = ['recepcion', 'auditor'].includes(req.body?.rol) ? req.body.rol : 'profesional';
-        const alcance = rol === 'auditor' ? (String(req.body?.alcanceObraSocial || '').trim() || null) : null;
+        let alcance = rol === 'auditor' ? (String(req.body?.alcanceObraSocial || '').trim() || null) : null;
+        // Fase K: alcance por obra social del catálogo (preferido sobre el texto).
+        let alcanceId = null;
+        if (rol === 'auditor' && req.body?.alcanceIdObraSocial) {
+            const os = await resolverObraSocial(req.body.alcanceIdObraSocial, clinicaId);
+            if (!os) return res.status(400).json({ error: 'La obra social elegida no es válida.' });
+            alcanceId = os.id;
+            alcance = os.nombre;
+        }
 
         const db = await getUserSupabase(req);
         if (!db) return res.status(401).json({ error: 'Tu sesión expiró. Iniciá sesión de nuevo.' });
@@ -54,7 +63,7 @@ exports.generarCodigo = async (req, res) => {
             const codigo = generarCodigoAleatorio();
             const { data, error } = await db
                 .from('codigo_activacion')
-                .insert({ codigo, clinica_id: clinicaId, rol, alcance_obra_social: alcance })
+                .insert({ codigo, clinica_id: clinicaId, rol, alcance_obra_social: alcance, alcance_id_obra_social: alcanceId })
                 .select('codigo, usado, rol, alcance_obra_social, creado_en')
                 .single();
             if (!error) { inserted = data; break; }

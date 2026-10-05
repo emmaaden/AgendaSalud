@@ -18,7 +18,7 @@ function finEfectivo(inicioISO, finISO) {
 }
 
 // Intervalos [inicio, fin) ocupados de un profesional en una fecha (YYYY-MM-DD):
-// turnos reservados + bloqueos que se solapan con ese día.
+// turnos no cancelados (reservados, atendidos o ausentes) + bloqueos del día.
 async function intervalosOcupadosDia(profId, dateStr) {
     const dayStart = new Date(`${dateStr}T00:00:00${AR_OFFSET}`);
     const dayEnd = new Date(`${dateStr}T23:59:59${AR_OFFSET}`);
@@ -28,7 +28,7 @@ async function intervalosOcupadosDia(profId, dateStr) {
             .from('turno')
             .select('inicio, fin')
             .eq('id_profesional', profId)
-            .eq('estado', 'reservado')
+            .neq('estado', 'cancelado')
             .gte('inicio', dayStart.toISOString())
             .lte('inicio', dayEnd.toISOString()),
         supabase
@@ -81,7 +81,7 @@ async function estaLibre(profId, inicioISO, finISO, excluirTurnoId = null) {
         .from('turno')
         .select('id, inicio, fin')
         .eq('id_profesional', profId)
-        .eq('estado', 'reservado')
+        .neq('estado', 'cancelado')
         .lt('inicio', e.toISOString());
     for (const t of turnos || []) {
         if (excluirTurnoId != null && Number(t.id) === Number(excluirTurnoId)) continue;

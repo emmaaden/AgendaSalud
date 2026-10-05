@@ -18,11 +18,14 @@ function consultarMembresias(db, personaId, cols) {
 
 async function getMembresiasActivas(db, personaId) {
     if (!personaId) return [];
-    let { data, error } = await consultarMembresias(db, personaId, `${COLS_BASE}, alcance_obra_social`);
-    // Base sin la migración faseJ_auditoria.sql (falta alcance_obra_social): el login
-    // NO debe romperse por eso; se leen las membresías sin el alcance.
-    if (error && (error.code === '42703' || /alcance_obra_social/.test(error.message || ''))) {
-        console.warn('[membresias] falta membresia.alcance_obra_social: aplicá backend/db/faseJ_auditoria.sql');
+    let { data, error } = await consultarMembresias(
+        db, personaId,
+        `${COLS_BASE}, alcance_obra_social, alcance_id_obra_social, os:alcance_id_obra_social ( nombre )`
+    );
+    // Base sin las migraciones de auditoría (faseJ/faseK): el login NO debe romperse por
+    // eso; se leen las membresías sin el alcance.
+    if (error && (error.code === '42703' || error.code === 'PGRST200' || /alcance_/.test(error.message || ''))) {
+        console.warn('[membresias] faltan columnas de alcance: aplicá backend/db/faseJ_auditoria.sql y faseK_auditoria2.sql');
         ({ data, error } = await consultarMembresias(db, personaId, COLS_BASE));
     }
     if (error) throw error;
@@ -30,8 +33,12 @@ async function getMembresiasActivas(db, personaId) {
         clinicaId: m.clinica_id,
         rol: m.rol,
         esAdmin: m.rol === 'admin',
-        // Fase J: alcance del auditor (NULL = interno, toda la clínica).
-        alcanceObraSocial: m.rol === 'auditor' ? (m.alcance_obra_social || null) : null,
+        // Fase J/K: alcance del auditor (NULL = interno, toda la clínica). El nombre sale
+        // del catálogo si está vinculado; si no, del texto legado.
+        alcanceObraSocial: m.rol === 'auditor'
+            ? ((Array.isArray(m.os) ? m.os[0] : m.os)?.nombre || m.alcance_obra_social || null)
+            : null,
+        alcanceIdObraSocial: m.rol === 'auditor' ? (m.alcance_id_obra_social || null) : null,
         nombre: m.clinica?.nombre ?? null,
         slug: m.clinica?.slug ?? null,
     }));

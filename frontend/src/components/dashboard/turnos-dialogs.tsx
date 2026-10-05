@@ -23,7 +23,7 @@ export type Turno = {
   id: number
   inicio: string
   fin: string | null
-  estado: "reservado" | "cancelado"
+  estado: "reservado" | "cancelado" | "atendido" | "ausente"
   profesionalId: number
   profesionalNombre: string | null
   especialidad: string | null
@@ -50,6 +50,17 @@ export type Bloqueo = {
 }
 
 export const SLOT_MS = SLOT_MIN * 60000
+
+// Fase K: etiqueta y estilo del estado del turno (incluye la asistencia).
+export const ESTADO_TURNO: Record<
+  Turno["estado"],
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
+  reservado: { label: "Reservado", variant: "default" },
+  atendido: { label: "Atendido", variant: "outline" },
+  ausente: { label: "Ausente", variant: "destructive" },
+  cancelado: { label: "Cancelado", variant: "secondary" },
+}
 
 export function opcionesProfesional(profesionales: Profesional[]) {
   return profesionales.map((p) => ({

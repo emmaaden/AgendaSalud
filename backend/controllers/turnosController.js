@@ -91,6 +91,10 @@ exports.cancelarPropio = async (req, res) => {
         if (turno.estado === 'cancelado') {
             return res.json({ message: 'El turno ya estaba cancelado.' });
         }
+        // Fase K: un turno ya atendido (o marcado ausente) no se cancela.
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({ error: 'Este turno ya pasó: no se puede cancelar.' });
+        }
 
         const { error: updError } = await db
             .from('turno')
@@ -147,6 +151,10 @@ exports.cancelarPorToken = async (req, res) => {
         if (!turno) return res.status(404).json({ error: 'Enlace inválido o vencido.' });
         if (turno.estado === 'cancelado') {
             return res.json({ message: 'El turno ya estaba cancelado.' });
+        }
+        // Fase K: un turno ya atendido (o marcado ausente) no se cancela.
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({ error: 'Este turno ya pasó: no se puede cancelar.' });
         }
 
         const { error: updError } = await supabase

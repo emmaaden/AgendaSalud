@@ -18,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Dialog,
@@ -44,6 +43,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Container } from "@/components/site/Section"
+import { SelectField } from "@/components/form/SelectField"
+import { CatalogosClinica } from "@/components/dashboard/CatalogosClinica"
+import { useObrasSociales } from "@/lib/catalogos"
 import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -59,6 +61,7 @@ type Miembro = {
   matricula: string | null
   rol: Rol
   alcanceObraSocial: string | null
+  alcanceIdObraSocial: number | null
   activo: boolean
   esYo: boolean
 }
@@ -107,7 +110,9 @@ export default function Administracion() {
   const [copiado, setCopiado] = useState<string | null>(null)
   const [alcanceDestino, setAlcanceDestino] = useState<AlcanceDestino | null>(null)
   const [alcanceModo, setAlcanceModo] = useState<"interno" | "obra_social">("interno")
+  // Fase K: id de la obra social del catálogo ("" = sin elegir).
   const [alcanceOs, setAlcanceOs] = useState("")
+  const { datos: obrasSociales } = useObrasSociales()
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -136,7 +141,7 @@ export default function Administracion() {
 
   async function cambiar(
     m: Miembro,
-    patch: { activo?: boolean; rol?: Rol; alcanceObraSocial?: string | null }
+    patch: { activo?: boolean; rol?: Rol; alcanceIdObraSocial?: number | null }
   ) {
     setAccion(m.id)
     try {
@@ -152,12 +157,12 @@ export default function Administracion() {
     }
   }
 
-  async function generarCodigo(rol: RolCodigo, alcanceObraSocial: string | null = null) {
+  async function generarCodigo(rol: RolCodigo, alcanceIdObraSocial: number | null = null) {
     setGenerating(true)
     try {
       const d = await api.post<{ codigo?: string }>("/clinica/generar-codigo", {
         rol,
-        ...(rol === "auditor" ? { alcanceObraSocial } : {}),
+        ...(rol === "auditor" ? { alcanceIdObraSocial } : {}),
       })
       toast.success(`Código generado: ${d.codigo}`)
       await cargar()
@@ -169,25 +174,25 @@ export default function Administracion() {
   }
 
   function abrirAlcance(destino: AlcanceDestino) {
-    const actual = destino.tipo === "miembro" ? destino.miembro.alcanceObraSocial : null
-    setAlcanceModo(actual ? "obra_social" : "interno")
-    setAlcanceOs(actual ?? "")
+    const m = destino.tipo === "miembro" ? destino.miembro : null
+    setAlcanceModo(m && (m.alcanceIdObraSocial || m.alcanceObraSocial) ? "obra_social" : "interno")
+    setAlcanceOs(m?.alcanceIdObraSocial ? String(m.alcanceIdObraSocial) : "")
     setAlcanceDestino(destino)
   }
 
   async function confirmarAlcance() {
     if (!alcanceDestino) return
-    const os = alcanceModo === "obra_social" ? alcanceOs.trim() : ""
+    const os = alcanceModo === "obra_social" && alcanceOs ? Number(alcanceOs) : null
     if (alcanceModo === "obra_social" && !os) {
-      toast.error("Indicá la obra social que audita.")
+      toast.error("Elegí la obra social que audita.")
       return
     }
     const destino = alcanceDestino
     setAlcanceDestino(null)
     if (destino.tipo === "codigo") {
-      await generarCodigo("auditor", os || null)
+      await generarCodigo("auditor", os)
     } else {
-      await cambiar(destino.miembro, { rol: "auditor", alcanceObraSocial: os || null })
+      await cambiar(destino.miembro, { rol: "auditor", alcanceIdObraSocial: os })
     }
   }
 
@@ -473,17 +478,15 @@ export default function Administracion() {
             {alcanceModo === "obra_social" && (
               <div className="grid gap-2">
                 <Label htmlFor="alcance-os">Obra social</Label>
-                <Input
+                <SelectField
                   id="alcance-os"
                   value={alcanceOs}
-                  onChange={(e) => setAlcanceOs(e.target.value)}
-                  placeholder="Ej.: OSDE"
-                  maxLength={120}
-                  autoFocus
+                  onValueChange={setAlcanceOs}
+                  options={obrasSociales.map((o) => ({ value: String(o.id), label: o.nombre }))}
+                  placeholder="Elegí la obra social"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Se compara con la obra social cargada en cada paciente, sin distinguir
-                  mayúsculas. Tiene que estar escrita igual.
+                  Solo va a ver a los pacientes que tengan esta obra social en su cobertura.
                 </p>
               </div>
             )}
@@ -498,6 +501,9 @@ export default function Administracion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Fase K: catálogos propios de la clínica */}
+      <CatalogosClinica />
     </Container>
   )
 }

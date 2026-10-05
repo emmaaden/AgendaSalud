@@ -17,6 +17,7 @@ import {
   CalendarClock,
   ChevronDown,
   ClipboardCheck,
+  ShieldPlus,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -75,6 +76,13 @@ const LINKS = [
     to: "/dashboard/estudios",
     label: "Compartidos",
     icon: FolderHeart,
+    end: false,
+  },
+  // Fase K: autorizaciones previas de prácticas.
+  {
+    to: "/dashboard/autorizaciones",
+    label: "Autorizaciones",
+    icon: ShieldPlus,
     end: false,
   },
 ]

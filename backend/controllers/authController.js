@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { slugify } = require('../utils/slug');
 const { getMembresiasActivas, roleSinProfesional } = require('../utils/membresias');
+const { columnasCobertura } = require('../utils/cobertura');
 require('dotenv').config();
 
 // service_role: SALTEA la RLS. Se usa SOLO para operaciones sobre tablas.
@@ -39,7 +40,7 @@ exports.register = async (req, res) => {
         async function resolverCodigo(...rolesEsperados) {
             const { data: cod, error: codErr } = await supabase
                 .from("codigo_activacion")
-                .select("id, clinica_id, usado, rol, alcance_obra_social")
+                .select("id, clinica_id, usado, rol, alcance_obra_social, alcance_id_obra_social")
                 .eq("codigo", String(activationCode).trim())
                 .maybeSingle();
             if (codErr) throw codErr;
@@ -134,9 +135,13 @@ exports.register = async (req, res) => {
         const id_persona = persona_data.id;
 
         if (role === "PACIENTE") {
+            // Fase K: cobertura del catálogo global (el paciente aún no tiene clínica).
+            // Si no eligió del catálogo, se conserva el texto libre (compatibilidad).
+            const cob = await columnasCobertura(req.body, null);
+            const cols = cob.ok ? cob.cols : {};
             const { error: err } = await supabase
                 .from("paciente")
-                .insert([{ id_persona, obra_social: obraSocial }]);
+                .insert([{ id_persona, obra_social: obraSocial || null, ...cols }]);
             if (err) throw err;
         }
 
@@ -197,6 +202,7 @@ exports.register = async (req, res) => {
                     clinica_id: clinicaId,
                     rol: esAuditor ? 'auditor' : 'recepcion',
                     alcance_obra_social: esAuditor ? (codigoRow.alcance_obra_social || null) : null,
+                    alcance_id_obra_social: esAuditor ? (codigoRow.alcance_id_obra_social || null) : null,
                     activo: true,
                 }]);
             if (err_mem) throw err_mem;
@@ -312,7 +318,7 @@ exports.login = async (req, res) => {
             req.session.user = {
                 idRole, id: userId, personaId, email: data.user.email, role,
                 clinicaId: m.clinicaId, rol: m.rol, esAdmin: m.esAdmin,
-                alcanceObraSocial: m.alcanceObraSocial,
+                alcanceObraSocial: m.alcanceObraSocial, alcanceIdObraSocial: m.alcanceIdObraSocial,
             };
             return res.json({ message: "Login exitoso", user: req.session.user });
         }
@@ -320,7 +326,7 @@ exports.login = async (req, res) => {
         // Varias clínicas: no se fija ninguna todavía; el cliente debe elegir.
         req.session.user = {
             idRole, id: userId, personaId, email: data.user.email, role,
-            clinicaId: null, rol: null, esAdmin: false, alcanceObraSocial: null,
+            clinicaId: null, rol: null, esAdmin: false, alcanceObraSocial: null, alcanceIdObraSocial: null,
         };
         return res.json({
             message: "Elegí la clínica para trabajar",
@@ -380,6 +386,7 @@ exports.selectClinica = async (req, res) => {
         req.session.user.rol = elegida.rol;
         req.session.user.esAdmin = elegida.esAdmin;
         req.session.user.alcanceObraSocial = elegida.alcanceObraSocial;
+        req.session.user.alcanceIdObraSocial = elegida.alcanceIdObraSocial;
         // Fase J: una cuenta sin fila en `profesional` es auditor o recepción según
         // la clínica elegida (puede ser auditor en una y recepción en otra).
         if (!req.session.user.idRole) {

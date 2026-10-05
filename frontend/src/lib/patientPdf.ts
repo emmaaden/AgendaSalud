@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf"
 import { describeDiente, type Diente } from "@/lib/odontograma"
 import { LOGO_PDF } from "@/lib/brandMark"
+import type { CodificacionRegistro } from "@/lib/catalogos"
 
 export type HistoryEntry = {
   profesional: string
@@ -10,7 +11,9 @@ export type HistoryEntry = {
   diagnostico: string
   tratamiento: string
   dientes?: Diente[]
-}
+  /** Fase K: estado de auditoría del registro (solo en la ficha del profesional). */
+  auditoria?: string
+} & CodificacionRegistro
 
 export type Paciente = {
   fullName: string
@@ -21,6 +24,10 @@ export type Paciente = {
   fechaNacimiento: string
   edad: string | number
   obraSocial: string
+  /** Fase K: cobertura estructurada. */
+  idObraSocial?: number | null
+  nroAfiliado?: string
+  plan?: string
   sexo: string
   fechaApertura: string
   history: HistoryEntry[]
@@ -79,6 +86,8 @@ export function downloadPatientHistoryPdf(p: Paciente) {
     ["Edad", String(p.edad ?? "N/A")],
     ["Dirección", p.direccion ?? "N/A"],
     ["Obra social", p.obraSocial ?? "N/A"],
+    ...(p.nroAfiliado ? ([["N.º afiliado", p.nroAfiliado]] as [string, string][]) : []),
+    ...(p.plan ? ([["Plan", p.plan]] as [string, string][]) : []),
     ["Fecha de apertura", p.fechaApertura ?? "N/A"],
   ]
   let yL = 45
@@ -127,8 +136,19 @@ export function downloadPatientHistoryPdf(p: Paciente) {
     doc.splitTextToSize(`Síntomas: ${entry.sintomas}`, 180).forEach((l: string) => line(l))
     line("")
     doc.splitTextToSize(`Diagnóstico: ${entry.diagnostico}`, 180).forEach((l: string) => line(l))
+    if (entry.diagnosticos && entry.diagnosticos.length) {
+      const dx = entry.diagnosticos.map((d) => `${d.codigo} ${d.descripcion}${d.principal ? " (principal)" : ""}`)
+      doc.splitTextToSize(`CIE-10: ${dx.join("; ")}`, 180).forEach((l: string) => line(l))
+    }
     line("")
     doc.splitTextToSize(`Tratamiento: ${entry.tratamiento}`, 180).forEach((l: string) => line(l))
+    if (entry.practicas && entry.practicas.length) {
+      const px = entry.practicas.map(
+        (x) =>
+          `${x.codigo} ${x.descripcion}${x.pieza ? ` (pieza ${x.pieza})` : ""}${x.cantidad > 1 ? ` x${x.cantidad}` : ""}${x.autorizacion ? ` [aut. ${x.autorizacion}]` : ""}`
+      )
+      doc.splitTextToSize(`Prácticas: ${px.join("; ")}`, 180).forEach((l: string) => line(l))
+    }
     if (entry.dientes && entry.dientes.length) {
       line("")
       line("Odontograma:", true)

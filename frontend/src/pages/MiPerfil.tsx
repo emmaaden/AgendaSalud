@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field } from "@/components/form/Field"
+import { CoberturaFields } from "@/components/form/CoberturaFields"
+import { COBERTURA_VACIA, coberturaPayload, type Cobertura } from "@/lib/catalogos"
 import { Container, PageHero } from "@/components/site/Section"
 import { api, ApiError } from "@/lib/api"
 import { useUser } from "@/hooks/useUser"
@@ -21,17 +23,25 @@ const schema = z.object({
   direccion: z.string().max(200).optional().or(z.literal("")),
   sexo: z.string().max(20).optional().or(z.literal("")),
   fechaNacimiento: z.string().max(40).optional().or(z.literal("")),
-  obraSocial: z.string().max(100).optional().or(z.literal("")),
 })
 type FormValues = z.infer<typeof schema>
 
-type Perfil = FormValues & { dni: string }
+type Perfil = FormValues & {
+  dni: string
+  obraSocial: string
+  idObraSocial: number | null
+  nroAfiliado: string
+  plan: string
+}
 
 export default function MiPerfil() {
   const { user, loading: loadingUser } = useUser()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dni, setDni] = useState("")
+  // Fase K: cobertura del catálogo (fuera de react-hook-form: es un objeto).
+  const [cobertura, setCobertura] = useState<Cobertura>(COBERTURA_VACIA)
+  const [obraSocialTexto, setObraSocialTexto] = useState("")
 
   const esPaciente = user?.role === "paciente"
 
@@ -56,8 +66,13 @@ export default function MiPerfil() {
           direccion: d.direccion || "",
           sexo: d.sexo || "",
           fechaNacimiento: d.fechaNacimiento || "",
-          obraSocial: d.obraSocial || "",
         })
+        setCobertura({
+          idObraSocial: d.idObraSocial ? String(d.idObraSocial) : "",
+          nroAfiliado: d.nroAfiliado || "",
+          plan: d.plan || "",
+        })
+        setObraSocialTexto(d.obraSocial || "")
       })
       .catch(() => toast.error("No se pudieron cargar tus datos."))
       .finally(() => setLoading(false))
@@ -77,7 +92,7 @@ export default function MiPerfil() {
   async function onSubmit(values: FormValues) {
     setSaving(true)
     try {
-      await api.put("/api/mi-cuenta/perfil", values)
+      await api.put("/api/mi-cuenta/perfil", { ...values, ...coberturaPayload(cobertura) })
       toast.success("Datos actualizados.")
     } catch (err) {
       toast.error(
@@ -202,17 +217,16 @@ export default function MiPerfil() {
                     >
                       <Input id="sexo" className="h-10" {...register("sexo")} />
                     </Field>
-                    <Field
-                      label="Obra social"
-                      htmlFor="obraSocial"
-                      error={errors.obraSocial?.message}
-                    >
-                      <Input
-                        id="obraSocial"
-                        className="h-10"
-                        {...register("obraSocial")}
-                      />
-                    </Field>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <CoberturaFields
+                      value={cobertura}
+                      onChange={setCobertura}
+                      publico
+                      idPrefix="perfil"
+                      textoLegado={!cobertura.idObraSocial ? obraSocialTexto : undefined}
+                    />
                   </div>
 
                   <Button

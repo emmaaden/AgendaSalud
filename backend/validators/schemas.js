@@ -14,6 +14,27 @@ const idFlexible = z.union([z.string().min(1), z.number()]);
 const fechaQuery = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (formato YYYY-MM-DD)').optional();
 const paginaQuery = z.string().regex(/^\d{1,4}$/, 'Página inválida').optional();
 
+// Fase K: cobertura (obra social del catálogo + afiliado + plan) y codificación.
+const idCatalogo = z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]);
+const cobertura = {
+    idObraSocial: idCatalogo.nullable().optional(),
+    nroAfiliado: z.string().trim().max(40).optional(),
+    plan: z.string().trim().max(60).optional(),
+};
+const codigoCie10 = z.string().trim().regex(/^[A-Z]\d{2}(\.\d{1,2})?$/, 'Código CIE-10 inválido');
+const codificacion = {
+    diagnosticos: z.array(z.object({
+        codigo: codigoCie10,
+        principal: z.boolean().optional(),
+    })).max(10, 'Demasiados diagnósticos').optional(),
+    practicas: z.array(z.object({
+        idPractica: idCatalogo,
+        pieza: z.string().trim().max(40).optional(),
+        cantidad: z.number().int().min(1).max(99).optional(),
+        idAutorizacion: idCatalogo.nullable().optional(),
+    })).max(30, 'Demasiadas prácticas').optional(),
+};
+
 // Un hallazgo del odontograma. Permisivo a propósito: el backend hace clamp de
 // `condicion`/`cara`/`estado` contra las listas válidas (ver pacienteController).
 // Se acepta el `estado` legacy (sano/caries/tratado/falta) por compatibilidad.
@@ -33,6 +54,7 @@ module.exports = {
             dni,
             nombre,
             role: z.enum(['PACIENTE', 'PROFESIONAL', 'RECEPCION'], 'Rol inválido'),
+            ...cobertura,
             // Fase 2: onboarding del profesional (una de las dos).
             nombreClinica: z.string().trim().max(120).optional(),
             activationCode: z.string().trim().max(40).optional(),
@@ -68,6 +90,8 @@ module.exports = {
             rol: z.enum(['admin', 'profesional', 'recepcion', 'auditor']).optional(),
             // Fase J: alcance del auditor. null/'' = interno (toda la clínica).
             alcanceObraSocial: z.string().trim().max(120).nullable().optional(),
+            // Fase K: alcance por obra social del catálogo (null = interno).
+            alcanceIdObraSocial: idCatalogo.nullable().optional(),
         }),
     },
 
@@ -77,11 +101,16 @@ module.exports = {
         generarCodigo: z.object({
             rol: z.enum(['profesional', 'recepcion', 'auditor']).optional(),
             alcanceObraSocial: z.string().trim().max(120).nullable().optional(),
+            alcanceIdObraSocial: idCatalogo.nullable().optional(),
         }),
     },
 
     // Fase E: gestión de turnos por el staff (recepción/profesional/admin).
     staff: {
+        // Fase K: asistencia. 'reservado' deshace una marca equivocada.
+        asistencia: z.object({
+            estado: z.enum(['atendido', 'ausente', 'reservado'], 'Estado inválido'),
+        }),
         crearTurno: z.object({
             profId: idFlexible,
             start: z.object({ dateTime: z.string().min(1, 'Fecha/hora de inicio requerida') }),
@@ -127,10 +156,12 @@ module.exports = {
             direccion: z.string().max(200).optional(),
             fechaNacimiento: z.string().max(40).optional(),
             obraSocial: z.string().max(100).optional(),
+            ...cobertura,
             sintomas: textoOpcional,
             diagnostico: textoOpcional,
             tratamiento: textoOpcional,
             dientes: z.array(dienteSchema).optional(),
+            ...codificacion,
         }),
         saveData: z.object({
             dni,
@@ -138,7 +169,10 @@ module.exports = {
             diagnostico: textoOpcional,
             tratamiento: textoOpcional,
             dientes: z.array(dienteSchema).optional(),
+            ...codificacion,
         }),
+        // Fase K: el profesional actualiza la cobertura del paciente.
+        cobertura: z.object({ dni, ...cobertura }),
         getData: z.object({
             dni,
         }),
@@ -154,6 +188,7 @@ module.exports = {
             email: emailOpcional,
             fechaNacimiento: z.string().max(40).optional(),
             obraSocial: z.string().max(100).optional(),
+            ...cobertura,
         }),
     },
 
@@ -214,6 +249,8 @@ module.exports = {
             hasta: fechaQuery,
             idProfesional: z.string().regex(/^\d+$/, 'Profesional inválido').optional(),
             obraSocial: z.string().trim().max(120).optional(),
+            idObraSocial: z.string().regex(/^\d+$/, 'Obra social inválida').optional(),
+            cie10: z.string().trim().max(8).optional(),
             estado: z.enum(['pendiente', 'aprobado', 'observado', 'rechazado', 'respondido']).optional(),
             page: paginaQuery,
         }),
@@ -239,6 +276,65 @@ module.exports = {
         resumen: z.object({
             desde: fechaQuery,
             hasta: fechaQuery,
+        }),
+        cruce: z.object({
+            desde: fechaQuery,
+            hasta: fechaQuery,
+        }),
+    },
+
+    // Fase K: catálogos (obras sociales y prácticas de la clínica).
+    catalogo: {
+        obraSocial: z.object({
+            nombre: z.string().trim().min(1, 'Nombre requerido').max(120),
+            sigla: z.string().trim().max(30).optional(),
+        }),
+        obraSocialPatch: z.object({
+            nombre: z.string().trim().min(1).max(120).optional(),
+            sigla: z.string().trim().max(30).optional(),
+            activo: z.boolean().optional(),
+        }),
+        practica: z.object({
+            codigo: z.string().trim().min(1, 'Código requerido').max(30),
+            descripcion: z.string().trim().min(1, 'Descripción requerida').max(200),
+            requiereAutorizacion: z.boolean().optional(),
+        }),
+        practicaPatch: z.object({
+            descripcion: z.string().trim().min(1).max(200).optional(),
+            requiereAutorizacion: z.boolean().optional(),
+            activo: z.boolean().optional(),
+        }),
+        importarPracticas: z.object({
+            items: z.array(z.object({
+                codigo: z.string().trim().min(1).max(30),
+                descripcion: z.string().trim().min(1).max(200),
+                requiereAutorizacion: z.boolean().optional(),
+            })).min(1, 'El archivo no tiene prácticas').max(2000, 'Máximo 2000 prácticas por archivo'),
+        }),
+    },
+
+    // Fase K: autorizaciones previas. La solicitud llega como multipart (campos texto).
+    autorizacion: {
+        solicitar: z.object({
+            dni,
+            idPractica: z.string().regex(/^\d+$/, 'Práctica inválida'),
+            pieza: z.string().trim().max(40).optional(),
+            cantidad: z.string().regex(/^\d{1,2}$/, 'Cantidad inválida').optional(),
+            diagnosticoCie10: z.union([codigoCie10, z.literal('')]).optional(),
+            fundamento: z.string().trim().min(1, 'Explicá el fundamento clínico').max(4000),
+            adjuntarOdontograma: z.enum(['true', 'false']).optional(),
+        }),
+        resolver: z.object({
+            estado: z.enum(['aprobada', 'rechazada'], 'Estado inválido'),
+            motivo: z.string().trim().max(4000).optional(),
+            venceEn: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'), z.literal('')]).optional(),
+        }).refine(
+            d => d.estado === 'aprobada' || (d.motivo && d.motivo.length > 0),
+            { message: 'Indicá el motivo del rechazo', path: ['motivo'] }
+        ),
+        listar: z.object({
+            estado: z.enum(['pendiente', 'aprobada', 'rechazada', 'cancelada']).optional(),
+            page: paginaQuery,
         }),
     },
 };

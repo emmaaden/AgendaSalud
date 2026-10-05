@@ -25,6 +25,8 @@ const staffRoutes = require('./routes/staffRoutes'); // Fase E: gestión de turn
 const estudioRoutes = require('./routes/estudioRoutes'); // Fase I: mis estudios del paciente (/estudios)
 const dictadoRoutes = require('./routes/dictadoRoutes'); // dictado por voz con whisper.cpp local (/dictado)
 const auditoriaRoutes = require('./routes/auditoriaRoutes'); // Fase J: auditoría médica (bandeja, revisiones, bitácora)
+const catalogoRoutes = require('./routes/catalogoRoutes'); // Fase K: obras sociales, CIE-10 y prácticas
+const autorizacionRoutes = require('./routes/autorizacionRoutes'); // Fase K: autorizaciones previas
 // (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
@@ -215,6 +217,8 @@ app.use('/staff', staffRoutes); // Fase E: gestión de turnos por el staff (rece
 app.use('/estudios', estudioRoutes); // Fase I: repositorio de estudios del paciente + compartir
 app.use('/dictado', dictadoRoutes); // dictado por voz (proxy al whisper.cpp local)
 app.use('/auditoria', auditoriaRoutes); // Fase J: auditoría médica (auditor/admin + respuestas del profesional)
+app.use('/catalogos', catalogoRoutes); // Fase K: catálogos (obras sociales, CIE-10, prácticas)
+app.use('/autorizaciones', autorizacionRoutes); // Fase K: autorizaciones previas de prácticas
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
@@ -276,6 +280,7 @@ app.get('/api/user', async (req, res) => {
         esAdmin: !!u.esAdmin,
         // Fase J: alcance del auditor (obra social) en la clínica activa; null = interno.
         alcanceObraSocial: u.alcanceObraSocial || null,
+        alcanceIdObraSocial: u.alcanceIdObraSocial || null,
         clinicas,
         needsClinicSelection,
     });
@@ -543,6 +548,7 @@ if (isProd) {
         '/auth', '/hour', '/pacient', '/especialidades', '/profesional',
         '/avatars', '/ortodoncia', '/clinica', '/clinica-publica',
         '/admin', '/certificados', '/hc', '/staff', '/estudios', '/auditoria',
+        '/catalogos', '/autorizaciones',
         '/professionals', '/available-slots', '/create-event',
         '/api', '/internal',
     ];

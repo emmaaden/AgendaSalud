@@ -15,6 +15,9 @@ const { supabase } = require('../config/supabaseClient');
 const { getUserSupabase } = require('../middleware/userSupabase');
 const { serializarDiente } = require('../utils/odontograma');
 const { registrarAcceso, nombreActor } = require('../utils/bitacora');
+const { listarObrasSociales } = require('../utils/cobertura');
+const { serializarCodificacion, SELECT_CODIFICACION } = require('../utils/codificacion');
+const { ymdAR, hoyAR } = require('../utils/fechaAR');
 
 const ERR_SESION = { status: 401, body: { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' } };
 const PAGE_SIZE = 20;
@@ -22,7 +25,7 @@ const TZ = '-03:00'; // las fechas de los filtros son días calendario de Argent
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Ítems del checklist de auditoría (cualquier otra clave se descarta).
-const CHECKLIST = ['diagnostico', 'tratamiento', 'coherencia', 'odontograma', 'identificacion'];
+const CHECKLIST = ['diagnostico', 'tratamiento', 'coherencia', 'codificacion', 'odontograma', 'identificacion'];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -78,26 +81,36 @@ function mapRevision(r) {
 // ---------------------------------------------------------------------------
 exports.listarRegistros = async (req, res) => {
     try {
-        const { clinicaId, alcanceObraSocial } = req.session.user;
+        const { clinicaId, alcanceObraSocial, alcanceIdObraSocial } = req.session.user;
         const db = await getUserSupabase(req);
         if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
 
         const q = req.query;
         const { page, from, to } = paginar(q);
+        const conAlcance = !!(alcanceObraSocial || alcanceIdObraSocial);
+        const cie10 = (q.cie10 || '').trim().toUpperCase();
 
+        // `dx` muestra los diagnósticos; `fdx` (inner) filtra por código cuando se pide.
         let query = db
             .from('registro_clinico')
             .select(`
                 id, fecha, area, profesional_nombre, id_profesional, diagnostico, auditoria_estado,
-                paciente:id_paciente!inner ( id, obra_social, persona:id_persona ( nombre, apellido, dni ) )
+                paciente:id_paciente!inner ( id, obra_social, persona:id_persona ( nombre, apellido, dni ) ),
+                dx:registro_diagnostico ( codigo, principal )
+                ${cie10 ? ', fdx:registro_diagnostico!inner ( codigo )' : ''}
             `, { count: 'exact' })
             .eq('clinica_id', clinicaId);
         query = filtrarFechas(query, 'fecha', q);
         if (q.idProfesional) query = query.eq('id_profesional', Number(q.idProfesional));
         if (q.estado) query = query.eq('auditoria_estado', q.estado);
-        // Con alcance fijo, la RLS ya acota a su obra social: el filtro libre no aplica.
-        if (q.obraSocial && !alcanceObraSocial) {
-            query = query.ilike('paciente.obra_social', `%${escaparLike(q.obraSocial)}%`);
+        if (cie10) query = query.like('fdx.codigo', `${escaparLike(cie10)}%`);
+        // Con alcance fijo, la RLS ya acota a su obra social: el filtro no aplica.
+        if (!conAlcance) {
+            if (q.idObraSocial) {
+                query = query.eq('paciente.id_obra_social', Number(q.idObraSocial));
+            } else if (q.obraSocial) {
+                query = query.ilike('paciente.obra_social', `%${escaparLike(q.obraSocial)}%`);
+            }
         }
 
         const { data, error, count } = await query
@@ -115,6 +128,10 @@ exports.listarRegistros = async (req, res) => {
                 profesional: r.profesional_nombre || '',
                 idProfesional: r.id_profesional,
                 diagnostico: (r.diagnostico || '').slice(0, 160),
+                codigos: (r.dx || [])
+                    .slice()
+                    .sort((a, b) => Number(b.principal) - Number(a.principal))
+                    .map((d) => d.codigo),
                 estado: r.auditoria_estado,
                 paciente: {
                     id: pac?.id ?? null,
@@ -137,9 +154,7 @@ exports.listarRegistros = async (req, res) => {
 // ---------------------------------------------------------------------------
 exports.filtros = async (req, res) => {
     try {
-        const { clinicaId, alcanceObraSocial } = req.session.user;
-        const db = await getUserSupabase(req);
-        if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
+        const { clinicaId, alcanceObraSocial, alcanceIdObraSocial } = req.session.user;
 
         // Profesionales de la clínica (nombres del staff, sin PII de pacientes):
         // service_role acotado por la clínica de la sesión, como el panel de admin.
@@ -159,24 +174,12 @@ exports.filtros = async (req, res) => {
             .filter(Boolean)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
-        let obrasSociales = [];
-        if (alcanceObraSocial) {
-            obrasSociales = [alcanceObraSocial];
+        // Fase K: obras sociales del catálogo (global + propias). Con alcance fijo, solo la suya.
+        let obrasSociales;
+        if (alcanceObraSocial || alcanceIdObraSocial) {
+            obrasSociales = [{ id: alcanceIdObraSocial || null, nombre: alcanceObraSocial || '' }];
         } else {
-            const { data: pacs, error: pErr } = await db
-                .from('paciente')
-                .select('obra_social, persona:id_persona!inner ( clinica_id )')
-                .eq('persona.clinica_id', clinicaId)
-                .not('obra_social', 'is', null)
-                .limit(5000);
-            if (pErr) return res.status(400).json({ error: pErr.message });
-            // Texto libre: deduplicar sin distinguir mayúsculas/espacios.
-            const vistas = new Map();
-            for (const p of pacs || []) {
-                const os = String(p.obra_social || '').trim();
-                if (os && !vistas.has(os.toLowerCase())) vistas.set(os.toLowerCase(), os);
-            }
-            obrasSociales = [...vistas.values()].sort((a, b) => a.localeCompare(b, 'es'));
+            obrasSociales = (await listarObrasSociales(clinicaId)).map((o) => ({ id: o.id, nombre: o.nombre }));
         }
 
         return res.json({ profesionales, obrasSociales, alcanceObraSocial: alcanceObraSocial || null });
@@ -204,7 +207,8 @@ exports.detalleRegistro = async (req, res) => {
                 id, fecha, area, profesional_nombre, id_profesional, sintomas, diagnostico,
                 tratamiento, auditoria_estado, id_paciente,
                 registro_diente ( numero, condicion, cara, estado, notas ),
-                paciente:id_paciente ( id, obra_social,
+                ${SELECT_CODIFICACION},
+                paciente:id_paciente ( id, obra_social, nro_afiliado, plan,
                     persona:id_persona ( nombre, apellido, dni, fecha_nacimiento, sexo ) )
             `)
             .eq('id', id)
@@ -238,6 +242,8 @@ exports.detalleRegistro = async (req, res) => {
             edad: calcEdad(per?.fecha_nacimiento),
             sexo: per?.sexo || '',
             obraSocial: pac?.obra_social || '',
+            nroAfiliado: pac?.nro_afiliado || '',
+            plan: pac?.plan || '',
         };
 
         await registrarAcceso(req, {
@@ -258,6 +264,7 @@ exports.detalleRegistro = async (req, res) => {
                 tratamiento: reg.tratamiento || '',
                 estado: reg.auditoria_estado,
                 dientes: (reg.registro_diente || []).map(serializarDiente),
+                ...serializarCodificacion(reg),
             },
             paciente,
             revisiones: (revs || []).map(mapRevision),
@@ -589,5 +596,126 @@ exports.resumen = async (req, res) => {
     } catch (err) {
         console.error('Error armando el resumen de auditoría:', err);
         return res.status(500).json({ error: 'Error al obtener el resumen' });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Fase K: GET /auditoria/cruce?desde=&hasta= — turnos vs. registros clínicos.
+// Empareja por (profesional, paciente, día). Detecta turnos atendidos (o sin marcar)
+// sin registro, registros sin turno y ausentes con registro. Por defecto, 30 días.
+//
+// Los turnos se leen con service_role acotado a la clínica (la RLS de `turno` no
+// alcanza al auditor). Para un auditor con alcance por obra social, solo cuentan los
+// turnos de pacientes que la RLS le deja ver (y nunca los de invitados).
+// ---------------------------------------------------------------------------
+const LIMITE_CRUCE = 5000;
+const LIMITE_LISTA = 200;
+
+exports.cruce = async (req, res) => {
+    try {
+        const { clinicaId, rol, alcanceObraSocial, alcanceIdObraSocial } = req.session.user;
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
+
+        const q = { ...req.query };
+        if (!q.desde) q.desde = ymdAR(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+        if (!q.hasta || q.hasta > hoyAR()) q.hasta = hoyAR();
+
+        // Registros visibles para el usuario (RLS) en el período.
+        let rq = db
+            .from('registro_clinico')
+            .select('id, fecha, id_profesional, profesional_nombre, id_paciente, paciente:id_paciente ( persona:id_persona ( nombre, apellido, email ) )')
+            .eq('clinica_id', clinicaId);
+        rq = filtrarFechas(rq, 'fecha', q);
+        const { data: registros, error: rErr } = await rq.limit(LIMITE_CRUCE);
+        if (rErr) return res.status(400).json({ error: rErr.message });
+
+        // Turnos que ya empezaron (no cancelados) en el período.
+        let tq = supabase
+            .from('turno')
+            .select('id, inicio, estado, id_profesional, profesional_nombre, id_paciente, paciente_nombre, paciente_email')
+            .eq('clinica_id', clinicaId)
+            .neq('estado', 'cancelado')
+            .lte('inicio', new Date().toISOString());
+        tq = filtrarFechas(tq, 'inicio', q);
+        const { data: turnosRaw, error: tErr } = await tq.limit(LIMITE_CRUCE);
+        if (tErr) return res.status(400).json({ error: tErr.message });
+
+        // Email -> paciente (para turnos de invitados), con los pacientes de los registros.
+        const pacientePorEmail = new Map();
+        for (const r of registros || []) {
+            const email = uno(uno(r.paciente)?.persona)?.email;
+            if (email) pacientePorEmail.set(email.toLowerCase(), r.id_paciente);
+        }
+
+        let turnos = (turnosRaw || []).map((t) => ({
+            ...t,
+            pacienteId: t.id_paciente ?? (t.paciente_email ? pacientePorEmail.get(t.paciente_email.toLowerCase()) ?? null : null),
+        }));
+
+        // Auditor con alcance: solo turnos de pacientes que la RLS le deja ver.
+        if (rol === 'auditor' && (alcanceObraSocial || alcanceIdObraSocial)) {
+            const ids = [...new Set(turnos.map((t) => t.pacienteId).filter((x) => x != null))];
+            let visibles = new Set();
+            if (ids.length) {
+                const { data: pacs } = await db.from('paciente').select('id').in('id', ids);
+                visibles = new Set((pacs || []).map((p) => p.id));
+            }
+            turnos = turnos.filter((t) => t.pacienteId != null && visibles.has(t.pacienteId));
+        }
+
+        const clave = (prof, pac, fecha) => `${prof}|${pac}|${ymdAR(fecha)}`;
+        const turnosPorClave = new Map();
+        for (const t of turnos) {
+            if (t.pacienteId == null) continue;
+            turnosPorClave.set(clave(t.id_profesional, t.pacienteId, t.inicio), t);
+        }
+        const registrosPorClave = new Set(
+            (registros || []).map((r) => clave(r.id_profesional, r.id_paciente, r.fecha))
+        );
+
+        const vistaTurno = (t) => ({
+            id: t.id,
+            inicio: t.inicio,
+            estado: t.estado,
+            profesional: t.profesional_nombre || '',
+            paciente: t.paciente_nombre || '',
+            invitado: t.id_paciente == null,
+        });
+
+        const conRegistro = (t) => t.pacienteId != null
+            && registrosPorClave.has(clave(t.id_profesional, t.pacienteId, t.inicio));
+
+        const turnosSinRegistro = turnos
+            .filter((t) => t.estado !== 'ausente' && !conRegistro(t))
+            .sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
+        const ausentesConRegistro = turnos.filter((t) => t.estado === 'ausente' && conRegistro(t));
+        const registrosSinTurno = (registros || [])
+            .filter((r) => !turnosPorClave.has(clave(r.id_profesional, r.id_paciente, r.fecha)))
+            .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        return res.json({
+            desde: q.desde,
+            hasta: q.hasta,
+            resumen: {
+                turnos: turnos.length,
+                atendidos: turnos.filter((t) => t.estado === 'atendido').length,
+                ausentes: turnos.filter((t) => t.estado === 'ausente').length,
+                sinMarcar: turnos.filter((t) => t.estado === 'reservado').length,
+                registros: (registros || []).length,
+            },
+            turnosSinRegistro: turnosSinRegistro.slice(0, LIMITE_LISTA).map(vistaTurno),
+            ausentesConRegistro: ausentesConRegistro.slice(0, LIMITE_LISTA).map(vistaTurno),
+            registrosSinTurno: registrosSinTurno.slice(0, LIMITE_LISTA).map((r) => ({
+                id: r.id,
+                fecha: r.fecha,
+                profesional: r.profesional_nombre || '',
+                paciente: nombreCompleto(uno(uno(r.paciente)?.persona)),
+            })),
+            truncado: (registros || []).length >= LIMITE_CRUCE || (turnosRaw || []).length >= LIMITE_CRUCE,
+        });
+    } catch (err) {
+        console.error('Error en el cruce de asistencia:', err);
+        return res.status(500).json({ error: 'Error al cruzar turnos y registros' });
     }
 };

@@ -9,6 +9,7 @@
 // respaldo para el camino por-JWT.
 
 const { supabase } = require('../config/supabaseClient');
+const { resolverObraSocial } = require('../utils/cobertura');
 
 // GET /admin/miembros — profesionales/recepción/auditores/admins de la clínica activa.
 exports.listarMiembros = async (req, res) => {
@@ -20,7 +21,8 @@ exports.listarMiembros = async (req, res) => {
         const { data, error } = await supabase
             .from('membresia')
             .select(`
-                id, rol, activo, creada_en, id_persona, alcance_obra_social,
+                id, rol, activo, creada_en, id_persona, alcance_obra_social, alcance_id_obra_social,
+                os:alcance_id_obra_social ( nombre ),
                 persona:id_persona ( nombre, apellido, email, dni,
                                       profesional ( matricula ) )
             `)
@@ -41,7 +43,8 @@ exports.listarMiembros = async (req, res) => {
                 dni: m.persona?.dni ?? null,
                 matricula: prof?.matricula ?? null,
                 rol: m.rol,
-                alcanceObraSocial: m.alcance_obra_social ?? null,
+                alcanceObraSocial: (Array.isArray(m.os) ? m.os[0] : m.os)?.nombre ?? m.alcance_obra_social ?? null,
+                alcanceIdObraSocial: m.alcance_id_obra_social ?? null,
                 activo: m.activo,
                 esYo: m.id_persona === personaIdActual,
             };
@@ -64,8 +67,9 @@ exports.actualizarMiembro = async (req, res) => {
         const membresiaId = Number(req.params.id);
         if (!Number.isInteger(membresiaId)) return res.status(400).json({ error: 'Miembro inválido.' });
 
-        const { activo, rol, alcanceObraSocial } = req.body;
-        if (activo === undefined && rol === undefined && alcanceObraSocial === undefined) {
+        const { activo, rol, alcanceObraSocial, alcanceIdObraSocial } = req.body;
+        if (activo === undefined && rol === undefined && alcanceObraSocial === undefined
+            && alcanceIdObraSocial === undefined) {
             return res.status(400).json({ error: 'Nada para actualizar.' });
         }
         if (rol !== undefined && !['admin', 'profesional', 'recepcion', 'auditor'].includes(rol)) {
@@ -111,9 +115,24 @@ exports.actualizarMiembro = async (req, res) => {
         // Fase J: el alcance solo aplica al auditor; al dejar de serlo se limpia.
         const rolFinal = rol !== undefined ? rol : target.rol;
         if (rolFinal !== 'auditor') {
-            if (rol !== undefined) patch.alcance_obra_social = null;
+            if (rol !== undefined) {
+                patch.alcance_obra_social = null;
+                patch.alcance_id_obra_social = null;
+            }
+        } else if (alcanceIdObraSocial !== undefined) {
+            // Fase K: alcance por obra social del catálogo (null = interno).
+            if (alcanceIdObraSocial === null || alcanceIdObraSocial === '') {
+                patch.alcance_id_obra_social = null;
+                patch.alcance_obra_social = null;
+            } else {
+                const os = await resolverObraSocial(alcanceIdObraSocial, clinicaId);
+                if (!os) return res.status(400).json({ error: 'La obra social elegida no es válida.' });
+                patch.alcance_id_obra_social = os.id;
+                patch.alcance_obra_social = os.nombre;
+            }
         } else if (alcanceObraSocial !== undefined) {
             patch.alcance_obra_social = (alcanceObraSocial || '').trim() || null;
+            patch.alcance_id_obra_social = null;
         }
         if (Object.keys(patch).length === 0) {
             return res.status(400).json({ error: 'Nada para actualizar.' });
@@ -124,7 +143,7 @@ exports.actualizarMiembro = async (req, res) => {
             .update(patch)
             .eq('id', membresiaId)
             .eq('clinica_id', clinicaId)
-            .select('id, rol, activo, alcance_obra_social')
+            .select('id, rol, activo, alcance_obra_social, alcance_id_obra_social')
             .single();
         if (uErr) return res.status(400).json({ error: uErr.message });
 

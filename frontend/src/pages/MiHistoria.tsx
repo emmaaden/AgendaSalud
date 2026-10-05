@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, Navigate } from "react-router-dom"
 import { toast } from "sonner"
-import { Loader2, Download, FileText, User, ArrowLeft, FileJson } from "lucide-react"
+import { Loader2, Download, FileText, User, ArrowLeft, FileJson, Eye, Tags } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container, PageHero } from "@/components/site/Section"
@@ -9,6 +9,66 @@ import { api } from "@/lib/api"
 import { useUser } from "@/hooks/useUser"
 import { downloadPatientHistoryPdf, type Paciente } from "@/lib/patientPdf"
 import { Odontogram } from "@/components/dashboard/Odontogram"
+import { CodificacionResumen } from "@/components/form/CodificacionEditor"
+import { ACCION_LABEL } from "@/lib/auditoria"
+import { formatFechaHora } from "@/lib/fecha"
+
+type Acceso = { id: number; fecha: string; actor: string; rol: string; accion: string }
+
+const ROL_LABEL: Record<string, string> = {
+  admin: "Administración",
+  profesional: "Profesional",
+  auditor: "Auditoría médica",
+  recepcion: "Recepción",
+}
+
+/** Fase K: quién accedió a la historia clínica del paciente (bitácora). */
+function AccesosHistoria() {
+  const [accesos, setAccesos] = useState<Acceso[] | null>(null)
+
+  useEffect(() => {
+    api
+      .get<{ accesos: Acceso[] }>("/api/mi-cuenta/accesos")
+      .then((d) => setAccesos(d.accesos || []))
+      .catch(() => setAccesos([]))
+  }, [])
+
+  return (
+    <>
+      <h3 className="mt-8 flex items-center gap-2 text-lg font-semibold">
+        <Eye className="size-5 text-primary" />
+        Quién accedió a tu historia clínica
+      </h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Cada vez que alguien de la clínica abre, carga o audita tu historia queda registrado.
+      </p>
+      {accesos === null ? (
+        <div className="flex justify-center py-6">
+          <Loader2 className="size-5 animate-spin text-primary" />
+        </div>
+      ) : accesos.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">Todavía no hay accesos registrados.</p>
+      ) : (
+        <Card className="mt-4">
+          <CardContent className="p-0">
+            <ul className="divide-y divide-border">
+              {accesos.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
+                  <span>
+                    <span className="font-medium">{a.actor || "Personal de la clínica"}</span>
+                    {a.rol && <span className="text-muted-foreground"> · {ROL_LABEL[a.rol] ?? a.rol}</span>}
+                    <span className="block text-muted-foreground">{ACCION_LABEL[a.accion] ?? a.accion}</span>
+                  </span>
+                  <span className="text-xs whitespace-nowrap text-muted-foreground">{formatFechaHora(a.fecha)}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </>
+  )
+}
 
 export default function MiHistoria() {
   const { user, loading: loadingUser } = useUser()
@@ -68,6 +128,8 @@ export default function MiHistoria() {
         ["Fecha de nacimiento", paciente.fechaNacimiento],
         ["Edad", paciente.edad],
         ["Obra social", paciente.obraSocial],
+        ["N.º de afiliado", paciente.nroAfiliado],
+        ["Plan", paciente.plan],
         ["Sexo", paciente.sexo],
         ["Fecha de apertura", paciente.fechaApertura],
       ]
@@ -78,7 +140,7 @@ export default function MiHistoria() {
       <PageHero
         eyebrow="Mi cuenta"
         title="Mi historia clínica"
-        description="Tu ficha y el historial de tus consultas. Solo vos podés verlo."
+        description="Tu ficha, el historial de tus consultas y quién accedió a ellos."
       />
 
       <Container className="py-12">
@@ -191,6 +253,14 @@ export default function MiHistoria() {
                             {e.tratamiento}
                           </p>
                         </div>
+                        {((e.diagnosticos?.length ?? 0) > 0 || (e.practicas?.length ?? 0) > 0) && (
+                          <div className="mt-4 border-t border-border pt-4">
+                            <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                              <Tags className="size-4" /> Codificación
+                            </p>
+                            <CodificacionResumen diagnosticos={e.diagnosticos} practicas={e.practicas} />
+                          </div>
+                        )}
                         {e.dientes && e.dientes.length > 0 && (
                           <div className="mt-4 border-t border-border pt-4">
                             <p className="mb-2 text-sm font-medium text-muted-foreground">
@@ -208,6 +278,8 @@ export default function MiHistoria() {
                   No hay consultas registradas.
                 </p>
               )}
+
+              <AccesosHistoria />
             </>
           )}
         </div>

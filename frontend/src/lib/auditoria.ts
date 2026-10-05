@@ -3,6 +3,7 @@
  * auditor (/dashboard/auditoria) y las observaciones que ve el profesional.
  */
 import type { Diente } from "@/lib/odontograma"
+import type { CodificacionRegistro } from "@/lib/catalogos"
 
 export type EstadoAuditoria =
   | "pendiente"
@@ -29,6 +30,7 @@ export const CHECKLIST_LABEL: Record<string, string> = {
   diagnostico: "Diagnóstico registrado",
   tratamiento: "Tratamiento registrado",
   coherencia: "Diagnóstico y tratamiento coherentes",
+  codificacion: "Codificación (CIE-10 y prácticas) correcta",
   odontograma: "Odontograma completo (si aplica)",
   identificacion: "Fecha y profesional identificados",
 }
@@ -42,6 +44,11 @@ export const ACCION_LABEL: Record<string, string> = {
   ver_registro_auditoria: "Abrió un registro para auditar",
   revisar: "Auditó un registro",
   responder: "Respondió una observación",
+  solicitar_autorizacion: "Pidió una autorización previa",
+  ver_autorizacion: "Abrió una autorización previa",
+  resolver_autorizacion: "Resolvió una autorización previa",
+  ver_adjunto_autorizacion: "Abrió un adjunto de autorización",
+  editar_cobertura: "Actualizó la cobertura del paciente",
 }
 
 export type Revision = {
@@ -62,6 +69,7 @@ export type RegistroBandeja = {
   profesional: string
   idProfesional: number | null
   diagnostico: string
+  codigos?: string[]
   estado: EstadoAuditoria
   paciente: { id: number | null; nombre: string; dni: string; obraSocial: string }
 }
@@ -77,7 +85,7 @@ export type DetalleRegistro = {
     tratamiento: string
     estado: EstadoAuditoria
     dientes: Diente[]
-  }
+  } & CodificacionRegistro
   paciente: {
     id: number
     nombre: string
@@ -85,6 +93,8 @@ export type DetalleRegistro = {
     edad: number | null
     sexo: string
     obraSocial: string
+    nroAfiliado?: string
+    plan?: string
   }
   revisiones: Revision[]
   historial: {

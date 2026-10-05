@@ -89,8 +89,11 @@ exports.listarTurnos = async (req, res) => {
             // El calendario pide rangos (un mes puede tener cientos de turnos).
             .limit(desde || hasta ? 1000 : 300);
 
-        if (estado === 'reservado' || estado === 'cancelado') {
+        if (['reservado', 'cancelado', 'atendido', 'ausente'].includes(estado)) {
             query = query.eq('estado', estado);
+        } else if (estado === 'vigentes') {
+            // Fase K: el calendario muestra todo lo que ocupa horario (no cancelado).
+            query = query.neq('estado', 'cancelado');
         }
         if (desde) query = query.gte('inicio', desde);
         if (hasta) query = query.lte('inicio', hasta);
@@ -348,6 +351,9 @@ exports.cancelarTurno = async (req, res) => {
         if (turno.estado === 'cancelado') {
             return res.json({ message: 'El turno ya estaba cancelado.' });
         }
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({ error: 'No se puede cancelar un turno con la asistencia registrada.' });
+        }
 
         const { error } = await supabase
             .from('turno')
@@ -380,8 +386,12 @@ exports.reprogramarTurno = async (req, res) => {
 
         const turno = await cargarTurnoDeClinica(id, clinicaId);
         if (!turno) return res.status(404).json({ error: 'Turno no encontrado.' });
-        if (turno.estado === 'cancelado') {
-            return res.status(409).json({ error: 'No se puede reprogramar un turno cancelado.' });
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({
+                error: turno.estado === 'cancelado'
+                    ? 'No se puede reprogramar un turno cancelado.'
+                    : 'No se puede reprogramar un turno con la asistencia registrada.',
+            });
         }
 
         // El nuevo horario debe estar libre (excluyendo este mismo turno).
@@ -421,8 +431,8 @@ exports.reenviarConfirmacion = async (req, res) => {
 
         const turno = await cargarTurnoDeClinica(id, clinicaId);
         if (!turno) return res.status(404).json({ error: 'Turno no encontrado.' });
-        if (turno.estado === 'cancelado') {
-            return res.status(409).json({ error: 'El turno está cancelado.' });
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({ error: 'El turno no está vigente.' });
         }
         if (!turno.paciente_email) {
             return res.status(400).json({ error: 'El turno no tiene un email de contacto.' });
@@ -437,6 +447,45 @@ exports.reenviarConfirmacion = async (req, res) => {
     } catch (err) {
         console.error('Error reenviando confirmación (staff):', err);
         return res.status(500).json({ error: 'Error al reenviar la confirmación.' });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Fase K: POST /staff/turnos/:id/asistencia  { estado: 'atendido'|'ausente'|'reservado' }
+// Registra si el paciente vino. Solo para turnos que ya empezaron; 'reservado' deshace
+// una marca equivocada. Un turno cancelado no admite asistencia.
+// ---------------------------------------------------------------------------
+exports.marcarAsistencia = async (req, res) => {
+    try {
+        const clinicaId = req.session.user.clinicaId;
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ error: 'Turno inválido.' });
+        const { estado } = req.body;
+
+        const turno = await cargarTurnoDeClinica(id, clinicaId);
+        if (!turno) return res.status(404).json({ error: 'Turno no encontrado.' });
+        if (turno.estado === 'cancelado') {
+            return res.status(409).json({ error: 'El turno está cancelado.' });
+        }
+        if (new Date(turno.inicio).getTime() > Date.now()) {
+            return res.status(409).json({ error: 'La asistencia se registra cuando el turno ya empezó.' });
+        }
+
+        const { data, error } = await supabase
+            .from('turno')
+            .update({ estado })
+            .eq('id', id)
+            .eq('clinica_id', clinicaId)
+            .neq('estado', 'cancelado')
+            .select(SELECT_STAFF)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return res.status(409).json({ error: 'El turno está cancelado.' });
+
+        return res.json({ message: 'Asistencia registrada.', turno: mapTurno(data) });
+    } catch (err) {
+        console.error('Error registrando asistencia (staff):', err);
+        return res.status(500).json({ error: 'Error al registrar la asistencia.' });
     }
 };
 

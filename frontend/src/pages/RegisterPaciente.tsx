@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field } from "@/components/form/Field"
 import { SelectField } from "@/components/form/SelectField"
+import { CoberturaFields } from "@/components/form/CoberturaFields"
+import { COBERTURA_VACIA, coberturaPayload, type Cobertura } from "@/lib/catalogos"
 import { Container } from "@/components/site/Section"
 import { api, ApiError } from "@/lib/api"
 
@@ -21,7 +23,6 @@ const schema = z.object({
   fechaNacimiento: z.string().min(1, "Requerido"),
   telefono: z.string().min(6, "Teléfono inválido"),
   direccion: z.string().min(2, "Requerido"),
-  obraSocial: z.string().min(1, "Requerido"),
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "Mínimo 6 caracteres"),
 })
@@ -36,6 +37,9 @@ const SEXO = [
 export default function RegisterPaciente() {
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
+  // Fase K: cobertura del catálogo global (fuera de react-hook-form: es un objeto).
+  const [cobertura, setCobertura] = useState<Cobertura>(COBERTURA_VACIA)
+  const [coberturaError, setCoberturaError] = useState<string | undefined>()
   const {
     register,
     control,
@@ -44,9 +48,13 @@ export default function RegisterPaciente() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   async function onSubmit(values: FormValues) {
+    if (!cobertura.idObraSocial) {
+      setCoberturaError("Requerido")
+      return
+    }
     setSubmitting(true)
     try {
-      await api.post("/auth/register", { ...values, role: "PACIENTE" })
+      await api.post("/auth/register", { ...values, ...coberturaPayload(cobertura), role: "PACIENTE" })
       toast.success("Cuenta creada con éxito")
       navigate("/")
     } catch (err) {
@@ -140,9 +148,17 @@ export default function RegisterPaciente() {
                 <Input id="direccion" className="h-10" aria-invalid={!!errors.direccion} {...register("direccion")} />
               </Field>
 
-              <Field label="Obra social" htmlFor="obraSocial" required error={errors.obraSocial?.message} className="sm:col-span-2">
-                <Input id="obraSocial" className="h-10" placeholder="Obra social o “Particular”" aria-invalid={!!errors.obraSocial} {...register("obraSocial")} />
-              </Field>
+              <CoberturaFields
+                value={cobertura}
+                onChange={(c) => {
+                  setCobertura(c)
+                  if (c.idObraSocial) setCoberturaError(undefined)
+                }}
+                publico
+                required
+                idPrefix="registro"
+                error={coberturaError}
+              />
 
               <Field label="Email" htmlFor="email" required error={errors.email?.message}>
                 <Input id="email" type="email" autoComplete="email" className="h-10" aria-invalid={!!errors.email} {...register("email")} />

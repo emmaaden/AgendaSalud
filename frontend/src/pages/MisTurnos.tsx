@@ -31,7 +31,7 @@ type Turno = {
   id: number
   inicio: string
   fin: string | null
-  estado: "reservado" | "cancelado"
+  estado: "reservado" | "cancelado" | "atendido" | "ausente"
   profesional_nombre: string | null
   especialidad: string | null
   paciente_nombre: string | null
@@ -241,6 +241,16 @@ export default function MisTurnos() {
                         {t.estado === "cancelado" && (
                           <Badge variant="destructive" className="ml-auto">
                             Cancelado
+                          </Badge>
+                        )}
+                        {t.estado === "atendido" && (
+                          <Badge variant="outline" className="ml-auto">
+                            Atendido
+                          </Badge>
+                        )}
+                        {t.estado === "ausente" && (
+                          <Badge variant="secondary" className="ml-auto">
+                            No asististe
                           </Badge>
                         )}
                       </li>
