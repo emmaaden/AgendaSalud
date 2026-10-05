@@ -3,6 +3,7 @@ import { LegalArticle } from "@/components/site/LegalArticle"
 export default function Privacidad() {
   return (
     <LegalArticle
+      updated="15 de septiembre de 2026"
       title="Política de privacidad"
       intro="Nos comprometemos a proteger tu privacidad. Acá te explicamos cómo recopilamos, usamos y protegemos tu información personal."
       sections={[

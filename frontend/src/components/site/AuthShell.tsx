@@ -17,7 +17,7 @@ export function AuthShell({
   children: React.ReactNode
 }) {
   return (
-    <div className="grid min-h-[calc(100dvh-4rem)] lg:grid-cols-2">
+    <div className="grid lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-2">
       {/* Aside de marca */}
       <aside className="relative hidden overflow-hidden bg-primary text-primary-foreground lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div

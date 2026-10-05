@@ -3,6 +3,7 @@ import { LegalArticle } from "@/components/site/LegalArticle"
 export default function Terminos() {
   return (
     <LegalArticle
+      updated="15 de septiembre de 2026"
       title="Términos y condiciones"
       intro="Al acceder y utilizar AgendaSalud, aceptás estos términos. Si no estás de acuerdo, por favor no utilices el sitio."
       sections={[

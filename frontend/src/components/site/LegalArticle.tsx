@@ -9,12 +9,13 @@ export function LegalArticle({
   title,
   intro,
   sections,
-  updated = "2024",
+  updated,
 }: {
   title: string
   intro: string
   sections: LegalSection[]
-  updated?: string
+  /** Obligatorio a propósito: sin valor por defecto no puede quedar una fecha vieja al pie. */
+  updated: string
 }) {
   return (
     <>

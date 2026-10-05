@@ -477,7 +477,7 @@ export default function Home() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-white/30 bg-transparent text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+                className="border-white/30 bg-transparent text-primary-foreground hover:bg-white/10 hover:text-primary-foreground dark:border-white/30 dark:bg-transparent dark:hover:bg-white/10"
               >
                 <Link to="/turnos">Pedir turno</Link>
               </Button>

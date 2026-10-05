@@ -34,7 +34,7 @@ export function SelectField({
       <SelectTrigger
         id={id}
         aria-invalid={invalid}
-        className={cn("h-10 w-full", className)}
+        className={cn("data-[size=default]:h-10 w-full", className)}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
