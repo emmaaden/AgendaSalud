@@ -21,9 +21,9 @@ const roles = [
   {
     to: "/register/recepcion",
     icon: ClipboardList,
-    title: "Trabajo en recepción",
+    title: "Recepción o auditoría",
     description:
-      "Gestioná los turnos de la clínica. Necesitás un código de activación.",
+      "Gestioná los turnos de la clínica o auditá sus historias clínicas. Necesitás un código de activación.",
   },
 ]
 

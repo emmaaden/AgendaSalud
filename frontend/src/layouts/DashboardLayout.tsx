@@ -32,7 +32,7 @@ function Guarded() {
 
   // El panel es del staff (profesional/admin y recepción). Un paciente va a su área.
   // (El backend además exige el rol correspondiente en cada endpoint.)
-  if (user.role !== "profesional" && user.role !== "recepcion") {
+  if (user.role !== "profesional" && user.role !== "recepcion" && user.role !== "auditor") {
     return <Navigate to="/mis-turnos" replace />
   }
 
@@ -45,6 +45,12 @@ function Guarded() {
   // la mandamos a su panel (además el backend bloquea los endpoints de profesional).
   if (user.rol === "recepcion" && !pathname.startsWith("/dashboard/turnos")) {
     return <Navigate to="/dashboard/turnos" replace />
+  }
+
+  // Fase J: el auditor SOLO trabaja en su panel de auditoría (aunque sea médico con
+  // fila de profesional: en esta clínica su rol es de auditoría).
+  if (user.rol === "auditor" && !pathname.startsWith("/dashboard/auditoria")) {
+    return <Navigate to="/dashboard/auditoria" replace />
   }
 
   return (

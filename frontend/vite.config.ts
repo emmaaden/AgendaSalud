@@ -22,6 +22,7 @@ const API_PREFIXES = [
   '/staff',
   '/estudios',
   '/dictado',
+  '/auditoria',
   '/professionals',
   '/available-slots',
   '/create-event',

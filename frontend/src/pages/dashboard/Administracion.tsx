@@ -13,10 +13,28 @@ import {
   MoreVertical,
   Copy,
   Check,
+  ClipboardCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +47,7 @@ import { Container } from "@/components/site/Section"
 import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
 
-type Rol = "admin" | "profesional" | "recepcion"
+type Rol = "admin" | "profesional" | "recepcion" | "auditor"
 
 type Miembro = {
   id: number
@@ -40,6 +58,7 @@ type Miembro = {
   dni: string | null
   matricula: string | null
   rol: Rol
+  alcanceObraSocial: string | null
   activo: boolean
   esYo: boolean
 }
@@ -48,14 +67,32 @@ type Codigo = {
   id: number
   codigo: string
   usado: boolean
-  rol?: "profesional" | "recepcion"
+  rol?: "profesional" | "recepcion" | "auditor"
+  alcance_obra_social?: string | null
   creado_en?: string
 }
+
+type RolCodigo = NonNullable<Codigo["rol"]>
+
+const ROL_CODIGO_LABEL: Record<RolCodigo, string> = {
+  profesional: "Profesional",
+  recepcion: "Recepción",
+  auditor: "Auditoría",
+}
+
+// Fase J: el alcance del auditor se define para un miembro (al asignarle el rol o
+// después) o para un código de auditor (lo hereda quien se registre con él).
+type AlcanceDestino = { tipo: "miembro"; miembro: Miembro } | { tipo: "codigo" }
+
+// Texto del alcance para listar. null = auditor interno (toda la clínica).
+const alcanceLabel = (os: string | null | undefined) =>
+  os ? `solo ${os}` : "interna (toda la clínica)"
 
 const ROL_META: Record<Rol, { label: string; icon: typeof ShieldCheck }> = {
   admin: { label: "Administrador/a", icon: ShieldCheck },
   profesional: { label: "Profesional", icon: Stethoscope },
   recepcion: { label: "Recepción", icon: ClipboardList },
+  auditor: { label: "Auditoría", icon: ClipboardCheck },
 }
 
 export default function Administracion() {
@@ -68,6 +105,9 @@ export default function Administracion() {
   const [generating, setGenerating] = useState(false)
   const [borrando, setBorrando] = useState<number | null>(null)
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [alcanceDestino, setAlcanceDestino] = useState<AlcanceDestino | null>(null)
+  const [alcanceModo, setAlcanceModo] = useState<"interno" | "obra_social">("interno")
+  const [alcanceOs, setAlcanceOs] = useState("")
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -94,7 +134,10 @@ export default function Administracion() {
     return <Navigate to="/dashboard" replace />
   }
 
-  async function cambiar(m: Miembro, patch: { activo?: boolean; rol?: Rol }) {
+  async function cambiar(
+    m: Miembro,
+    patch: { activo?: boolean; rol?: Rol; alcanceObraSocial?: string | null }
+  ) {
     setAccion(m.id)
     try {
       await api.patch(`/admin/miembros/${m.id}`, patch)
@@ -109,11 +152,12 @@ export default function Administracion() {
     }
   }
 
-  async function generarCodigo(rol: "profesional" | "recepcion") {
+  async function generarCodigo(rol: RolCodigo, alcanceObraSocial: string | null = null) {
     setGenerating(true)
     try {
       const d = await api.post<{ codigo?: string }>("/clinica/generar-codigo", {
         rol,
+        ...(rol === "auditor" ? { alcanceObraSocial } : {}),
       })
       toast.success(`Código generado: ${d.codigo}`)
       await cargar()
@@ -121,6 +165,29 @@ export default function Administracion() {
       toast.error("No se pudo generar el código.")
     } finally {
       setGenerating(false)
+    }
+  }
+
+  function abrirAlcance(destino: AlcanceDestino) {
+    const actual = destino.tipo === "miembro" ? destino.miembro.alcanceObraSocial : null
+    setAlcanceModo(actual ? "obra_social" : "interno")
+    setAlcanceOs(actual ?? "")
+    setAlcanceDestino(destino)
+  }
+
+  async function confirmarAlcance() {
+    if (!alcanceDestino) return
+    const os = alcanceModo === "obra_social" ? alcanceOs.trim() : ""
+    if (alcanceModo === "obra_social" && !os) {
+      toast.error("Indicá la obra social que audita.")
+      return
+    }
+    const destino = alcanceDestino
+    setAlcanceDestino(null)
+    if (destino.tipo === "codigo") {
+      await generarCodigo("auditor", os || null)
+    } else {
+      await cambiar(destino.miembro, { rol: "auditor", alcanceObraSocial: os || null })
     }
   }
 
@@ -204,6 +271,7 @@ export default function Administracion() {
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {meta.label}
+                      {m.rol === "auditor" ? ` ${alcanceLabel(m.alcanceObraSocial)}` : ""}
                       {m.matricula ? ` · Mat. ${m.matricula}` : ""}
                       {m.email ? ` · ${m.email}` : ""}
                     </p>
@@ -251,12 +319,23 @@ export default function Administracion() {
                         <DropdownMenuItem
                           key={r}
                           disabled={r === m.rol}
-                          onSelect={() => cambiar(m, { rol: r })}
+                          onSelect={() =>
+                            r === "auditor"
+                              ? abrirAlcance({ tipo: "miembro", miembro: m })
+                              : cambiar(m, { rol: r })
+                          }
                         >
                           {ROL_META[r].label}
                           {r === m.rol ? " ·" : ""}
                         </DropdownMenuItem>
                       ))}
+                      {m.rol === "auditor" && (
+                        <DropdownMenuItem
+                          onSelect={() => abrirAlcance({ tipo: "miembro", miembro: m })}
+                        >
+                          Cambiar alcance…
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   </div>
@@ -295,12 +374,15 @@ export default function Administracion() {
                 <DropdownMenuItem onSelect={() => generarCodigo("recepcion")}>
                   <ClipboardList /> Recepción
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => abrirAlcance({ tipo: "codigo" })}>
+                  <ClipboardCheck /> Auditoría
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Compartí un código disponible para que alguien se una a tu clínica al
-            registrarse: como profesional o en recepción. Solo se pueden eliminar
+            registrarse: como profesional, en recepción o en auditoría. Solo se pueden eliminar
             los que no se usaron.
           </p>
 
@@ -312,7 +394,10 @@ export default function Administracion() {
               >
                 <code className="min-w-0 truncate font-mono">{c.codigo}</code>
                 <Badge variant="outline" className="font-normal">
-                  {c.rol === "recepcion" ? "Recepción" : "Profesional"}
+                  {ROL_CODIGO_LABEL[c.rol ?? "profesional"]}
+                  {c.rol === "auditor" && c.alcance_obra_social
+                    ? ` · ${c.alcance_obra_social}`
+                    : ""}
                 </Badge>
                 <Badge variant={c.usado ? "secondary" : "default"}>
                   {c.usado ? "Usado" : "Disponible"}
@@ -357,6 +442,62 @@ export default function Administracion() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Fase J: alcance del auditor (al asignar el rol o generar su código) */}
+      <Dialog open={!!alcanceDestino} onOpenChange={(o) => !o && setAlcanceDestino(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alcance de la auditoría</DialogTitle>
+            <DialogDescription>
+              {alcanceDestino?.tipo === "codigo"
+                ? "Quien se registre con este código va a quedar en auditoría con este alcance."
+                : "Solo va a ver las historias clínicas dentro de este alcance. No puede cargar ni modificar registros."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="alcance-modo">Qué puede auditar</Label>
+              <Select
+                value={alcanceModo}
+                onValueChange={(v) => setAlcanceModo(v as "interno" | "obra_social")}
+              >
+                <SelectTrigger id="alcance-modo" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="interno">Toda la clínica (auditoría interna)</SelectItem>
+                  <SelectItem value="obra_social">Solo pacientes de una obra social</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {alcanceModo === "obra_social" && (
+              <div className="grid gap-2">
+                <Label htmlFor="alcance-os">Obra social</Label>
+                <Input
+                  id="alcance-os"
+                  value={alcanceOs}
+                  onChange={(e) => setAlcanceOs(e.target.value)}
+                  placeholder="Ej.: OSDE"
+                  maxLength={120}
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se compara con la obra social cargada en cada paciente, sin distinguir
+                  mayúsculas. Tiene que estar escrita igual.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAlcanceDestino(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarAlcance}>
+              {alcanceDestino?.tipo === "codigo" ? "Generar código" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Container>
   )
 }

@@ -24,6 +24,7 @@ const hcRoutes = require('./routes/hcRoutes'); // Fase D: export/import de histo
 const staffRoutes = require('./routes/staffRoutes'); // Fase E: gestión de turnos por el staff (/staff)
 const estudioRoutes = require('./routes/estudioRoutes'); // Fase I: mis estudios del paciente (/estudios)
 const dictadoRoutes = require('./routes/dictadoRoutes'); // dictado por voz con whisper.cpp local (/dictado)
+const auditoriaRoutes = require('./routes/auditoriaRoutes'); // Fase J: auditoría médica (bandeja, revisiones, bitácora)
 // (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
@@ -213,6 +214,7 @@ app.use('/hc', hcRoutes); // Fase D: export/import de historias clínicas
 app.use('/staff', staffRoutes); // Fase E: gestión de turnos por el staff (recepción/profesional/admin)
 app.use('/estudios', estudioRoutes); // Fase I: repositorio de estudios del paciente + compartir
 app.use('/dictado', dictadoRoutes); // dictado por voz (proxy al whisper.cpp local)
+app.use('/auditoria', auditoriaRoutes); // Fase J: auditoría médica (auditor/admin + respuestas del profesional)
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
@@ -247,7 +249,8 @@ app.get('/api/user', async (req, res) => {
 
     // Fase A (multi-clínica): clínicas del staff + estado de selección.
     // Fase E: la recepción también es staff con membresías (sin fila en profesional).
-    const esStaff = u.role === 'profesional' || u.role === 'recepcion';
+    // Fase J: ídem el auditor.
+    const esStaff = u.role === 'profesional' || u.role === 'recepcion' || u.role === 'auditor';
     let clinicas = [];
     if (esStaff && u.personaId) {
         try {
@@ -267,10 +270,12 @@ app.get('/api/user', async (req, res) => {
         idRole: u.idRole,
         id: u.id,
         role: u.role,
-        // Clínica activa y rol dentro de ella (admin | profesional | recepcion).
+        // Clínica activa y rol dentro de ella (admin | profesional | recepcion | auditor).
         clinicaId: u.clinicaId || null,
         rol: u.rol || null,
         esAdmin: !!u.esAdmin,
+        // Fase J: alcance del auditor (obra social) en la clínica activa; null = interno.
+        alcanceObraSocial: u.alcanceObraSocial || null,
         clinicas,
         needsClinicSelection,
     });
@@ -537,7 +542,7 @@ if (isProd) {
     const API_PREFIXES = [
         '/auth', '/hour', '/pacient', '/especialidades', '/profesional',
         '/avatars', '/ortodoncia', '/clinica', '/clinica-publica',
-        '/admin', '/certificados', '/hc', '/staff', '/estudios',
+        '/admin', '/certificados', '/hc', '/staff', '/estudios', '/auditoria',
         '/professionals', '/available-slots', '/create-event',
         '/api', '/internal',
     ];

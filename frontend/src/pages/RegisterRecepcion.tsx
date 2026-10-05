@@ -44,7 +44,7 @@ export default function RegisterRecepcion() {
         telefono: values.telefono,
         role: "RECEPCION",
       })
-      toast.success("Cuenta de recepción creada")
+      toast.success("Cuenta creada")
       window.location.href = "/dashboard"
     } catch (err) {
       const msg =
@@ -65,10 +65,10 @@ export default function RegisterRecepcion() {
 
       <div className="mx-auto mt-4 max-w-2xl">
         <div className="mb-6">
-          <h1 className="text-3xl font-semibold">Registro de recepción</h1>
+          <h1 className="text-3xl font-semibold">Registro de recepción o auditoría</h1>
           <p className="mt-2 text-muted-foreground">
-            Unite a tu clínica con el código que te dio el administrador. Vas a
-            gestionar los turnos de la clínica.
+            Unite a tu clínica con el código que te dio el administrador. El código
+            define si vas a gestionar los turnos o a auditar historias clínicas.
           </p>
         </div>
 
@@ -118,7 +118,7 @@ export default function RegisterRecepcion() {
               <div className="sm:col-span-2">
                 <Button type="submit" size="lg" className="w-full" disabled={submitting}>
                   {submitting ? <Loader2 className="animate-spin" /> : <ClipboardList />}
-                  Crear cuenta de recepción
+                  Crear cuenta
                 </Button>
               </div>
             </form>

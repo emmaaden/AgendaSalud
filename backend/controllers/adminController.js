@@ -10,7 +10,7 @@
 
 const { supabase } = require('../config/supabaseClient');
 
-// GET /admin/miembros — profesionales/recepción/admins de la clínica activa.
+// GET /admin/miembros — profesionales/recepción/auditores/admins de la clínica activa.
 exports.listarMiembros = async (req, res) => {
     try {
         const clinicaId = req.session.user.clinicaId;
@@ -20,7 +20,7 @@ exports.listarMiembros = async (req, res) => {
         const { data, error } = await supabase
             .from('membresia')
             .select(`
-                id, rol, activo, creada_en, id_persona,
+                id, rol, activo, creada_en, id_persona, alcance_obra_social,
                 persona:id_persona ( nombre, apellido, email, dni,
                                       profesional ( matricula ) )
             `)
@@ -41,6 +41,7 @@ exports.listarMiembros = async (req, res) => {
                 dni: m.persona?.dni ?? null,
                 matricula: prof?.matricula ?? null,
                 rol: m.rol,
+                alcanceObraSocial: m.alcance_obra_social ?? null,
                 activo: m.activo,
                 esYo: m.id_persona === personaIdActual,
             };
@@ -63,11 +64,11 @@ exports.actualizarMiembro = async (req, res) => {
         const membresiaId = Number(req.params.id);
         if (!Number.isInteger(membresiaId)) return res.status(400).json({ error: 'Miembro inválido.' });
 
-        const { activo, rol } = req.body;
-        if (activo === undefined && rol === undefined) {
+        const { activo, rol, alcanceObraSocial } = req.body;
+        if (activo === undefined && rol === undefined && alcanceObraSocial === undefined) {
             return res.status(400).json({ error: 'Nada para actualizar.' });
         }
-        if (rol !== undefined && !['admin', 'profesional', 'recepcion'].includes(rol)) {
+        if (rol !== undefined && !['admin', 'profesional', 'recepcion', 'auditor'].includes(rol)) {
             return res.status(400).json({ error: 'Rol inválido.' });
         }
 
@@ -107,13 +108,23 @@ exports.actualizarMiembro = async (req, res) => {
         const patch = {};
         if (activo !== undefined) patch.activo = !!activo;
         if (rol !== undefined) patch.rol = rol;
+        // Fase J: el alcance solo aplica al auditor; al dejar de serlo se limpia.
+        const rolFinal = rol !== undefined ? rol : target.rol;
+        if (rolFinal !== 'auditor') {
+            if (rol !== undefined) patch.alcance_obra_social = null;
+        } else if (alcanceObraSocial !== undefined) {
+            patch.alcance_obra_social = (alcanceObraSocial || '').trim() || null;
+        }
+        if (Object.keys(patch).length === 0) {
+            return res.status(400).json({ error: 'Nada para actualizar.' });
+        }
 
         const { data: updated, error: uErr } = await supabase
             .from('membresia')
             .update(patch)
             .eq('id', membresiaId)
             .eq('clinica_id', clinicaId)
-            .select('id, rol, activo')
+            .select('id, rol, activo, alcance_obra_social')
             .single();
         if (uErr) return res.status(400).json({ error: uErr.message });
 

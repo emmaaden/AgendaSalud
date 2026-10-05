@@ -15,6 +15,7 @@
 
 const { getUserSupabase } = require('../middleware/userSupabase');
 const { filasParaRegistro, serializarDiente } = require('../utils/odontograma');
+const { registrarAcceso } = require('../utils/bitacora');
 
 // Mensaje uniforme cuando la sesión no tiene (o perdió) el token de Supabase.
 const ERR_SESION = { status: 401, body: { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' } };
@@ -199,7 +200,14 @@ exports.regisPacient = async (req, res) => {
         }
 
         // 3. primer registro clínico (+ odontograma)
-        await insertRegistro(db, paciente.id, prof, req.body);
+        const idRegistro = await insertRegistro(db, paciente.id, prof, req.body);
+
+        await registrarAcceso(req, {
+            accion: 'registrar_paciente',
+            idPaciente: paciente.id,
+            idRegistro,
+            paciente: { nombre: fullName, dni },
+        });
 
         return res.status(201).json({ message: 'Paciente registrado con éxito', id_paciente: paciente.id });
     } catch (err) {
@@ -224,7 +232,7 @@ exports.saveDataPacient = async (req, res) => {
 
         const { data: persona, error: personaError } = await db
             .from('persona')
-            .select('id, paciente(id)')
+            .select('id, nombre, apellido, paciente(id)')
             .eq('dni', dni)
             .eq('clinica_id', clinicaId)
             .maybeSingle();
@@ -236,7 +244,14 @@ exports.saveDataPacient = async (req, res) => {
         }
 
         const prof = await getProfContext(db, req.session);
-        await insertRegistro(db, paciente.id, prof, req.body);
+        const idRegistro = await insertRegistro(db, paciente.id, prof, req.body);
+
+        await registrarAcceso(req, {
+            accion: 'crear_registro',
+            idPaciente: paciente.id,
+            idRegistro,
+            paciente: { nombre: [persona.nombre, persona.apellido].filter(Boolean).join(' '), dni },
+        });
 
         return res.status(201).json({ message: 'Registro guardado con éxito' });
     } catch (err) {
@@ -291,6 +306,13 @@ exports.getDataPacient = async (req, res) => {
         }));
 
         const fechaApertura = registros && registros.length > 0 ? fmtFecha(registros[0].fecha) : '';
+
+        await registrarAcceso(req, {
+            accion: 'ver_hc',
+            idPaciente: paciente.id,
+            paciente: { nombre: [persona.nombre, persona.apellido].filter(Boolean).join(' '), dni: persona.dni },
+            detalle: { registros: (registros || []).length },
+        });
 
         return res.status(200).json({
             fullName: [persona.nombre, persona.apellido].filter(Boolean).join(' '),

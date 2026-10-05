@@ -10,6 +10,9 @@ const nombre = z.string().trim().min(1, 'Nombre requerido').max(120, 'Nombre dem
 const emailOpcional = z.union([z.email('Email inválido'), z.literal('')]).optional();
 const textoOpcional = z.string().max(4000, 'Texto demasiado largo').optional();
 const idFlexible = z.union([z.string().min(1), z.number()]);
+// Query string: fecha 'YYYY-MM-DD' opcional y número de página (1..10000).
+const fechaQuery = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (formato YYYY-MM-DD)').optional();
+const paginaQuery = z.string().regex(/^\d{1,4}$/, 'Página inválida').optional();
 
 // Un hallazgo del odontograma. Permisivo a propósito: el backend hace clamp de
 // `condicion`/`cara`/`estado` contra las listas válidas (ver pacienteController).
@@ -62,14 +65,18 @@ module.exports = {
     admin: {
         actualizarMiembro: z.object({
             activo: z.boolean().optional(),
-            rol: z.enum(['admin', 'profesional', 'recepcion']).optional(),
+            rol: z.enum(['admin', 'profesional', 'recepcion', 'auditor']).optional(),
+            // Fase J: alcance del auditor. null/'' = interno (toda la clínica).
+            alcanceObraSocial: z.string().trim().max(120).nullable().optional(),
         }),
     },
 
     clinica: {
         // Fase E: el código puede apuntar a un rol (profesional | recepcion).
+        // Fase J: o a 'auditor', con su alcance opcional por obra social.
         generarCodigo: z.object({
-            rol: z.enum(['profesional', 'recepcion']).optional(),
+            rol: z.enum(['profesional', 'recepcion', 'auditor']).optional(),
+            alcanceObraSocial: z.string().trim().max(120).nullable().optional(),
         }),
     },
 
@@ -198,5 +205,40 @@ module.exports = {
         // Nota: el buscador público por email y el borrado directo por eventId se
         // eliminaron en la Fase 3 (permitían enumerar/cancelar turnos ajenos). La
         // gestión segura vive en /api/turnos (ver turnosController).
+    },
+
+    // Fase J: auditoría médica (bandeja, revisiones, bitácora).
+    auditoria: {
+        listar: z.object({
+            desde: fechaQuery,
+            hasta: fechaQuery,
+            idProfesional: z.string().regex(/^\d+$/, 'Profesional inválido').optional(),
+            obraSocial: z.string().trim().max(120).optional(),
+            estado: z.enum(['pendiente', 'aprobado', 'observado', 'rechazado', 'respondido']).optional(),
+            page: paginaQuery,
+        }),
+        revisar: z.object({
+            estado: z.enum(['aprobado', 'observado', 'rechazado'], 'Estado inválido'),
+            checklist: z.record(z.string().max(40), z.boolean()).optional(),
+            comentario: z.string().trim().max(4000, 'Comentario demasiado largo').optional(),
+        }).refine(
+            d => d.estado === 'aprobado' || (d.comentario && d.comentario.length > 0),
+            { message: 'Indicá el motivo de la observación o el rechazo', path: ['comentario'] }
+        ),
+        responder: z.object({
+            respuesta: z.string().trim().min(1, 'Escribí una respuesta').max(4000, 'Respuesta demasiado larga'),
+        }),
+        bitacora: z.object({
+            desde: fechaQuery,
+            hasta: fechaQuery,
+            accion: z.string().max(40).optional(),
+            dni: z.string().trim().max(20).optional(),
+            actor: z.string().trim().max(120).optional(),
+            page: paginaQuery,
+        }),
+        resumen: z.object({
+            desde: fechaQuery,
+            hasta: fechaQuery,
+        }),
     },
 };

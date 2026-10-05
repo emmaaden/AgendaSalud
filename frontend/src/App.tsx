@@ -51,6 +51,7 @@ const DashboardHistorias = lazy(
 const DashboardEstudios = lazy(
   () => import("@/pages/dashboard/EstudiosCompartidos")
 )
+const DashboardAuditoria = lazy(() => import("@/pages/dashboard/Auditoria"))
 
 function App() {
   return (
@@ -73,6 +74,7 @@ function App() {
           />
           <Route path="/dashboard/historias" element={<DashboardHistorias />} />
           <Route path="/dashboard/estudios" element={<DashboardEstudios />} />
+          <Route path="/dashboard/auditoria" element={<DashboardAuditoria />} />
         </Route>
 
         <Route element={<PublicLayout />}>

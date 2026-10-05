@@ -16,6 +16,7 @@ import {
   FolderHeart,
   CalendarClock,
   ChevronDown,
+  ClipboardCheck,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -78,6 +79,14 @@ const LINKS = [
   },
 ]
 
+// Fase J: panel de auditoría médica (auditor y admin de la clínica activa).
+const AUDITORIA_LINK = {
+  to: "/dashboard/auditoria",
+  label: "Auditoría",
+  icon: ClipboardCheck,
+  end: false,
+}
+
 // Enlace solo para el admin de la clínica activa (Fase B).
 const ADMIN_LINK = {
   to: "/dashboard/admin",
@@ -96,16 +105,20 @@ export function DashboardNavbar() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
-  // Fase E: la recepción SOLO ve el panel de turnos.
+  // Fase E: la recepción SOLO ve el panel de turnos. Fase J: el auditor, solo el suyo.
   const links =
     user?.rol === "recepcion"
       ? [TURNOS_LINK]
-      : user?.esAdmin
-        ? [...LINKS, ADMIN_LINK]
-        : LINKS
+      : user?.rol === "auditor"
+        ? [AUDITORIA_LINK]
+        : user?.esAdmin
+          ? [...LINKS, AUDITORIA_LINK, ADMIN_LINK]
+          : LINKS
 
-  const principales = links.filter((l) => PRINCIPALES.includes(l.to))
-  const secundarios = links.filter((l) => !PRINCIPALES.includes(l.to))
+  // Con un único enlace (recepción, auditoría) va siempre a la vista.
+  const esPrincipal = (to: string) => links.length === 1 || PRINCIPALES.includes(to)
+  const principales = links.filter((l) => esPrincipal(l.to))
+  const secundarios = links.filter((l) => !esPrincipal(l.to))
 
   async function handleLogout() {
     await logout()
@@ -129,6 +142,7 @@ export function DashboardNavbar() {
     admin: "Administrador/a",
     profesional: "Profesional",
     recepcion: "Recepción",
+    auditor: "Auditoría",
   }
 
   return (
@@ -223,11 +237,13 @@ export function DashboardNavbar() {
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard/config">
-                    <User /> Mi perfil
-                  </Link>
-                </DropdownMenuItem>
+                {user?.rol !== "auditor" && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/config">
+                      <User /> Mi perfil
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onSelect={handleLogout} variant="destructive">
                   <LogOut /> Cerrar sesión
                 </DropdownMenuItem>

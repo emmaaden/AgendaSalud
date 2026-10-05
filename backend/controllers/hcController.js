@@ -13,6 +13,7 @@
 
 const { supabase } = require('../config/supabaseClient');
 const { filasParaRegistro, serializarDiente } = require('../utils/odontograma');
+const { registrarAcceso } = require('../utils/bitacora');
 
 const FORMATO = 'agendasalud.hc';
 const VERSION = '1.0';
@@ -109,6 +110,11 @@ exports.exportar = async (req, res) => {
         const exportData = await construirExport(clinicaId, ids, {
             clinica: { nombre: cli?.nombre || null },
             alcance: esAdmin ? 'clinica' : 'propios',
+        });
+
+        await registrarAcceso(req, {
+            accion: 'exportar_hc',
+            detalle: { alcance: esAdmin ? 'clinica' : 'propios', pacientes: ids.length },
         });
 
         const fecha = new Date().toISOString().slice(0, 10);
@@ -289,6 +295,17 @@ exports.importar = async (req, res) => {
                 resumen.errores.push(`DNI ${dni}: ${ePac.message}`);
             }
         }
+
+        await registrarAcceso(req, {
+            accion: 'importar_hc',
+            detalle: {
+                origen: doc.origen || null,
+                pacientesCreados: resumen.pacientesCreados,
+                pacientesExistentes: resumen.pacientesExistentes,
+                registrosImportados: resumen.registrosImportados,
+                errores: resumen.errores.length,
+            },
+        });
 
         return res.json({ message: 'Importación finalizada', resumen });
     } catch (err) {
