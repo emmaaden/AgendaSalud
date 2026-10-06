@@ -1,4 +1,5 @@
-import { Check, X, Star } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Check, X, Star, MessageCircle } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Container, PageHero } from "@/components/site/Section"
@@ -57,7 +58,7 @@ export default function Planes() {
       <PageHero
         eyebrow="Planes"
         title="Elegí el plan ideal para tu consultorio"
-        description="Precios claros, sin sorpresas. Cambiá o cancelá cuando quieras."
+        description="Precio final por mes, en pesos argentinos. Podés cambiar de plan o darlo de baja cuando quieras."
       />
 
       <Container className="py-16">
@@ -74,13 +75,14 @@ export default function Planes() {
             >
               {plan.featured && (
                 <span className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground shadow-sm">
-                  <Star className="size-3.5" /> Recomendado
+                  <Star className="size-3.5" aria-hidden /> Recomendado
                 </span>
               )}
               <h2 className="text-lg font-semibold">{plan.name}</h2>
               <div className="mt-2 flex items-baseline gap-1">
                 <span className="text-4xl font-semibold">${plan.price}</span>
                 <span className="text-sm text-muted-foreground">/ mes</span>
+                <span className="sr-only">, precio final en pesos argentinos</span>
               </div>
               <p className="mt-3 text-sm text-muted-foreground">{plan.desc}</p>
 
@@ -88,14 +90,16 @@ export default function Planes() {
                 {plan.features.map((f) => (
                   <li key={f.label} className="flex items-center gap-3 text-sm">
                     {f.included ? (
-                      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                      <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
                         <Check className="size-3.5" />
                       </span>
                     ) : (
-                      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
+                      <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
                         <X className="size-3.5" />
                       </span>
                     )}
+                    {/* El tachado no lo lee un lector de pantalla: se aclara en texto. */}
+                    <span className="sr-only">{f.included ? "Incluye:" : "No incluye:"}</span>
                     <span
                       className={cn(
                         !f.included && "text-muted-foreground line-through"
@@ -114,14 +118,28 @@ export default function Planes() {
                 className="mt-8 w-full"
               >
                 <a href={waLink(plan.name)} target="_blank" rel="noreferrer">
-                  Suscribirme
+                  <MessageCircle aria-hidden /> Contratar el plan {plan.name} por WhatsApp
+                  <span className="sr-only"> (se abre en una pestaña nueva)</span>
                 </a>
               </Button>
             </div>
           ))}
         </div>
 
-        <p className="mt-10 text-center text-sm text-muted-foreground">
+        <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-muted-foreground">
+          Tenés 10 días corridos desde la contratación para arrepentirte sin costo,
+          y podés dar de baja el plan cuando quieras. Leé los{" "}
+          <Link to="/terminos" className="font-medium text-primary hover:underline">
+            Términos y condiciones
+          </Link>{" "}
+          y la{" "}
+          <Link to="/reembolsos" className="font-medium text-primary hover:underline">
+            Política de reembolsos
+          </Link>{" "}
+          antes de contratar.
+        </p>
+
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           ¿Tenés dudas sobre qué plan te conviene?{" "}
           <a
             href={WHATSAPP_URL}
@@ -130,6 +148,7 @@ export default function Planes() {
             className="font-medium text-primary hover:underline"
           >
             Escribinos por WhatsApp
+            <span className="sr-only"> (se abre en una pestaña nueva)</span>
           </a>
           .
         </p>

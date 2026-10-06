@@ -76,7 +76,8 @@
     --accent-foreground: oklch(0.34 0.08 256);
     --destructive: oklch(0.577 0.245 27.325);
     --border: oklch(0.905 0.012 245);
-    --input: oklch(0.905 0.012 245);
+    /* Borde de campos de formulario: ≥ 3:1 contra fondo/tarjeta (WCAG 1.4.11). Antes 1,3:1. */
+    --input: oklch(0.64 0.02 250);
     --ring: oklch(0.48 0.14 256);
     --chart-1: oklch(0.48 0.14 256);
     --chart-2: oklch(0.62 0.12 232);
@@ -114,7 +115,8 @@
     --accent-foreground: oklch(0.97 0.008 240);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 12%);
-    --input: oklch(1 0 0 / 16%);
+    /* ≥ 3:1 contra fondo y tarjeta oscuros (WCAG 1.4.11). Antes 1,65:1. */
+    --input: oklch(0.54 0.03 255);
     --ring: oklch(0.70 0.13 250);
     --chart-1: oklch(0.70 0.13 250);
     --chart-2: oklch(0.68 0.12 210);

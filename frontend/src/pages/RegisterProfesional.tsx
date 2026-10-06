@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field } from "@/components/form/Field"
+import { Consentimiento, CONSENTIMIENTO_REQUERIDO } from "@/components/form/Consentimiento"
+import { LEGAL_VERSION } from "@/lib/site"
 import { SelectField, type Option } from "@/components/form/SelectField"
 import { Container } from "@/components/site/Section"
 import { api, ApiError } from "@/lib/api"
@@ -18,17 +20,18 @@ const schema = z
     onboardingMode: z.enum(["crear", "codigo"]),
     nombreClinica: z.string().optional(),
     activationCode: z.string().optional(),
-    especialidad: z.string().min(1, "Seleccioná una especialidad"),
+    especialidad: z
+      .string({ required_error: "Seleccioná una especialidad" })
+      .min(1, "Seleccioná una especialidad"),
     nombre: z.string().min(2, "Requerido"),
     apellido: z.string().min(2, "Requerido"),
     dni: z.string().min(6, "DNI inválido"),
-    sexo: z.string().min(1, "Seleccioná una opción"),
-    fechaNacimiento: z.string().min(1, "Requerido"),
     matricula: z.string().min(1, "Requerido"),
     telefono: z.string().min(6, "Teléfono inválido"),
-    direccion: z.string().min(2, "Requerido"),
     email: z.string().email("Email inválido"),
-    password: z.string().min(6, "Mínimo 6 caracteres"),
+    // Mismo mínimo que valida el backend (validators/schemas.js).
+    password: z.string().min(8, "Mínimo 8 caracteres"),
+  acepta: z.boolean().refine((v) => v === true, CONSENTIMIENTO_REQUERIDO),
   })
   .refine((d) => d.onboardingMode !== "crear" || !!d.nombreClinica?.trim(), {
     message: "Ingresá el nombre de la clínica",
@@ -39,12 +42,6 @@ const schema = z
     path: ["activationCode"],
   })
 type FormValues = z.infer<typeof schema>
-
-const SEXO = [
-  { value: "Masculino", label: "Masculino" },
-  { value: "Femenino", label: "Femenino" },
-  { value: "Otro", label: "Otro" },
-]
 
 const MODOS = [
   { value: "crear", label: "Crear una clínica nueva" },
@@ -63,7 +60,7 @@ export default function RegisterProfesional() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { onboardingMode: "crear" },
+    defaultValues: { onboardingMode: "crear", acepta: false },
   })
 
   const modo = watch("onboardingMode")
@@ -92,16 +89,18 @@ export default function RegisterProfesional() {
         password: values.password,
         activationCode: values.onboardingMode === "codigo" ? values.activationCode : "",
         nombreClinica: values.onboardingMode === "crear" ? values.nombreClinica : "",
+        // Solo lo necesario para la cuenta profesional (Ley 25.326 art. 4): ya no se
+        // piden sexo, fecha de nacimiento ni dirección personal. La dirección del
+        // consultorio se carga después en Configuración.
         dni: values.dni,
         nombre: values.nombre,
         apellido: values.apellido,
-        fechaNacimiento: values.fechaNacimiento,
         telefono: values.telefono,
         especialidad: values.especialidad,
         matricula: values.matricula,
-        direccion: values.direccion,
-        sexo: values.sexo,
         role: "PROFESIONAL",
+        aceptaTerminos: values.acepta,
+        versionLegal: LEGAL_VERSION,
       })
       toast.success("Cuenta profesional creada")
       window.location.href = "/dashboard"
@@ -216,43 +215,21 @@ export default function RegisterProfesional() {
               </Field>
 
               <Field label="Nombre" htmlFor="nombre" required error={errors.nombre?.message}>
-                <Input id="nombre" className="h-10" aria-invalid={!!errors.nombre} {...register("nombre")} />
+                <Input id="nombre" autoComplete="given-name" className="h-10" aria-invalid={!!errors.nombre} {...register("nombre")} />
               </Field>
               <Field label="Apellido" htmlFor="apellido" required error={errors.apellido?.message}>
-                <Input id="apellido" className="h-10" aria-invalid={!!errors.apellido} {...register("apellido")} />
+                <Input id="apellido" autoComplete="family-name" className="h-10" aria-invalid={!!errors.apellido} {...register("apellido")} />
               </Field>
 
               <Field label="DNI" htmlFor="dni" required error={errors.dni?.message}>
                 <Input id="dni" type="number" inputMode="numeric" className="h-10" aria-invalid={!!errors.dni} {...register("dni")} />
-              </Field>
-              <Field label="Sexo" htmlFor="sexo" required error={errors.sexo?.message}>
-                <Controller
-                  control={control}
-                  name="sexo"
-                  render={({ field }) => (
-                    <SelectField
-                      id="sexo"
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      options={SEXO}
-                      invalid={!!errors.sexo}
-                    />
-                  )}
-                />
-              </Field>
-
-              <Field label="Fecha de nacimiento" htmlFor="fechaNacimiento" required error={errors.fechaNacimiento?.message}>
-                <Input id="fechaNacimiento" type="date" className="h-10" aria-invalid={!!errors.fechaNacimiento} {...register("fechaNacimiento")} />
               </Field>
               <Field label="Matrícula" htmlFor="matricula" required error={errors.matricula?.message}>
                 <Input id="matricula" className="h-10" aria-invalid={!!errors.matricula} {...register("matricula")} />
               </Field>
 
               <Field label="Teléfono" htmlFor="telefono" required error={errors.telefono?.message}>
-                <Input id="telefono" type="tel" className="h-10" aria-invalid={!!errors.telefono} {...register("telefono")} />
-              </Field>
-              <Field label="Dirección" htmlFor="direccion" required error={errors.direccion?.message}>
-                <Input id="direccion" className="h-10" aria-invalid={!!errors.direccion} {...register("direccion")} />
+                <Input id="telefono" type="tel" autoComplete="tel" className="h-10" aria-invalid={!!errors.telefono} {...register("telefono")} />
               </Field>
 
               <Field label="Email" htmlFor="email" required error={errors.email?.message}>
@@ -261,6 +238,21 @@ export default function RegisterProfesional() {
               <Field label="Contraseña" htmlFor="password" required error={errors.password?.message}>
                 <Input id="password" type="password" autoComplete="new-password" className="h-10" aria-invalid={!!errors.password} {...register("password")} />
               </Field>
+
+              <div className="sm:col-span-2">
+                <Controller
+                  control={control}
+                  name="acepta"
+                  render={({ field }) => (
+                    <Consentimiento
+                      ref={field.ref}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      error={errors.acepta?.message}
+                    />
+                  )}
+                />
+              </div>
 
               <div className="sm:col-span-2">
                 <Button type="submit" size="lg" className="w-full" disabled={submitting}>

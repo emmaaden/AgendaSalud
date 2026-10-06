@@ -1,27 +1,210 @@
+import { Link } from "react-router-dom"
 import { LegalArticle } from "@/components/site/LegalArticle"
+import {
+  DEFENSA_CONSUMIDOR_TEXTO,
+  DEFENSA_CONSUMIDOR_URL,
+  LEGAL_UPDATED,
+} from "@/lib/site"
+
+const LINK = "font-medium text-primary underline-offset-2 hover:underline"
 
 export default function Terminos() {
   return (
     <LegalArticle
-      updated="15 de septiembre de 2026"
+      updated={LEGAL_UPDATED}
       title="Términos y condiciones"
-      intro="Al acceder y utilizar AgendaSalud, aceptás estos términos. Si no estás de acuerdo, por favor no utilices el sitio."
+      intro={
+        <p>
+          Estos términos regulan el uso de AgendaSalud. Al crear una cuenta, reservar un
+          turno o contratar un plan, los aceptás. Si no estás de acuerdo, no uses el
+          servicio. Nada de lo que dicen limita los derechos que te reconocen la Ley
+          24.240 de Defensa del Consumidor y el Código Civil y Comercial.
+        </p>
+      }
       sections={[
         {
-          title: "Uso del sitio",
-          body: "El uso de este sitio es solo para fines legales. No podés usarlo para actividades fraudulentas o maliciosas. Nos reservamos el derecho de restringir el acceso a usuarios que violen estos términos.",
+          title: "1. Qué es AgendaSalud",
+          body: (
+            <>
+              <p>
+                AgendaSalud es una plataforma de software para reservar turnos y para
+                que profesionales y clínicas gestionen su agenda e historias clínicas.
+              </p>
+              <p>
+                <strong>AgendaSalud no presta servicios médicos</strong>: la atención,
+                los diagnósticos, los tratamientos y los certificados son
+                responsabilidad exclusiva del profesional que los realiza.{" "}
+                <strong>
+                  No es un servicio de emergencias: ante una urgencia llamá al 107 o al
+                  911.
+                </strong>
+              </p>
+            </>
+          ),
         },
         {
-          title: "Propiedad intelectual",
-          body: "Todo el contenido de este sitio —textos, imágenes y logotipos— es propiedad de AgendaSalud o de sus licenciantes. No podés reproducir, distribuir ni utilizar dicho contenido sin permiso expreso.",
+          title: "2. Cuentas",
+          body: (
+            <ul>
+              <li>Los datos que cargues tienen que ser verdaderos y estar actualizados.</li>
+              <li>Tu contraseña es personal: no la compartas. Si sospechás un uso indebido, avisanos.</li>
+              <li>
+                Si el paciente es menor de 18 años, la cuenta debe crearla su madre,
+                padre o representante legal.
+              </li>
+            </ul>
+          ),
         },
         {
-          title: "Limitación de responsabilidad",
-          body: "AgendaSalud no se responsabiliza por cualquier daño que pueda resultar del uso del sitio o de la imposibilidad de acceder al mismo.",
+          title: "3. Turnos (pacientes)",
+          body: (
+            <ul>
+              <li>Reservar un turno en AgendaSalud es gratuito.</li>
+              <li>
+                La disponibilidad la define cada profesional. El turno queda confirmado
+                cuando ves el mensaje de éxito en pantalla; además te enviamos el
+                detalle por email.
+              </li>
+              <li>
+                Podés cancelarlo desde «Mis turnos» o con el enlace del email. Si no vas
+                a asistir, cancelalo para liberar el horario.
+              </li>
+              <li>
+                El precio de la consulta, la cobertura y las condiciones de atención las
+                fija y cobra el profesional o la clínica, no AgendaSalud.
+              </li>
+            </ul>
+          ),
         },
         {
-          title: "Modificaciones",
-          body: "Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios son efectivos al publicarse en esta página. Te recomendamos revisarla periódicamente.",
+          title: "4. Planes para profesionales y clínicas",
+          body: (
+            <ul>
+              <li>
+                Los planes, sus precios y lo que incluye cada uno se publican en{" "}
+                <Link to="/planes" className={LINK}>
+                  Planes
+                </Link>
+                . El precio es mensual y no cambia durante el período ya pagado.
+              </li>
+              <li>
+                La contratación y el medio de pago se acuerdan por WhatsApp o email; te
+                enviamos la confirmación por escrito.
+              </li>
+              <li>
+                Podés arrepentirte dentro de los 10 días corridos y dar de baja el plan
+                cuando quieras, por el mismo medio por el que contrataste o con el{" "}
+                <Link to="/arrepentimiento" className={LINK}>
+                  Botón de arrepentimiento
+                </Link>{" "}
+                y el{" "}
+                <Link to="/baja" className={LINK}>
+                  Botón de baja de servicio
+                </Link>
+                . Las condiciones están en la{" "}
+                <Link to="/reembolsos" className={LINK}>
+                  Política de reembolsos
+                </Link>
+                .
+              </li>
+              <li>
+                El profesional declara tener matrícula vigente, es responsable de la
+                información clínica que registra, del secreto profesional y de informar
+                a sus pacientes sobre el tratamiento de sus datos.
+              </li>
+            </ul>
+          ),
+        },
+        {
+          title: "5. Uso aceptable",
+          body: (
+            <p>
+              No podés usar el servicio para fines ilegales, cargar datos de terceros
+              sin autorización, reservar turnos falsos, intentar acceder a cuentas o
+              datos ajenos ni afectar el funcionamiento del sitio. Si eso ocurre,
+              podemos suspender la cuenta, previo aviso salvo que la gravedad del caso
+              exija actuar de inmediato.
+            </p>
+          ),
+        },
+        {
+          title: "6. Propiedad intelectual",
+          body: (
+            <>
+              <p>
+                El software, la marca AgendaSalud y su logo son de su titular. Los datos
+                y archivos que cargás siguen siendo tuyos (o de tu paciente): solo los
+                usamos para prestarte el servicio.
+              </p>
+              <p>
+                El sitio usa íconos de{" "}
+                <a href="https://lucide.dev/license" target="_blank" rel="noreferrer" className={LINK}>
+                  Lucide
+                  <span className="sr-only"> (se abre en una pestaña nueva)</span>
+                </a>{" "}
+                (licencia ISC) y la tipografía Geist (SIL Open Font License), ambos de
+                uso libre. No usamos fotografías de terceros.
+              </p>
+            </>
+          ),
+        },
+        {
+          title: "7. Disponibilidad y responsabilidad",
+          body: (
+            <>
+              <p>
+                Trabajamos para que el servicio funcione de forma continua, pero puede
+                haber interrupciones por mantenimiento o por fallas de proveedores. Si
+                una interrupción afecta un plan pago, podés pedir la compensación que
+                corresponda según la{" "}
+                <Link to="/reembolsos" className={LINK}>
+                  Política de reembolsos
+                </Link>
+                .
+              </p>
+              <p>
+                Respondemos por los daños que causemos conforme a la ley. No respondemos
+                por los actos médicos de los profesionales ni por el uso que terceros
+                hagan de tu contraseña si no la resguardaste.
+              </p>
+            </>
+          ),
+        },
+        {
+          title: "8. Cambios en estos términos",
+          body: (
+            <p>
+              Si cambiamos estos términos publicamos la nueva versión con su fecha y, si
+              tenés una cuenta o un plan, te avisamos por email antes de que entre en
+              vigencia. Si no estás de acuerdo, podés dar de baja tu cuenta o tu plan
+              sin costo.
+            </p>
+          ),
+        },
+        {
+          title: "9. Ley aplicable y reclamos",
+          body: (
+            <>
+              <p>
+                Se aplican las leyes de la República Argentina. Si sos consumidor, son
+                competentes los tribunales de tu domicilio.
+              </p>
+              <p>
+                Antes de reclamar podés escribirnos y lo resolvemos. También podés
+                hacer tu reclamo ante la autoridad de consumo:{" "}
+                <a
+                  href={DEFENSA_CONSUMIDOR_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={LINK}
+                >
+                  {DEFENSA_CONSUMIDOR_TEXTO}
+                  <span className="sr-only"> (se abre en una pestaña nueva)</span>
+                </a>
+                .
+              </p>
+            </>
+          ),
         },
       ]}
     />

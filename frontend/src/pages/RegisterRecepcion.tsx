@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field } from "@/components/form/Field"
+import { Consentimiento, CONSENTIMIENTO_REQUERIDO } from "@/components/form/Consentimiento"
+import { LEGAL_VERSION } from "@/lib/site"
 import { Container } from "@/components/site/Section"
 import { api, ApiError } from "@/lib/api"
 
@@ -19,7 +21,9 @@ const schema = z.object({
   dni: z.string().min(6, "DNI inválido"),
   telefono: z.string().optional(),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Mínimo 6 caracteres"),
+  // Mismo mínimo que valida el backend (validators/schemas.js).
+  password: z.string().min(8, "Mínimo 8 caracteres"),
+  acepta: z.boolean().refine((v) => v === true, CONSENTIMIENTO_REQUERIDO),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -27,9 +31,13 @@ export default function RegisterRecepcion() {
   const [submitting, setSubmitting] = useState(false)
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { acepta: false },
+  })
 
   async function onSubmit(values: FormValues) {
     setSubmitting(true)
@@ -41,8 +49,10 @@ export default function RegisterRecepcion() {
         dni: values.dni,
         nombre: values.nombre,
         apellido: values.apellido,
-        telefono: values.telefono,
+        telefono: values.telefono?.trim() || undefined,
         role: "RECEPCION",
+        aceptaTerminos: values.acepta,
+        versionLegal: LEGAL_VERSION,
       })
       toast.success("Cuenta creada")
       window.location.href = "/dashboard"
@@ -104,7 +114,7 @@ export default function RegisterRecepcion() {
               <Field label="DNI" htmlFor="dni" required error={errors.dni?.message}>
                 <Input id="dni" type="number" inputMode="numeric" className="h-10" aria-invalid={!!errors.dni} {...register("dni")} />
               </Field>
-              <Field label="Teléfono" htmlFor="telefono" error={errors.telefono?.message}>
+              <Field label="Teléfono (opcional)" htmlFor="telefono" error={errors.telefono?.message}>
                 <Input id="telefono" type="tel" className="h-10" {...register("telefono")} />
               </Field>
 
@@ -114,6 +124,21 @@ export default function RegisterRecepcion() {
               <Field label="Contraseña" htmlFor="password" required error={errors.password?.message}>
                 <Input id="password" type="password" autoComplete="new-password" className="h-10" aria-invalid={!!errors.password} {...register("password")} />
               </Field>
+
+              <div className="sm:col-span-2">
+                <Controller
+                  control={control}
+                  name="acepta"
+                  render={({ field }) => (
+                    <Consentimiento
+                      ref={field.ref}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      error={errors.acepta?.message}
+                    />
+                  )}
+                />
+              </div>
 
               <div className="sm:col-span-2">
                 <Button type="submit" size="lg" className="w-full" disabled={submitting}>

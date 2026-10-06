@@ -79,7 +79,18 @@ exports.register = async (req, res) => {
         // Creamos usuario en Supabase Auth (cliente anon: si el signUp devolviera sesión
         // —confirmación de email desactivada— no debe adjuntarse al cliente service_role,
         // porque los INSERT siguientes dejarían de saltear la RLS).
-        const { data, error } = await supabaseAuth.auth.signUp({ email, password });
+        // Prueba del consentimiento (Ley 25.326): qué versión de los textos legales aceptó
+        // y cuándo. Va en los metadatos del usuario de Auth (sin cambios de esquema).
+        const consentimiento = {
+            acepta_terminos: true,
+            version_legal: req.body.versionLegal || null,
+            aceptado_at: new Date().toISOString(),
+        };
+        const { data, error } = await supabaseAuth.auth.signUp({
+            email,
+            password,
+            options: { data: { consentimiento } },
+        });
         if (error) { return res.status(400).json({ error: error.message }); }
 
         const user = data.user;
@@ -121,10 +132,12 @@ exports.register = async (req, res) => {
                 dni,
                 nombre,
                 apellido,
-                fecha_nacimiento: fechaNacimiento,
-                telefono,
-                direccion,
-                sexo,
+                // Campos opcionales (minimización): un string vacío se guarda como NULL
+                // (una fecha vacía, además, rompería el INSERT en la columna date).
+                fecha_nacimiento: fechaNacimiento || null,
+                telefono: telefono || null,
+                direccion: direccion || null,
+                sexo: sexo || null,
                 clinica_id: clinicaId
             }])
             .select()

@@ -368,7 +368,7 @@ function Celda({
         if (arrastroRef.current) return
         onTurno(celda.turno)
       }}
-      aria-label={`Turno de ${celda.turno.pacienteNombre || "paciente"} a las ${horaAR(celda.turno.inicio)}. Arrastralo para moverlo.`}
+      aria-label={`Turno de ${celda.turno.pacienteNombre || "paciente"} a las ${horaAR(celda.turno.inicio)}. Abrilo para ver el detalle o reprogramarlo.`}
       className={cn(
         "group size-full cursor-grab overflow-hidden rounded bg-primary/15 px-1.5 py-1 text-left ring-1 ring-primary/30 transition-colors hover:bg-primary/25 active:cursor-grabbing",
         enMovimiento && "opacity-40"

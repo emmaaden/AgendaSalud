@@ -206,7 +206,7 @@ function AvatarUploader({
             {initials}
           </span>
         )}
-        <span className="absolute inset-0 grid place-items-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+        <span aria-hidden className="absolute inset-0 grid place-items-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
           <Camera className="size-5" />
         </span>
       </button>
@@ -221,7 +221,7 @@ function AvatarUploader({
               {preview || avatar ? (
                 <img
                   src={preview || avatar}
-                  alt=""
+                  alt="Vista previa de tu foto de perfil"
                   className="size-full object-cover"
                 />
               ) : (

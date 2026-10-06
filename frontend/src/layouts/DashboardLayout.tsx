@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react"
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 import { DashboardNavbar } from "@/components/dashboard/DashboardNavbar"
 import { PageLoader } from "@/components/site/PageLoader"
+import { MAIN_ID, SkipLink } from "@/components/site/A11y"
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -55,9 +56,10 @@ function Guarded() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-muted/30">
+      <SkipLink />
       <ScrollToTop />
       <DashboardNavbar />
-      <main className="flex-1">
+      <main id={MAIN_ID} tabIndex={-1} className="flex-1 focus:outline-none">
         {/* Suspense acá: mientras carga una página lazy, el navbar queda visible. */}
         <Suspense fallback={<PageLoader />}>
           <Outlet />

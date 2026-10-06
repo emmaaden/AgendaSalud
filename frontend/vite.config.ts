@@ -29,6 +29,8 @@ const API_PREFIXES = [
   '/available-slots',
   '/create-event',
   '/api',
+  '/robots.txt',
+  '/sitemap.xml',
 ]
 
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:3000'

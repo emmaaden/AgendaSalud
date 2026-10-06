@@ -27,6 +27,7 @@ const dictadoRoutes = require('./routes/dictadoRoutes'); // dictado por voz con 
 const auditoriaRoutes = require('./routes/auditoriaRoutes'); // Fase J: auditoría médica (bandeja, revisiones, bitácora)
 const catalogoRoutes = require('./routes/catalogoRoutes'); // Fase K: obras sociales, CIE-10 y prácticas
 const autorizacionRoutes = require('./routes/autorizacionRoutes'); // Fase K: autorizaciones previas
+const legalRoutes = require('./routes/legalRoutes'); // robots/sitemap + botón de arrepentimiento y de baja
 // (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
@@ -48,16 +49,16 @@ if (isProd) {
 }
 
 // Helmet para las cabeceras de seguridad; la CSP la definimos aparte (abajo) para
-// poder variarla por tipo de página (SPA estricta vs. .html legacy).
+// declararla explícitamente (estricta para todo el sitio).
 app.use(helmet({ contentSecurityPolicy: false }));
 
 // ---------------------------------------------------------------------------
 // Content-Security-Policy
 // ---------------------------------------------------------------------------
 // El SPA (build de Vite) sirve TODOS sus scripts desde el mismo origen (/assets/*.js,
-// sin scripts inline), así que recibe una política ESTRICTA (script-src 'self'). Las
-// páginas .html legacy de backend/public todavía cargan CDNs e incluyen <script> inline,
-// por lo que reciben una política más LAXA (con 'unsafe-inline' y la allowlist de CDNs).
+// sin scripts inline), así que recibe una política ESTRICTA (script-src 'self'). Ya no
+// se publican páginas .html legacy, por lo que no hace falta una política más laxa.
+// Las fuentes son locales (@fontsource): ningún recurso de terceros carga en el navegador.
 // Supabase se agrega a connect-src/img-src para el flujo de auth (reset de contraseña)
 // y para las URLs públicas de avatares.
 const SUPABASE_ORIGIN = (() => {
@@ -78,29 +79,8 @@ const CSP_STRICT = [
     "worker-src 'self' blob:",
 ].join('; ');
 
-// Allowlist de CDNs que usan las páginas legacy (bootstrap, jsdelivr, jquery, fontawesome).
-const LEGACY_SCRIPT = 'https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com https://kit.fontawesome.com https://ka-f.fontawesome.com';
-const LEGACY_STYLE = 'https://cdn.jsdelivr.net https://fonts.googleapis.com';
-const LEGACY_FONT = 'https://fonts.gstatic.com https://cdn.jsdelivr.net https://ka-f.fontawesome.com';
-const CSP_LEGACY = [
-    "default-src 'self'",
-    "base-uri 'self'",
-    "object-src 'none'",
-    "frame-ancestors 'none'",
-    "form-action 'self'",
-    `script-src 'self' 'unsafe-inline' ${LEGACY_SCRIPT}`,
-    `style-src 'self' 'unsafe-inline' ${LEGACY_STYLE}`,
-    `font-src 'self' data: ${LEGACY_FONT}`,
-    `img-src 'self' data: blob: ${SUPABASE_ORIGIN}`.trim(),
-    `connect-src 'self' ${SUPABASE_ORIGIN} https://ka-f.fontawesome.com`.trim(),
-    "worker-src 'self' blob:",
-].join('; ');
-
 app.use((req, res, next) => {
-    // Las páginas legacy se piden con extensión .html explícita; el SPA usa rutas sin .html
-    // (y su index.html lo sirve el fallback en req.path sin .html) → política estricta.
-    const esLegacyHtml = req.path.toLowerCase().endsWith('.html');
-    res.setHeader('Content-Security-Policy', esLegacyHtml ? CSP_LEGACY : CSP_STRICT);
+    res.setHeader('Content-Security-Policy', CSP_STRICT);
     next();
 });
 
@@ -194,13 +174,20 @@ app.use(session({
 // ---------------------------------------------------------------------------
 // SPA (React): en producción servimos el build de /frontend/dist desde la raíz.
 // Se registra ANTES del static legacy para que "/" sea el index.html del SPA.
+// robots.txt / sitemap.xml (dinámicos, con APP_URL) y botón de arrepentimiento/baja.
+// Van antes del static para que ningún archivo los pise.
+app.use('/', legalRoutes);
+
 const spaDist = path.join(__dirname, '..', 'frontend', 'dist');
 if (isProd) {
     app.use(express.static(spaDist));
 }
 
-// Estáticos legacy (imágenes, css/js del dashboard, y páginas .html aún no migradas).
-app.use(express.static(path.join(__dirname, 'public')));
+// Las páginas .html legacy de backend/public YA NO se publican: todas tienen su
+// reemplazo en el SPA, y seguir sirviéndolas exponía versiones viejas (política de
+// privacidad, planes y formularios desactualizados, fotos sin licencia verificada) y
+// cargaba recursos de terceros (Google Fonts, jsDelivr) sin informarlo. Los archivos
+// se conservan en el repo solo como referencia, igual que backend/dashboard/.
 
 app.use('/auth', authRoutes);
 app.use('/hour', horariosRoutes);
@@ -351,7 +338,20 @@ app.get('/available-slots', validate(schemas.calendar.availableSlots, 'query'), 
 // horario ya está reservado o bloqueado, se rechaza. Si la reserva viene de la página
 // de una clínica (?clinica=<slug>), el profesional debe pertenecer a ella (Fase 2).
 app.post('/create-event', createEventLimiter, validate(schemas.calendar.createEvent), async (req, res) => {
-    const { summary, start, end, email, number, profId, clinica, name } = req.body;
+    const { summary, start, end, email, number, numberCode, profId, clinica, name } = req.body;
+
+    // Consentimiento expreso del invitado (Ley 25.326): el turno revela datos de salud
+    // (especialidad/profesional) y se aloja en servidores fuera del país. El paciente
+    // logueado ya lo prestó al registrarse.
+    const esPacienteLogueado = req.session?.isAuthenticated && req.session.user?.role === 'paciente';
+    if (!esPacienteLogueado && req.body.aceptaTerminos !== true) {
+        return res.status(400).json({ error: 'Tenés que aceptar los Términos y la Política de privacidad para reservar.' });
+    }
+
+    // Teléfono opcional; si viene, se guarda con su código de país.
+    const telefono = number != null && String(number).trim()
+        ? [numberCode, String(number).trim()].filter(Boolean).join(' ')
+        : null;
 
     try {
         // 1. Profesional -> clínica + snapshot (nombre/especialidad) desde la base.
@@ -393,8 +393,7 @@ app.post('/create-event', createEventLimiter, validate(schemas.calendar.createEv
         // 4. Registrar el turno (fuente de verdad del vínculo con la persona).
         //    - Paciente logueado -> se ata a su paciente.id (id_paciente).
         //    - Invitado          -> id_paciente NULL + manage_token para gestionarlo.
-        const esPaciente = req.session?.isAuthenticated && req.session.user?.role === 'paciente';
-        const idPaciente = esPaciente ? (req.session.user.idRole || null) : null;
+        const idPaciente = esPacienteLogueado ? (req.session.user.idRole || null) : null;
 
         const profNombre = [prof.persona?.nombre, prof.persona?.apellido].filter(Boolean).join(' ') || null;
         const especialidad = prof.especialidad_profesional?.[0]?.especialidad?.nombre || null;
@@ -408,7 +407,7 @@ app.post('/create-event', createEventLimiter, validate(schemas.calendar.createEv
             especialidad,
             paciente_nombre: name || null,
             paciente_email: email || null,
-            paciente_telefono: number ? String(number) : null,
+            paciente_telefono: telefono,
             inicio: start.dateTime,
             fin: end.dateTime,
         };

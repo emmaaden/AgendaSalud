@@ -14,8 +14,8 @@ import { getSupabase } from "@/lib/supabase"
 
 const schema = z
   .object({
-    password: z.string().min(6, "Mínimo 6 caracteres"),
-    confirm: z.string().min(6, "Mínimo 6 caracteres"),
+    password: z.string().min(8, "Mínimo 8 caracteres"),
+    confirm: z.string().min(1, "Repetí la contraseña"),
   })
   .refine((d) => d.password === d.confirm, {
     message: "Las contraseñas no coinciden",
@@ -94,6 +94,10 @@ export default function ResetPassword() {
         password: values.password,
       })
       if (error) throw error
+      // La sesión de recuperación solo sirve para este cambio: se cierra (scope local)
+      // para que no quede un token de Supabase guardado en el navegador. El login de la
+      // app usa su propia cookie de sesión.
+      await client.auth.signOut({ scope: "local" }).catch(() => {})
       setDone(true)
       toast.success("Contraseña actualizada")
       setTimeout(() => {

@@ -54,6 +54,9 @@ module.exports = {
             dni,
             nombre,
             role: z.enum(['PACIENTE', 'PROFESIONAL', 'RECEPCION'], 'Rol inválido'),
+            // Consentimiento expreso (Ley 25.326 arts. 5, 7 y 12): sin él no se crea la cuenta.
+            aceptaTerminos: z.literal(true, 'Tenés que aceptar los Términos y la Política de privacidad'),
+            versionLegal: z.string().trim().max(20).optional(),
             ...cobertura,
             // Fase 2: onboarding del profesional (una de las dos).
             nombreClinica: z.string().trim().max(120).optional(),
@@ -227,8 +230,14 @@ module.exports = {
         createEvent: z.object({
             summary: z.string().min(1, 'Resumen requerido'),
             email: z.email('Email inválido'),
-            number: z.union([z.string().min(1), z.number()]),
+            // Teléfono opcional (minimización de datos): el email alcanza para confirmar
+            // y gestionar el turno. Si viene, se guarda con su código de país.
+            number: z.union([z.string().trim().max(30), z.number()]).optional(),
+            numberCode: z.string().trim().regex(/^\+\d{1,4}$/, 'Código de país inválido').optional(),
             name: z.string().max(120).optional(),
+            // Obligatorio para invitados (se exige en el handler: el paciente logueado ya
+            // lo prestó al registrarse).
+            aceptaTerminos: z.boolean().optional(),
             // El calendario se deriva del profesional en el server (no se confía en el
             // cliente). Se exige profId; calendarId queda como legacy y se ignora.
             profId: idFlexible,
@@ -314,6 +323,18 @@ module.exports = {
     },
 
     // Fase K: autorizaciones previas. La solicitud llega como multipart (campos texto).
+    // Botón de arrepentimiento / botón de baja de servicio (Disp. SSDCyLC 954/2025):
+    // sin registración previa, solo los datos mínimos para identificar la contratación.
+    legal: {
+        solicitudConsumo: z.object({
+            tipo: z.enum(['arrepentimiento', 'baja'], 'Tipo de solicitud inválido'),
+            nombre: z.string().trim().min(2, 'Ingresá tu nombre').max(120, 'Nombre demasiado largo'),
+            email: z.email('Email inválido'),
+            servicio: z.string().trim().max(120, 'Texto demasiado largo').optional(),
+            detalle: z.string().trim().max(1000, 'Texto demasiado largo').optional(),
+        }),
+    },
+
     autorizacion: {
         solicitar: z.object({
             dni,
