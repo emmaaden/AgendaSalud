@@ -9,8 +9,9 @@
 // respaldo para el camino por-JWT.
 
 const { supabase } = require('../config/supabaseClient');
+const { resolverObraSocial } = require('../utils/cobertura');
 
-// GET /admin/miembros — profesionales/recepción/admins de la clínica activa.
+// GET /admin/miembros — profesionales/recepción/auditores/admins de la clínica activa.
 exports.listarMiembros = async (req, res) => {
     try {
         const clinicaId = req.session.user.clinicaId;
@@ -20,7 +21,8 @@ exports.listarMiembros = async (req, res) => {
         const { data, error } = await supabase
             .from('membresia')
             .select(`
-                id, rol, activo, creada_en, id_persona,
+                id, rol, activo, creada_en, id_persona, alcance_obra_social, alcance_id_obra_social,
+                os:alcance_id_obra_social ( nombre ),
                 persona:id_persona ( nombre, apellido, email, dni,
                                       profesional ( matricula ) )
             `)
@@ -41,6 +43,8 @@ exports.listarMiembros = async (req, res) => {
                 dni: m.persona?.dni ?? null,
                 matricula: prof?.matricula ?? null,
                 rol: m.rol,
+                alcanceObraSocial: (Array.isArray(m.os) ? m.os[0] : m.os)?.nombre ?? m.alcance_obra_social ?? null,
+                alcanceIdObraSocial: m.alcance_id_obra_social ?? null,
                 activo: m.activo,
                 esYo: m.id_persona === personaIdActual,
             };
@@ -63,11 +67,12 @@ exports.actualizarMiembro = async (req, res) => {
         const membresiaId = Number(req.params.id);
         if (!Number.isInteger(membresiaId)) return res.status(400).json({ error: 'Miembro inválido.' });
 
-        const { activo, rol } = req.body;
-        if (activo === undefined && rol === undefined) {
+        const { activo, rol, alcanceObraSocial, alcanceIdObraSocial } = req.body;
+        if (activo === undefined && rol === undefined && alcanceObraSocial === undefined
+            && alcanceIdObraSocial === undefined) {
             return res.status(400).json({ error: 'Nada para actualizar.' });
         }
-        if (rol !== undefined && !['admin', 'profesional', 'recepcion'].includes(rol)) {
+        if (rol !== undefined && !['admin', 'profesional', 'recepcion', 'auditor'].includes(rol)) {
             return res.status(400).json({ error: 'Rol inválido.' });
         }
 
@@ -107,13 +112,38 @@ exports.actualizarMiembro = async (req, res) => {
         const patch = {};
         if (activo !== undefined) patch.activo = !!activo;
         if (rol !== undefined) patch.rol = rol;
+        // Fase J: el alcance solo aplica al auditor; al dejar de serlo se limpia.
+        const rolFinal = rol !== undefined ? rol : target.rol;
+        if (rolFinal !== 'auditor') {
+            if (rol !== undefined) {
+                patch.alcance_obra_social = null;
+                patch.alcance_id_obra_social = null;
+            }
+        } else if (alcanceIdObraSocial !== undefined) {
+            // Fase K: alcance por obra social del catálogo (null = interno).
+            if (alcanceIdObraSocial === null || alcanceIdObraSocial === '') {
+                patch.alcance_id_obra_social = null;
+                patch.alcance_obra_social = null;
+            } else {
+                const os = await resolverObraSocial(alcanceIdObraSocial, clinicaId);
+                if (!os) return res.status(400).json({ error: 'La obra social elegida no es válida.' });
+                patch.alcance_id_obra_social = os.id;
+                patch.alcance_obra_social = os.nombre;
+            }
+        } else if (alcanceObraSocial !== undefined) {
+            patch.alcance_obra_social = (alcanceObraSocial || '').trim() || null;
+            patch.alcance_id_obra_social = null;
+        }
+        if (Object.keys(patch).length === 0) {
+            return res.status(400).json({ error: 'Nada para actualizar.' });
+        }
 
         const { data: updated, error: uErr } = await supabase
             .from('membresia')
             .update(patch)
             .eq('id', membresiaId)
             .eq('clinica_id', clinicaId)
-            .select('id, rol, activo')
+            .select('id, rol, activo, alcance_obra_social, alcance_id_obra_social')
             .single();
         if (uErr) return res.status(400).json({ error: uErr.message });
 

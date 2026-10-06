@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react"
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 import { DashboardNavbar } from "@/components/dashboard/DashboardNavbar"
 import { PageLoader } from "@/components/site/PageLoader"
+import { MAIN_ID, SkipLink } from "@/components/site/A11y"
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -19,7 +20,7 @@ function Guarded() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <Loader2 className="size-7 animate-spin text-primary" />
       </div>
     )
@@ -32,7 +33,7 @@ function Guarded() {
 
   // El panel es del staff (profesional/admin y recepción). Un paciente va a su área.
   // (El backend además exige el rol correspondiente en cada endpoint.)
-  if (user.role !== "profesional" && user.role !== "recepcion") {
+  if (user.role !== "profesional" && user.role !== "recepcion" && user.role !== "auditor") {
     return <Navigate to="/mis-turnos" replace />
   }
 
@@ -47,11 +48,18 @@ function Guarded() {
     return <Navigate to="/dashboard/turnos" replace />
   }
 
+  // Fase J: el auditor SOLO trabaja en su panel de auditoría (aunque sea médico con
+  // fila de profesional: en esta clínica su rol es de auditoría).
+  if (user.rol === "auditor" && !pathname.startsWith("/dashboard/auditoria")) {
+    return <Navigate to="/dashboard/auditoria" replace />
+  }
+
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-dvh flex-col bg-muted/30">
+      <SkipLink />
       <ScrollToTop />
       <DashboardNavbar />
-      <main className="flex-1">
+      <main id={MAIN_ID} tabIndex={-1} className="flex-1 focus:outline-none">
         {/* Suspense acá: mientras carga una página lazy, el navbar queda visible. */}
         <Suspense fallback={<PageLoader />}>
           <Outlet />

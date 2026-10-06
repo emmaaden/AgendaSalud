@@ -51,6 +51,16 @@ function patronBusqueda(q) {
     return limpio ? `*${limpio}*` : null;
 }
 
+// Filtros de rango del calendario: solo instantes parseables y ids numéricos entran
+// a la consulta (llegan crudos desde la query string).
+function instanteValido(v) {
+    return v && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null;
+}
+
+function idValido(v) {
+    return v != null && /^\d+$/.test(String(v)) ? String(v) : null;
+}
+
 function fechaLocal(iso) {
     return new Date(iso).toLocaleString('es-AR', {
         timeZone: 'America/Argentina/Buenos_Aires',
@@ -66,20 +76,28 @@ function fechaLocal(iso) {
 exports.listarTurnos = async (req, res) => {
     try {
         const clinicaId = req.session.user.clinicaId;
-        const { q, estado, desde, hasta } = req.query;
+        const { q, estado } = req.query;
+        const desde = instanteValido(req.query.desde);
+        const hasta = instanteValido(req.query.hasta);
+        const profId = idValido(req.query.profId);
 
         let query = supabase
             .from('turno')
             .select(SELECT_STAFF)
             .eq('clinica_id', clinicaId)
             .order('inicio', { ascending: true })
-            .limit(300);
+            // El calendario pide rangos (un mes puede tener cientos de turnos).
+            .limit(desde || hasta ? 1000 : 300);
 
-        if (estado === 'reservado' || estado === 'cancelado') {
+        if (['reservado', 'cancelado', 'atendido', 'ausente'].includes(estado)) {
             query = query.eq('estado', estado);
+        } else if (estado === 'vigentes') {
+            // Fase K: el calendario muestra todo lo que ocupa horario (no cancelado).
+            query = query.neq('estado', 'cancelado');
         }
         if (desde) query = query.gte('inicio', desde);
         if (hasta) query = query.lte('inicio', hasta);
+        if (profId) query = query.eq('id_profesional', profId);
 
         const patron = patronBusqueda(q);
         if (patron) {
@@ -123,6 +141,42 @@ exports.listarTurnos = async (req, res) => {
 // GET /staff/profesionales
 // Profesionales de la clínica activa (para el formulario de "nuevo turno").
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// GET /staff/horarios?profId=
+// Franjas de atención del profesional, para dibujar la grilla del calendario.
+// `/hour/get-horarios` no sirve acá: es solo para el profesional dueño de la agenda,
+// y recepción necesita ver la de cualquiera de la clínica.
+// ---------------------------------------------------------------------------
+exports.listarHorarios = async (req, res) => {
+    try {
+        const clinicaId = req.session.user.clinicaId;
+        const profId = idValido(req.query.profId);
+        if (!profId) return res.status(400).json({ error: 'Falta el profesional.' });
+
+        const { data: prof, error: profErr } = await supabase
+            .from('profesional')
+            .select('id, persona:id_persona ( clinica_id )')
+            .eq('id', profId)
+            .maybeSingle();
+        if (profErr) throw profErr;
+        if (!prof) return res.status(404).json({ error: 'Profesional no encontrado.' });
+        if (prof.persona?.clinica_id !== clinicaId) {
+            return res.status(403).json({ error: 'El profesional no pertenece a tu clínica.' });
+        }
+
+        const { data, error } = await supabase
+            .from('horario_profesional')
+            .select('id, dia, horario_inicio, horario_fin')
+            .eq('id_profesional', profId);
+        if (error) throw error;
+
+        return res.json({ horarios: data || [] });
+    } catch (err) {
+        console.error('Error listando horarios (staff):', err);
+        return res.status(500).json({ error: 'Error al listar los horarios.' });
+    }
+};
+
 exports.listarProfesionales = async (req, res) => {
     try {
         const clinicaId = req.session.user.clinicaId;
@@ -297,6 +351,9 @@ exports.cancelarTurno = async (req, res) => {
         if (turno.estado === 'cancelado') {
             return res.json({ message: 'El turno ya estaba cancelado.' });
         }
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({ error: 'No se puede cancelar un turno con la asistencia registrada.' });
+        }
 
         const { error } = await supabase
             .from('turno')
@@ -329,8 +386,12 @@ exports.reprogramarTurno = async (req, res) => {
 
         const turno = await cargarTurnoDeClinica(id, clinicaId);
         if (!turno) return res.status(404).json({ error: 'Turno no encontrado.' });
-        if (turno.estado === 'cancelado') {
-            return res.status(409).json({ error: 'No se puede reprogramar un turno cancelado.' });
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({
+                error: turno.estado === 'cancelado'
+                    ? 'No se puede reprogramar un turno cancelado.'
+                    : 'No se puede reprogramar un turno con la asistencia registrada.',
+            });
         }
 
         // El nuevo horario debe estar libre (excluyendo este mismo turno).
@@ -370,8 +431,8 @@ exports.reenviarConfirmacion = async (req, res) => {
 
         const turno = await cargarTurnoDeClinica(id, clinicaId);
         if (!turno) return res.status(404).json({ error: 'Turno no encontrado.' });
-        if (turno.estado === 'cancelado') {
-            return res.status(409).json({ error: 'El turno está cancelado.' });
+        if (turno.estado !== 'reservado') {
+            return res.status(409).json({ error: 'El turno no está vigente.' });
         }
         if (!turno.paciente_email) {
             return res.status(400).json({ error: 'El turno no tiene un email de contacto.' });
@@ -390,20 +451,76 @@ exports.reenviarConfirmacion = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
+// Fase K: POST /staff/turnos/:id/asistencia  { estado: 'atendido'|'ausente'|'reservado' }
+// Registra si el paciente vino. Solo para turnos que ya empezaron; 'reservado' deshace
+// una marca equivocada. Un turno cancelado no admite asistencia.
+// ---------------------------------------------------------------------------
+exports.marcarAsistencia = async (req, res) => {
+    try {
+        const clinicaId = req.session.user.clinicaId;
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ error: 'Turno inválido.' });
+        const { estado } = req.body;
+
+        const turno = await cargarTurnoDeClinica(id, clinicaId);
+        if (!turno) return res.status(404).json({ error: 'Turno no encontrado.' });
+        if (turno.estado === 'cancelado') {
+            return res.status(409).json({ error: 'El turno está cancelado.' });
+        }
+        if (new Date(turno.inicio).getTime() > Date.now()) {
+            return res.status(409).json({ error: 'La asistencia se registra cuando el turno ya empezó.' });
+        }
+
+        const { data, error } = await supabase
+            .from('turno')
+            .update({ estado })
+            .eq('id', id)
+            .eq('clinica_id', clinicaId)
+            .neq('estado', 'cancelado')
+            .select(SELECT_STAFF)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return res.status(409).json({ error: 'El turno está cancelado.' });
+
+        return res.json({ message: 'Asistencia registrada.', turno: mapTurno(data) });
+    } catch (err) {
+        console.error('Error registrando asistencia (staff):', err);
+        return res.status(500).json({ error: 'Error al registrar la asistencia.' });
+    }
+};
+
+// ---------------------------------------------------------------------------
 // Bloqueos de horario (ausencias). Reemplazan al "bloquear tiempo" que antes se
 // hacía creando un evento suelto en Google Calendar. La disponibilidad los descuenta.
 // ---------------------------------------------------------------------------
 
-// GET /staff/bloqueos — bloqueos vigentes (fin >= ahora) de la clínica activa.
+// GET /staff/bloqueos?desde=&hasta=&profId= — bloqueos de la clínica activa.
+// Sin rango devuelve los vigentes (fin >= ahora), que es lo que espera la lista de
+// bloqueos; con rango devuelve los que se solapan con él, para pintar el calendario.
 exports.listarBloqueos = async (req, res) => {
     try {
         const clinicaId = req.session.user.clinicaId;
-        const { data, error } = await supabase
+        const desde = instanteValido(req.query.desde);
+        const hasta = instanteValido(req.query.hasta);
+        const profId = idValido(req.query.profId);
+
+        let query = supabase
             .from('bloqueo_horario')
             .select('id, id_profesional, inicio, fin, motivo, profesional:id_profesional ( persona:id_persona ( nombre, apellido ) )')
             .eq('clinica_id', clinicaId)
-            .gte('fin', new Date().toISOString())
             .order('inicio', { ascending: true });
+
+        if (desde || hasta) {
+            // Se solapa con el rango: empieza antes de que termine y termina después
+            // de que empieza.
+            if (hasta) query = query.lte('inicio', hasta);
+            if (desde) query = query.gte('fin', desde);
+        } else {
+            query = query.gte('fin', new Date().toISOString());
+        }
+        if (profId) query = query.eq('id_profesional', profId);
+
+        const { data, error } = await query;
         if (error) throw error;
 
         const bloqueos = (data || []).map((b) => {

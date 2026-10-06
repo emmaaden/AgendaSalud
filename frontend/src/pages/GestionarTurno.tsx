@@ -19,7 +19,7 @@ type Turno = {
   id: number
   inicio: string
   fin: string | null
-  estado: "reservado" | "cancelado"
+  estado: "reservado" | "cancelado" | "atendido" | "ausente"
   profesional_nombre: string | null
   especialidad: string | null
   paciente_nombre: string | null
@@ -132,6 +132,10 @@ export default function GestionarTurno() {
                 {turno.estado === "cancelado" ? (
                   <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
                     Este turno está cancelado.
+                  </div>
+                ) : turno.estado !== "reservado" ? (
+                  <div className="rounded-lg bg-muted px-4 py-3 text-sm font-medium text-muted-foreground">
+                    Este turno ya pasó.
                   </div>
                 ) : (
                   <Button

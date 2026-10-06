@@ -9,21 +9,29 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field } from "@/components/form/Field"
+import { Consentimiento, CONSENTIMIENTO_REQUERIDO } from "@/components/form/Consentimiento"
+import { LEGAL_VERSION } from "@/lib/site"
 import { SelectField } from "@/components/form/SelectField"
+import { CoberturaFields } from "@/components/form/CoberturaFields"
+import { COBERTURA_VACIA, coberturaPayload, type Cobertura } from "@/lib/catalogos"
 import { Container } from "@/components/site/Section"
 import { api, ApiError } from "@/lib/api"
 
 const schema = z.object({
   dni: z.string().min(6, "DNI inválido"),
-  sexo: z.string().min(1, "Seleccioná una opción"),
+  sexo: z
+    .string({ required_error: "Seleccioná una opción" })
+    .min(1, "Seleccioná una opción"),
   nombre: z.string().min(2, "Requerido"),
   apellido: z.string().min(2, "Requerido"),
   fechaNacimiento: z.string().min(1, "Requerido"),
   telefono: z.string().min(6, "Teléfono inválido"),
-  direccion: z.string().min(2, "Requerido"),
-  obraSocial: z.string().min(1, "Requerido"),
+  // Opcional (minimización, Ley 25.326 art. 4): no hace falta para turnos ni HC.
+  direccion: z.string().optional(),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Mínimo 6 caracteres"),
+  // Mismo mínimo que valida el backend (validators/schemas.js).
+  password: z.string().min(8, "Mínimo 8 caracteres"),
+  acepta: z.boolean().refine((v) => v === true, CONSENTIMIENTO_REQUERIDO),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -36,17 +44,35 @@ const SEXO = [
 export default function RegisterPaciente() {
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
+  // Fase K: cobertura del catálogo global (fuera de react-hook-form: es un objeto).
+  const [cobertura, setCobertura] = useState<Cobertura>(COBERTURA_VACIA)
+  const [coberturaError, setCoberturaError] = useState<string | undefined>()
   const {
     register,
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { acepta: false },
+  })
 
   async function onSubmit(values: FormValues) {
+    if (!cobertura.idObraSocial) {
+      setCoberturaError("Requerido")
+      return
+    }
     setSubmitting(true)
     try {
-      await api.post("/auth/register", { ...values, role: "PACIENTE" })
+      const { acepta, ...datos } = values
+      await api.post("/auth/register", {
+        ...datos,
+        direccion: datos.direccion?.trim() || undefined,
+        ...coberturaPayload(cobertura),
+        role: "PACIENTE",
+        aceptaTerminos: acepta,
+        versionLegal: LEGAL_VERSION,
+      })
       toast.success("Cuenta creada con éxito")
       navigate("/")
     } catch (err) {
@@ -110,11 +136,11 @@ export default function RegisterPaciente() {
               </Field>
 
               <Field label="Nombre" htmlFor="nombre" required error={errors.nombre?.message}>
-                <Input id="nombre" className="h-10" aria-invalid={!!errors.nombre} {...register("nombre")} />
+                <Input id="nombre" autoComplete="given-name" className="h-10" aria-invalid={!!errors.nombre} {...register("nombre")} />
               </Field>
 
               <Field label="Apellido" htmlFor="apellido" required error={errors.apellido?.message}>
-                <Input id="apellido" className="h-10" aria-invalid={!!errors.apellido} {...register("apellido")} />
+                <Input id="apellido" autoComplete="family-name" className="h-10" aria-invalid={!!errors.apellido} {...register("apellido")} />
               </Field>
 
               <Field
@@ -133,16 +159,24 @@ export default function RegisterPaciente() {
               </Field>
 
               <Field label="Teléfono" htmlFor="telefono" required error={errors.telefono?.message}>
-                <Input id="telefono" type="tel" className="h-10" aria-invalid={!!errors.telefono} {...register("telefono")} />
+                <Input id="telefono" type="tel" autoComplete="tel" className="h-10" aria-invalid={!!errors.telefono} {...register("telefono")} />
               </Field>
 
-              <Field label="Dirección" htmlFor="direccion" required error={errors.direccion?.message} className="sm:col-span-2">
-                <Input id="direccion" className="h-10" aria-invalid={!!errors.direccion} {...register("direccion")} />
+              <Field label="Dirección (opcional)" htmlFor="direccion" error={errors.direccion?.message} className="sm:col-span-2">
+                <Input id="direccion" autoComplete="street-address" className="h-10" aria-invalid={!!errors.direccion} {...register("direccion")} />
               </Field>
 
-              <Field label="Obra social" htmlFor="obraSocial" required error={errors.obraSocial?.message} className="sm:col-span-2">
-                <Input id="obraSocial" className="h-10" placeholder="Obra social o “Particular”" aria-invalid={!!errors.obraSocial} {...register("obraSocial")} />
-              </Field>
+              <CoberturaFields
+                value={cobertura}
+                onChange={(c) => {
+                  setCobertura(c)
+                  if (c.idObraSocial) setCoberturaError(undefined)
+                }}
+                publico
+                required
+                idPrefix="registro"
+                error={coberturaError}
+              />
 
               <Field label="Email" htmlFor="email" required error={errors.email?.message}>
                 <Input id="email" type="email" autoComplete="email" className="h-10" aria-invalid={!!errors.email} {...register("email")} />
@@ -151,6 +185,22 @@ export default function RegisterPaciente() {
               <Field label="Contraseña" htmlFor="password" required error={errors.password?.message}>
                 <Input id="password" type="password" autoComplete="new-password" className="h-10" aria-invalid={!!errors.password} {...register("password")} />
               </Field>
+
+              <div className="sm:col-span-2">
+                <Controller
+                  control={control}
+                  name="acepta"
+                  render={({ field }) => (
+                    <Consentimiento
+                      ref={field.ref}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      error={errors.acepta?.message}
+                      salud
+                    />
+                  )}
+                />
+              </div>
 
               <div className="sm:col-span-2">
                 <Button type="submit" size="lg" className="w-full" disabled={submitting}>

@@ -18,5 +18,7 @@ router.get('/historia/export', miCuentaController.exportHistoria);
 
 // Fase C: certificados del propio paciente.
 router.get('/certificados', certificadoController.misCertificados);
+// Fase K: quién accedió a mi historia clínica (bitácora).
+router.get('/accesos', miCuentaController.misAccesos);
 
 module.exports = router;

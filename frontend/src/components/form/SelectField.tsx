@@ -19,6 +19,7 @@ export function SelectField({
   invalid,
   disabled,
   className,
+  ...aria
 }: {
   id?: string
   value?: string
@@ -28,13 +29,17 @@ export function SelectField({
   invalid?: boolean
   disabled?: boolean
   className?: string
+  /** Los inyecta <Field> (obligatorio / descripción del error). */
+  "aria-required"?: boolean
+  "aria-describedby"?: string
 }) {
   return (
     <Select value={value || undefined} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger
         id={id}
         aria-invalid={invalid}
-        className={cn("h-10 w-full", className)}
+        {...aria}
+        className={cn("data-[size=default]:h-10 w-full", className)}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

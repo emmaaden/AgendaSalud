@@ -1,9 +1,10 @@
 import { Suspense, lazy } from "react"
-import { Routes, Route, Navigate } from "react-router-dom"
+import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { PublicLayout } from "@/layouts/PublicLayout"
 import { DashboardLayout } from "@/layouts/DashboardLayout"
 import { Toaster } from "@/components/ui/sonner"
 import { PageLoader } from "@/components/site/PageLoader"
+import { RouteTitle } from "@/components/site/A11y"
 
 // Carga inicial: solo lo que ve quien llega al sitio.
 import Home from "@/pages/Home"
@@ -19,6 +20,10 @@ const RegisterRecepcion = lazy(() => import("@/pages/RegisterRecepcion"))
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"))
 const Terminos = lazy(() => import("@/pages/Terminos"))
 const Privacidad = lazy(() => import("@/pages/Privacidad"))
+const Cookies = lazy(() => import("@/pages/Cookies"))
+const Reembolsos = lazy(() => import("@/pages/Reembolsos"))
+const Accesibilidad = lazy(() => import("@/pages/Accesibilidad"))
+const SolicitudConsumo = lazy(() => import("@/pages/SolicitudConsumo"))
 
 // Páginas con dependencias pesadas (jsPDF / Supabase) → carga diferida.
 const Turnos = lazy(() => import("@/pages/Turnos"))
@@ -51,10 +56,22 @@ const DashboardHistorias = lazy(
 const DashboardEstudios = lazy(
   () => import("@/pages/dashboard/EstudiosCompartidos")
 )
+const DashboardAuditoria = lazy(() => import("@/pages/dashboard/Auditoria"))
+const DashboardAutorizaciones = lazy(() => import("@/pages/dashboard/Autorizaciones"))
+
+/**
+ * Redirección de rutas legacy que conserva ?query y #hash: el enlace de recuperación de
+ * contraseña de Supabase trae el token en el hash, y un <Navigate to="/x"> lo perdía.
+ */
+function RedirectKeep({ to }: { to: string }) {
+  const { search, hash } = useLocation()
+  return <Navigate to={{ pathname: to, search, hash }} replace />
+}
 
 function App() {
   return (
     <>
+      <RouteTitle />
       <Suspense fallback={<PageLoader />}>
         <Routes>
         {/* Dashboard (privado, protegido en el cliente) */}
@@ -73,6 +90,8 @@ function App() {
           />
           <Route path="/dashboard/historias" element={<DashboardHistorias />} />
           <Route path="/dashboard/estudios" element={<DashboardEstudios />} />
+          <Route path="/dashboard/auditoria" element={<DashboardAuditoria />} />
+          <Route path="/dashboard/autorizaciones" element={<DashboardAutorizaciones />} />
         </Route>
 
         <Route element={<PublicLayout />}>
@@ -99,6 +118,14 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/terminos" element={<Terminos />} />
           <Route path="/privacidad" element={<Privacidad />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/reembolsos" element={<Reembolsos />} />
+          <Route path="/accesibilidad" element={<Accesibilidad />} />
+          <Route
+            path="/arrepentimiento"
+            element={<SolicitudConsumo key="arrepentimiento" tipo="arrepentimiento" />}
+          />
+          <Route path="/baja" element={<SolicitudConsumo key="baja" tipo="baja" />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
@@ -108,9 +135,15 @@ function App() {
         {/* reset-password: sin navbar/footer (flujo aislado tras el email) */}
         <Route path="/reset-password" element={<ResetPassword />} />
         {/* Compatibilidad con enlaces legacy .html */}
-        <Route path="/reset-password.html" element={<Navigate to="/reset-password" replace />} />
-        <Route path="/login.html" element={<Navigate to="/login" replace />} />
-        <Route path="/index.html" element={<Navigate to="/" replace />} />
+        <Route path="/reset-password.html" element={<RedirectKeep to="/reset-password" />} />
+        <Route path="/login.html" element={<RedirectKeep to="/login" />} />
+        <Route path="/index.html" element={<RedirectKeep to="/" />} />
+        <Route path="/politica-privacidad.html" element={<RedirectKeep to="/privacidad" />} />
+        <Route path="/terminos-condiciones.html" element={<RedirectKeep to="/terminos" />} />
+        <Route path="/planes.html" element={<RedirectKeep to="/planes" />} />
+        <Route path="/turnos.html" element={<RedirectKeep to="/turnos" />} />
+        <Route path="/register.html" element={<RedirectKeep to="/register" />} />
+        <Route path="/forgot-password.html" element={<RedirectKeep to="/forgot-password" />} />
         </Routes>
       </Suspense>
       <Toaster position="top-center" richColors />

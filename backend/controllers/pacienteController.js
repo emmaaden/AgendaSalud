@@ -15,6 +15,14 @@
 
 const { getUserSupabase } = require('../middleware/userSupabase');
 const { filasParaRegistro, serializarDiente } = require('../utils/odontograma');
+const { registrarAcceso } = require('../utils/bitacora');
+const { columnasCobertura } = require('../utils/cobertura');
+const {
+    prepararCodificacion,
+    insertarCodificacion,
+    serializarCodificacion,
+    SELECT_CODIFICACION,
+} = require('../utils/codificacion');
 
 // Mensaje uniforme cuando la sesión no tiene (o perdió) el token de Supabase.
 const ERR_SESION = { status: 401, body: { error: 'Tu sesión expiró. Iniciá sesión de nuevo.' } };
@@ -107,8 +115,9 @@ async function getProfContext(db, session) {
     return { idProfesional: idRole || null, nombre, area, clinicaId: session.user.clinicaId || null };
 }
 
-// Inserta el registro clínico + el estado del odontograma (si viene).
-async function insertRegistro(db, idPaciente, prof, body) {
+// Inserta el registro clínico + el estado del odontograma (si viene) + la
+// codificación ya validada (`cod`, de prepararCodificacion).
+async function insertRegistro(db, idPaciente, prof, body, cod) {
     const { sintomas, diagnostico, tratamiento, fecha, dientes, area } = body;
 
     const registro = {
@@ -137,6 +146,8 @@ async function insertRegistro(db, idPaciente, prof, body) {
         if (dienteError) throw dienteError;
     }
 
+    if (cod) await insertarCodificacion(db, reg.id, cod);
+
     return reg.id;
 }
 
@@ -158,6 +169,17 @@ exports.regisPacient = async (req, res) => {
         if (!prof.clinicaId) {
             return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
         }
+
+        // Fase K: cobertura y codificación se validan ANTES de crear nada.
+        const cob = await columnasCobertura(req.body, prof.clinicaId);
+        if (!cob.ok) return res.status(400).json({ error: cob.error });
+        const cod = await prepararCodificacion({
+            clinicaId: prof.clinicaId,
+            idPaciente: null, // paciente nuevo: no puede tener autorizaciones todavía
+            diagnosticos: req.body.diagnosticos,
+            practicas: req.body.practicas,
+        });
+        if (!cod.ok) return res.status(400).json({ error: cod.error });
 
         // ¿Ya existe una persona con ese DNI EN ESTA CLÍNICA?
         const { data: existente } = await db
@@ -190,7 +212,8 @@ exports.regisPacient = async (req, res) => {
         // 2. paciente (si falla, limpiamos la persona huérfana)
         const { data: paciente, error: pacienteError } = await db
             .from('paciente')
-            .insert({ id_persona: persona.id, obra_social: obraSocial || null })
+            // Sin obra social del catálogo se conserva el texto libre (compatibilidad).
+            .insert({ id_persona: persona.id, obra_social: obraSocial || null, ...cob.cols })
             .select('id')
             .single();
         if (pacienteError) {
@@ -199,7 +222,14 @@ exports.regisPacient = async (req, res) => {
         }
 
         // 3. primer registro clínico (+ odontograma)
-        await insertRegistro(db, paciente.id, prof, req.body);
+        const idRegistro = await insertRegistro(db, paciente.id, prof, req.body, cod);
+
+        await registrarAcceso(req, {
+            accion: 'registrar_paciente',
+            idPaciente: paciente.id,
+            idRegistro,
+            paciente: { nombre: fullName, dni },
+        });
 
         return res.status(201).json({ message: 'Paciente registrado con éxito', id_paciente: paciente.id });
     } catch (err) {
@@ -224,7 +254,7 @@ exports.saveDataPacient = async (req, res) => {
 
         const { data: persona, error: personaError } = await db
             .from('persona')
-            .select('id, paciente(id)')
+            .select('id, nombre, apellido, paciente(id)')
             .eq('dni', dni)
             .eq('clinica_id', clinicaId)
             .maybeSingle();
@@ -235,8 +265,23 @@ exports.saveDataPacient = async (req, res) => {
             return res.status(404).json({ error: 'Paciente no encontrado.' });
         }
 
+        const cod = await prepararCodificacion({
+            clinicaId,
+            idPaciente: paciente.id,
+            diagnosticos: req.body.diagnosticos,
+            practicas: req.body.practicas,
+        });
+        if (!cod.ok) return res.status(400).json({ error: cod.error });
+
         const prof = await getProfContext(db, req.session);
-        await insertRegistro(db, paciente.id, prof, req.body);
+        const idRegistro = await insertRegistro(db, paciente.id, prof, req.body, cod);
+
+        await registrarAcceso(req, {
+            accion: 'crear_registro',
+            idPaciente: paciente.id,
+            idRegistro,
+            paciente: { nombre: [persona.nombre, persona.apellido].filter(Boolean).join(' '), dni },
+        });
 
         return res.status(201).json({ message: 'Registro guardado con éxito' });
     } catch (err) {
@@ -262,7 +307,7 @@ exports.getDataPacient = async (req, res) => {
 
         const { data: persona, error: personaError } = await db
             .from('persona')
-            .select('nombre, apellido, dni, telefono, direccion, sexo, fecha_nacimiento, email, paciente(id, obra_social)')
+            .select('nombre, apellido, dni, telefono, direccion, sexo, fecha_nacimiento, email, paciente(id, obra_social, id_obra_social, nro_afiliado, plan)')
             .eq('dni', dni)
             .eq('clinica_id', clinicaId)
             .maybeSingle();
@@ -275,7 +320,8 @@ exports.getDataPacient = async (req, res) => {
 
         const { data: registros, error: regError } = await db
             .from('registro_clinico')
-            .select('id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, registro_diente(numero, condicion, cara, estado, notas)')
+            .select(`id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, auditoria_estado,
+                registro_diente(numero, condicion, cara, estado, notas), ${SELECT_CODIFICACION}`)
             .eq('id_paciente', paciente.id)
             .order('fecha', { ascending: true });
         if (regError) throw regError;
@@ -288,9 +334,18 @@ exports.getDataPacient = async (req, res) => {
             diagnostico: r.diagnostico || '',
             tratamiento: r.tratamiento || '',
             dientes: (r.registro_diente || []).map(serializarDiente),
+            ...serializarCodificacion(r),
+            auditoria: r.auditoria_estado || 'pendiente',
         }));
 
         const fechaApertura = registros && registros.length > 0 ? fmtFecha(registros[0].fecha) : '';
+
+        await registrarAcceso(req, {
+            accion: 'ver_hc',
+            idPaciente: paciente.id,
+            paciente: { nombre: [persona.nombre, persona.apellido].filter(Boolean).join(' '), dni: persona.dni },
+            detalle: { registros: (registros || []).length },
+        });
 
         return res.status(200).json({
             fullName: [persona.nombre, persona.apellido].filter(Boolean).join(' '),
@@ -302,11 +357,58 @@ exports.getDataPacient = async (req, res) => {
             fechaNacimiento: fmtFecha(persona.fecha_nacimiento),
             edad: calcEdad(persona.fecha_nacimiento),
             obraSocial: paciente.obra_social || '',
+            idObraSocial: paciente.id_obra_social || null,
+            nroAfiliado: paciente.nro_afiliado || '',
+            plan: paciente.plan || '',
             fechaApertura,
             history,
         });
     } catch (err) {
         console.error('Error en get-data-pacient:', err);
         return res.status(500).json({ error: err.message || 'Error al obtener los datos del paciente.' });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Fase K: actualizar la cobertura del paciente (obra social del catálogo + afiliado
+// + plan), buscado por DNI dentro de la clínica (rol profesional).
+// ---------------------------------------------------------------------------
+exports.actualizarCobertura = async (req, res) => {
+    try {
+        const { dni } = req.body;
+        const clinicaId = req.session.user.clinicaId;
+        if (!clinicaId) return res.status(400).json({ error: 'Tu usuario no tiene una clínica asignada.' });
+
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
+
+        const { data: persona, error: personaError } = await db
+            .from('persona')
+            .select('nombre, apellido, paciente(id)')
+            .eq('dni', dni)
+            .eq('clinica_id', clinicaId)
+            .maybeSingle();
+        if (personaError) throw personaError;
+        const paciente = persona && persona.paciente && persona.paciente[0];
+        if (!paciente) return res.status(404).json({ error: 'Paciente no encontrado.' });
+
+        const cob = await columnasCobertura(req.body, clinicaId);
+        if (!cob.ok) return res.status(400).json({ error: cob.error });
+        if (!Object.keys(cob.cols).length) return res.status(400).json({ error: 'Nada para actualizar.' });
+
+        const { error } = await db.from('paciente').update(cob.cols).eq('id', paciente.id);
+        if (error) throw error;
+
+        await registrarAcceso(req, {
+            accion: 'editar_cobertura',
+            idPaciente: paciente.id,
+            paciente: { nombre: [persona.nombre, persona.apellido].filter(Boolean).join(' '), dni },
+            detalle: { obraSocial: cob.cols.obra_social || null },
+        });
+
+        return res.json({ message: 'Cobertura actualizada' });
+    } catch (err) {
+        console.error('Error actualizando la cobertura:', err);
+        return res.status(500).json({ error: 'Error al actualizar la cobertura.' });
     }
 };

@@ -75,7 +75,7 @@ export default function MisCertificados() {
 
   if (loadingUser) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <Loader2 className="size-6 animate-spin text-primary" />
       </div>
     )
@@ -120,7 +120,7 @@ export default function MisCertificados() {
               {certificados.map((c) => (
                 <li key={c.id}>
                   <Card>
-                    <CardContent className="flex flex-wrap items-center gap-4 p-4">
+                    <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
                       <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                         {c.esImagen ? (
                           <ImageIcon className="size-5" />
@@ -129,7 +129,7 @@ export default function MisCertificados() {
                         )}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-2 font-medium">
+                        <p className="flex flex-wrap items-center gap-2 font-medium">
                           Certificado médico
                           <Badge variant="secondary" className="font-normal">
                             {c.tipo === "generado" ? "Digital" : "Adjunto"}
@@ -142,6 +142,7 @@ export default function MisCertificados() {
                         </p>
                       </div>
                       <Button
+                        className="w-full sm:w-auto"
                         onClick={() => descargar(c)}
                         disabled={descargando === c.id}
                       >

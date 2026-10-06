@@ -13,10 +13,27 @@ import {
   MoreVertical,
   Copy,
   Check,
+  ClipboardCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +43,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Container } from "@/components/site/Section"
+import { SelectField } from "@/components/form/SelectField"
+import { CatalogosClinica } from "@/components/dashboard/CatalogosClinica"
+import { useObrasSociales } from "@/lib/catalogos"
 import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
 
-type Rol = "admin" | "profesional" | "recepcion"
+type Rol = "admin" | "profesional" | "recepcion" | "auditor"
 
 type Miembro = {
   id: number
@@ -40,6 +60,8 @@ type Miembro = {
   dni: string | null
   matricula: string | null
   rol: Rol
+  alcanceObraSocial: string | null
+  alcanceIdObraSocial: number | null
   activo: boolean
   esYo: boolean
 }
@@ -48,14 +70,32 @@ type Codigo = {
   id: number
   codigo: string
   usado: boolean
-  rol?: "profesional" | "recepcion"
+  rol?: "profesional" | "recepcion" | "auditor"
+  alcance_obra_social?: string | null
   creado_en?: string
 }
+
+type RolCodigo = NonNullable<Codigo["rol"]>
+
+const ROL_CODIGO_LABEL: Record<RolCodigo, string> = {
+  profesional: "Profesional",
+  recepcion: "Recepción",
+  auditor: "Auditoría",
+}
+
+// Fase J: el alcance del auditor se define para un miembro (al asignarle el rol o
+// después) o para un código de auditor (lo hereda quien se registre con él).
+type AlcanceDestino = { tipo: "miembro"; miembro: Miembro } | { tipo: "codigo" }
+
+// Texto del alcance para listar. null = auditor interno (toda la clínica).
+const alcanceLabel = (os: string | null | undefined) =>
+  os ? `solo ${os}` : "interna (toda la clínica)"
 
 const ROL_META: Record<Rol, { label: string; icon: typeof ShieldCheck }> = {
   admin: { label: "Administrador/a", icon: ShieldCheck },
   profesional: { label: "Profesional", icon: Stethoscope },
   recepcion: { label: "Recepción", icon: ClipboardList },
+  auditor: { label: "Auditoría", icon: ClipboardCheck },
 }
 
 export default function Administracion() {
@@ -68,6 +108,11 @@ export default function Administracion() {
   const [generating, setGenerating] = useState(false)
   const [borrando, setBorrando] = useState<number | null>(null)
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [alcanceDestino, setAlcanceDestino] = useState<AlcanceDestino | null>(null)
+  const [alcanceModo, setAlcanceModo] = useState<"interno" | "obra_social">("interno")
+  // Fase K: id de la obra social del catálogo ("" = sin elegir).
+  const [alcanceOs, setAlcanceOs] = useState("")
+  const { datos: obrasSociales } = useObrasSociales()
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -94,7 +139,10 @@ export default function Administracion() {
     return <Navigate to="/dashboard" replace />
   }
 
-  async function cambiar(m: Miembro, patch: { activo?: boolean; rol?: Rol }) {
+  async function cambiar(
+    m: Miembro,
+    patch: { activo?: boolean; rol?: Rol; alcanceIdObraSocial?: number | null }
+  ) {
     setAccion(m.id)
     try {
       await api.patch(`/admin/miembros/${m.id}`, patch)
@@ -109,11 +157,12 @@ export default function Administracion() {
     }
   }
 
-  async function generarCodigo(rol: "profesional" | "recepcion") {
+  async function generarCodigo(rol: RolCodigo, alcanceIdObraSocial: number | null = null) {
     setGenerating(true)
     try {
       const d = await api.post<{ codigo?: string }>("/clinica/generar-codigo", {
         rol,
+        ...(rol === "auditor" ? { alcanceIdObraSocial } : {}),
       })
       toast.success(`Código generado: ${d.codigo}`)
       await cargar()
@@ -121,6 +170,29 @@ export default function Administracion() {
       toast.error("No se pudo generar el código.")
     } finally {
       setGenerating(false)
+    }
+  }
+
+  function abrirAlcance(destino: AlcanceDestino) {
+    const m = destino.tipo === "miembro" ? destino.miembro : null
+    setAlcanceModo(m && (m.alcanceIdObraSocial || m.alcanceObraSocial) ? "obra_social" : "interno")
+    setAlcanceOs(m?.alcanceIdObraSocial ? String(m.alcanceIdObraSocial) : "")
+    setAlcanceDestino(destino)
+  }
+
+  async function confirmarAlcance() {
+    if (!alcanceDestino) return
+    const os = alcanceModo === "obra_social" && alcanceOs ? Number(alcanceOs) : null
+    if (alcanceModo === "obra_social" && !os) {
+      toast.error("Elegí la obra social que audita.")
+      return
+    }
+    const destino = alcanceDestino
+    setAlcanceDestino(null)
+    if (destino.tipo === "codigo") {
+      await generarCodigo("auditor", os)
+    } else {
+      await cambiar(destino.miembro, { rol: "auditor", alcanceIdObraSocial: os })
     }
   }
 
@@ -151,7 +223,7 @@ export default function Administracion() {
 
   if (loading || cargando) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <Loader2 className="size-6 animate-spin text-primary" />
       </div>
     )
@@ -168,7 +240,7 @@ export default function Administracion() {
 
       {/* Profesionales / miembros */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Users className="size-5 text-primary" /> Profesionales
           </h2>
@@ -193,7 +265,7 @@ export default function Administracion() {
                   <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                     <Icon className="size-5" />
                   </span>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 basis-40">
                     <p className="flex items-center gap-2 font-medium">
                       <span className="truncate">{nombre}</span>
                       {m.esYo && (
@@ -204,11 +276,13 @@ export default function Administracion() {
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {meta.label}
+                      {m.rol === "auditor" ? ` ${alcanceLabel(m.alcanceObraSocial)}` : ""}
                       {m.matricula ? ` · Mat. ${m.matricula}` : ""}
                       {m.email ? ` · ${m.email}` : ""}
                     </p>
                   </div>
 
+                  <div className="ml-auto flex items-center gap-2">
                   <Badge variant={m.activo ? "default" : "secondary"}>
                     {m.activo ? "Activo" : "De baja"}
                   </Badge>
@@ -250,14 +324,26 @@ export default function Administracion() {
                         <DropdownMenuItem
                           key={r}
                           disabled={r === m.rol}
-                          onSelect={() => cambiar(m, { rol: r })}
+                          onSelect={() =>
+                            r === "auditor"
+                              ? abrirAlcance({ tipo: "miembro", miembro: m })
+                              : cambiar(m, { rol: r })
+                          }
                         >
                           {ROL_META[r].label}
                           {r === m.rol ? " ·" : ""}
                         </DropdownMenuItem>
                       ))}
+                      {m.rol === "auditor" && (
+                        <DropdownMenuItem
+                          onSelect={() => abrirAlcance({ tipo: "miembro", miembro: m })}
+                        >
+                          Cambiar alcance…
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </li>
               )
             })}
@@ -272,10 +358,11 @@ export default function Administracion() {
 
       {/* Códigos de activación */}
       <Card className="mt-6">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <KeyRound className="size-5 text-primary" /> Códigos de activación
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex min-w-0 items-center gap-2 text-lg font-semibold">
+              <KeyRound className="size-5 shrink-0 text-primary" /> Códigos de
+              activación
             </h2>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -292,12 +379,15 @@ export default function Administracion() {
                 <DropdownMenuItem onSelect={() => generarCodigo("recepcion")}>
                   <ClipboardList /> Recepción
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => abrirAlcance({ tipo: "codigo" })}>
+                  <ClipboardCheck /> Auditoría
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Compartí un código disponible para que alguien se una a tu clínica al
-            registrarse: como profesional o en recepción. Solo se pueden eliminar
+            registrarse: como profesional, en recepción o en auditoría. Solo se pueden eliminar
             los que no se usaron.
           </p>
 
@@ -305,16 +395,16 @@ export default function Administracion() {
             {codigos.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm"
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 text-sm"
               >
-                <code className="font-mono">{c.codigo}</code>
+                <code className="min-w-0 truncate font-mono">{c.codigo}</code>
                 <Badge variant="outline" className="font-normal">
-                  {c.rol === "recepcion" ? "Recepción" : "Profesional"}
+                  {ROL_CODIGO_LABEL[c.rol ?? "profesional"]}
+                  {c.rol === "auditor" && c.alcance_obra_social
+                    ? ` · ${c.alcance_obra_social}`
+                    : ""}
                 </Badge>
-                <Badge
-                  variant={c.usado ? "secondary" : "default"}
-                  className="ml-1"
-                >
+                <Badge variant={c.usado ? "secondary" : "default"}>
                   {c.usado ? "Usado" : "Disponible"}
                 </Badge>
                 <div className="ml-auto flex items-center gap-1">
@@ -357,6 +447,63 @@ export default function Administracion() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Fase J: alcance del auditor (al asignar el rol o generar su código) */}
+      <Dialog open={!!alcanceDestino} onOpenChange={(o) => !o && setAlcanceDestino(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alcance de la auditoría</DialogTitle>
+            <DialogDescription>
+              {alcanceDestino?.tipo === "codigo"
+                ? "Quien se registre con este código va a quedar en auditoría con este alcance."
+                : "Solo va a ver las historias clínicas dentro de este alcance. No puede cargar ni modificar registros."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="alcance-modo">Qué puede auditar</Label>
+              <Select
+                value={alcanceModo}
+                onValueChange={(v) => setAlcanceModo(v as "interno" | "obra_social")}
+              >
+                <SelectTrigger id="alcance-modo" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="interno">Toda la clínica (auditoría interna)</SelectItem>
+                  <SelectItem value="obra_social">Solo pacientes de una obra social</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {alcanceModo === "obra_social" && (
+              <div className="grid gap-2">
+                <Label htmlFor="alcance-os">Obra social</Label>
+                <SelectField
+                  id="alcance-os"
+                  value={alcanceOs}
+                  onValueChange={setAlcanceOs}
+                  options={obrasSociales.map((o) => ({ value: String(o.id), label: o.nombre }))}
+                  placeholder="Elegí la obra social"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Solo va a ver a los pacientes que tengan esta obra social en su cobertura.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAlcanceDestino(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarAlcance}>
+              {alcanceDestino?.tipo === "codigo" ? "Generar código" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fase K: catálogos propios de la clínica */}
+      <CatalogosClinica />
     </Container>
   )
 }

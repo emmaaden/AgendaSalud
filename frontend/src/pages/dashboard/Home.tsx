@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Container } from "@/components/site/Section"
+import { ObservacionesAuditoria } from "@/components/dashboard/ObservacionesAuditoria"
 import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -115,9 +116,12 @@ export default function DashboardHome() {
         ))}
       </div>
 
+      {/* Fase J: observaciones de auditoría sobre mis registros (si hay). */}
+      <ObservacionesAuditoria />
+
       {clinica?.esAdmin && (
         <Card className="mt-8">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
                 <Building2 className="size-6" />

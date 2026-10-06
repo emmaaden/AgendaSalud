@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
-import { Loader2, Building2, ShieldCheck, Stethoscope, ClipboardList, ChevronRight } from "lucide-react"
+import { Loader2, Building2, ShieldCheck, Stethoscope, ClipboardList, ClipboardCheck, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/site/Logo"
@@ -15,6 +15,7 @@ const ROL_META: Record<
   admin: { label: "Administrador/a", icon: ShieldCheck },
   profesional: { label: "Profesional", icon: Stethoscope },
   recepcion: { label: "Recepción", icon: ClipboardList },
+  auditor: { label: "Auditoría", icon: ClipboardCheck },
 }
 
 export default function SeleccionarClinica() {
@@ -75,14 +76,14 @@ export default function SeleccionarClinica() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30">
+      <div className="flex min-h-dvh items-center justify-center bg-muted/30">
         <Loader2 className="size-7 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-dvh flex-col bg-muted/30">
       <header className="border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center px-4 sm:px-6">
           <Logo to="/dashboard" />

@@ -23,6 +23,30 @@ function requireRole(...rolesPermitidos) {
         if (!rolesPermitidos.includes(req.session.user.role)) {
             return res.status(403).json({ error: 'No autorizado para esta acción' });
         }
+        // Fase J: un médico (fila en `profesional`) que es AUDITOR en la clínica activa
+        // no opera como profesional en ella: no carga HC, ni certificados, ni administra.
+        if (req.session.user.role === 'profesional' && req.session.user.rol === 'auditor') {
+            return res.status(403).json({ error: 'En esta clínica tu rol es de auditoría.' });
+        }
+        return next();
+    };
+}
+
+// Fase J: exige clínica activa y que el rol de la MEMBRESÍA en ella (session.user.rol)
+// esté entre los permitidos. Los permisos de auditoría se deciden siempre por `rol`
+// (no por `role`): un médico puede ser profesional en una clínica y auditor en otra.
+function requireRolClinica(...rolesPermitidos) {
+    return (req, res, next) => {
+        const u = req.session && req.session.isAuthenticated && req.session.user;
+        if (!u) {
+            return res.status(401).json({ error: 'No autenticado' });
+        }
+        if (!u.clinicaId) {
+            return res.status(400).json({ error: 'No tenés una clínica activa seleccionada.' });
+        }
+        if (!rolesPermitidos.includes(u.rol)) {
+            return res.status(403).json({ error: 'No autorizado para esta acción' });
+        }
         return next();
     };
 }
@@ -35,7 +59,7 @@ function requireStaffClinica(req, res, next) {
     if (!u) {
         return res.status(401).json({ error: 'No autenticado' });
     }
-    if (u.role !== 'profesional' && u.role !== 'recepcion') {
+    if ((u.role !== 'profesional' && u.role !== 'recepcion') || u.rol === 'auditor') {
         return res.status(403).json({ error: 'No autorizado para esta acción' });
     }
     if (!u.clinicaId) {
@@ -58,4 +82,4 @@ function requireClinicaAdmin(req, res, next) {
     return res.status(403).json({ error: 'Requiere ser administrador de la clínica' });
 }
 
-module.exports = { requireAuth, requireRole, requireClinicaAdmin, requireStaffClinica };
+module.exports = { requireAuth, requireRole, requireRolClinica, requireClinicaAdmin, requireStaffClinica };

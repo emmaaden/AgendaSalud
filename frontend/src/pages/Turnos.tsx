@@ -27,6 +27,9 @@ import {
 } from "@/components/ui/dialog"
 import { api, ApiError } from "@/lib/api"
 import { useUser } from "@/hooks/useUser"
+import { AR_TZ, hoyAR, sumarDias } from "@/lib/fecha"
+import { LEGAL_VERSION } from "@/lib/site"
+import { Consentimiento, CONSENTIMIENTO_REQUERIDO } from "@/components/form/Consentimiento"
 
 type Professional = { id: number | string; nombre: string; id_calendario?: string }
 type ProfArea = { area: string; professionals: Professional[] }
@@ -47,7 +50,7 @@ const COUNTRIES = [
 
 function formatSlotLocal(iso: string) {
   return new Date(iso).toLocaleString("es-AR", {
-    timeZone: "America/Argentina/Mendoza",
+    timeZone: AR_TZ,
     hour12: false,
     year: "numeric",
     month: "2-digit",
@@ -131,9 +134,13 @@ export default function Turnos() {
 
           {view === "menu" && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <button onClick={() => setView("reservar")} className="group text-left">
+              <button
+                type="button"
+                onClick={() => setView("reservar")}
+                className="group rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
                 <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                       <CalendarPlus className="size-6" />
                     </div>
@@ -150,10 +157,10 @@ export default function Turnos() {
 
               <Link
                 to={user?.role === "paciente" ? "/mis-turnos" : "/login"}
-                className="group text-left"
+                className="group rounded-xl text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-6">
                     <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                       {user?.role === "paciente" ? (
                         <ListChecks className="size-6" />
@@ -226,6 +233,8 @@ export default function Turnos() {
                   prefillName={user?.fullName || ""}
                   prefillEmail={user?.email || ""}
                   lockEmail={!!user}
+                  // El paciente logueado ya prestó el consentimiento al registrarse.
+                  pideConsentimiento={user?.role !== "paciente"}
                 />
               )}
             </>
@@ -246,6 +255,7 @@ function ReservarForm({
   prefillName,
   prefillEmail,
   lockEmail,
+  pideConsentimiento,
 }: {
   profId: string
   profName: string
@@ -253,8 +263,10 @@ function ReservarForm({
   prefillName: string
   prefillEmail: string
   lockEmail: boolean
+  pideConsentimiento: boolean
 }) {
-  const today = new Date().toISOString().split("T")[0]
+  // Fecha de HOY en Argentina (no en UTC: después de las 21 h, toISOString ya da mañana).
+  const today = hoyAR()
   const [date, setDate] = useState("")
   const [slots, setSlots] = useState<string[]>([])
   const [slot, setSlot] = useState("")
@@ -265,6 +277,8 @@ function ReservarForm({
   const [email, setEmail] = useState(prefillEmail)
   const [code, setCode] = useState("+54")
   const [number, setNumber] = useState("")
+  const [acepta, setAcepta] = useState(false)
+  const [aceptaError, setAceptaError] = useState<string | undefined>()
 
   // La sesión (useUser) llega async: si aparece un dato de perfil, lo prellenamos.
   useEffect(() => {
@@ -300,9 +314,8 @@ function ReservarForm({
   }, [date, profId])
 
   async function searchNearest() {
-    const current = new Date()
+    let d = hoyAR()
     for (let i = 0; i < 60; i++) {
-      const d = current.toISOString().split("T")[0]
       try {
         const s = await api.get<string[]>(
           `/available-slots?date=${encodeURIComponent(d)}&profId=${encodeURIComponent(profId)}`
@@ -314,15 +327,20 @@ function ReservarForm({
       } catch {
         return
       }
-      current.setDate(current.getDate() + 1)
+      d = sumarDias(d, 1)
     }
     setNearest("No se encontraron turnos disponibles próximamente.")
   }
 
   function openConfirm(e: React.FormEvent) {
     e.preventDefault()
-    if (!name || !email || !number || !slot) {
-      toast.warning("Completá todos los campos y elegí un horario.")
+    if (!name.trim() || !email.trim() || !slot) {
+      toast.warning("Completá nombre, email y elegí un horario.")
+      return
+    }
+    if (pideConsentimiento && !acepta) {
+      setAceptaError(CONSENTIMIENTO_REQUERIDO)
+      document.getElementById("consentimiento-turno")?.focus()
       return
     }
     if (new Date(slot) < new Date()) {
@@ -339,7 +357,6 @@ function ReservarForm({
       const res = await api.post<{ success?: boolean }>("/create-event", {
         summary: `Cita con ${name}`,
         name,
-        description: `Correo del paciente: ${email}, Numero de teléfono: ${number}`,
         start: {
           dateTime: start.toISOString(),
           timeZone: "America/Argentina/Buenos_Aires",
@@ -349,10 +366,13 @@ function ReservarForm({
           timeZone: "America/Argentina/Buenos_Aires",
         },
         email,
-        number,
-        numberCode: code,
+        // Teléfono opcional: solo se envía si se cargó (minimización de datos).
+        number: number.trim() || undefined,
+        numberCode: number.trim() ? code : undefined,
         profId,
         clinica: clinica || undefined,
+        aceptaTerminos: pideConsentimiento ? acepta : undefined,
+        versionLegal: pideConsentimiento ? LEGAL_VERSION : undefined,
       })
       if (res.success) {
         setConfirmOpen(false)
@@ -363,6 +383,7 @@ function ReservarForm({
         setName("")
         setEmail("")
         setNumber("")
+        setAcepta(false)
       } else {
         toast.error("Turno no agendado. Intentá de nuevo.")
       }
@@ -377,7 +398,7 @@ function ReservarForm({
 
   return (
     <Card className="mt-6">
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <h2 className="text-lg font-semibold">Datos del turno</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Con {profName}. Elegí la fecha y completá tus datos.
@@ -426,6 +447,7 @@ function ReservarForm({
           <Field label="Nombre y apellido" htmlFor="name" required>
             <Input
               id="name"
+              autoComplete="name"
               className="h-10"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -435,6 +457,7 @@ function ReservarForm({
             <Input
               id="email"
               type="email"
+              autoComplete="email"
               className="h-10"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -449,7 +472,7 @@ function ReservarForm({
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-[minmax(0,12rem)_1fr]">
-            <Field label="País" htmlFor="code">
+            <Field label="Código de país" htmlFor="code">
               <SelectField
                 id="code"
                 value={code}
@@ -460,10 +483,15 @@ function ReservarForm({
                 }))}
               />
             </Field>
-            <Field label="Teléfono" htmlFor="number" required>
+            <Field
+              label="Teléfono (opcional)"
+              htmlFor="number"
+              hint="Para que el consultorio pueda avisarte si hay cambios."
+            >
               <Input
                 id="number"
                 type="tel"
+                autoComplete="tel-national"
                 className="h-10"
                 value={number}
                 onChange={(e) => setNumber(e.target.value)}
@@ -471,9 +499,22 @@ function ReservarForm({
             </Field>
           </div>
 
+          {pideConsentimiento && (
+            <Consentimiento
+              id="consentimiento-turno"
+              checked={acepta}
+              onCheckedChange={(v) => {
+                setAcepta(v)
+                if (v) setAceptaError(undefined)
+              }}
+              error={aceptaError}
+              salud
+            />
+          )}
+
           <Button type="submit" size="lg" className="w-full">
             <CalendarPlus />
-            Revisar y confirmar
+            Revisar y confirmar turno
           </Button>
         </form>
       </CardContent>
@@ -491,7 +532,7 @@ function ReservarForm({
             <Row label="Fecha y hora" value={slot ? `${formatSlotLocal(slot)}hs` : "—"} />
             <Row label="Nombre" value={name} />
             <Row label="Email" value={email} />
-            <Row label="Teléfono" value={`${code} ${number}`} />
+            <Row label="Teléfono" value={number.trim() ? `${code} ${number}` : "—"} />
           </dl>
           <DialogFooter>
             <Button

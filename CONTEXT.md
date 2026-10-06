@@ -96,6 +96,30 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 
 ## 7. Changelog
 
+### 2026-10-06 — Cumplimiento legal y accesibilidad del sitio público
+- **Legal (AR):** páginas nuevas/reescritas de Privacidad (Ley 25.326, Ley 26.529, transferencia a
+  EE. UU. — Supabase `us-east-2`), Términos (sin cláusula de exención total, nula por art. 37
+  Ley 24.240), Cookies, Reembolsos y Accesibilidad. **Botón de arrepentimiento** y **Botón de baja
+  de servicio** (Disp. 954/2025, que reemplazó a la Res. 424/2020 y la 316/2018) en todas las
+  páginas públicas, sin registro y con código (`POST /api/solicitudes-consumo`, avisa por email si
+  hay mailer; `LEGAL_NOTIFY_EMAIL`). Leyenda de la Disp. 10/2008 en formularios y footer.
+- **Consentimiento expreso** obligatorio en registro (paciente/profesional/recepción) y en la
+  reserva como invitado; se exige también en el backend. En el registro queda la prueba
+  (`user_metadata.consentimiento`: versión legal + fecha) en Supabase Auth, sin cambios de esquema.
+- **Minimización:** el profesional ya no da sexo, fecha de nacimiento ni dirección personal; la
+  dirección del paciente es opcional; el teléfono de la reserva es opcional (y ahora se guarda con
+  su código de país, que antes se perdía).
+- **Ya no se publican** las páginas `.html` legacy de `backend/public` (política vieja, fotos sin
+  licencia verificada, Google Fonts/jsDelivr). CSP estricta en todo el sitio. Redirecciones legacy
+  conservan `?query` y `#hash`.
+- **SEO:** `robots.txt` y `sitemap.xml` dinámicos (usan `APP_URL`).
+- **Accesibilidad:** «Saltar al contenido», título por página, `aria-required`/`aria-describedby` y
+  errores con `role="alert"` en `Field`, bordes de campos ≥ 3:1, textos de cierre en español.
+- **Bugs:** contraseña mínima 6 en el front vs 8 en el back; fecha «hoy» en UTC en la reserva
+  (después de las 21 h no dejaba elegir hoy); sesión de recuperación de Supabase que quedaba
+  guardada tras cambiar la contraseña; mensajes «Required» en inglés; promesas falsas
+  («100 % online», «24/7», «al instante», Google Calendar).
+
 ### 2026-09-15 — Fase 2d: revisión y saneamiento de la base
 - **Revisión completa** (advisors seguridad/performance + 10 chequeos de integridad, todos en 0).
   Consistencia impecable: sin huérfanos, sin mismatch registro↔clínica, sin duplicados.

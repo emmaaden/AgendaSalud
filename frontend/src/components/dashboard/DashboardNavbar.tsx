@@ -15,6 +15,9 @@ import {
   FolderDown,
   FolderHeart,
   CalendarClock,
+  ChevronDown,
+  ClipboardCheck,
+  ShieldPlus,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -75,7 +78,22 @@ const LINKS = [
     icon: FolderHeart,
     end: false,
   },
+  // Fase K: autorizaciones previas de prácticas.
+  {
+    to: "/dashboard/autorizaciones",
+    label: "Autorizaciones",
+    icon: ShieldPlus,
+    end: false,
+  },
 ]
+
+// Fase J: panel de auditoría médica (auditor y admin de la clínica activa).
+const AUDITORIA_LINK = {
+  to: "/dashboard/auditoria",
+  label: "Auditoría",
+  icon: ClipboardCheck,
+  end: false,
+}
 
 // Enlace solo para el admin de la clínica activa (Fase B).
 const ADMIN_LINK = {
@@ -85,18 +103,30 @@ const ADMIN_LINK = {
   end: false,
 }
 
+// La barra vive dentro de un contenedor de 1152 px como máximo, así que los ocho
+// enlaces con etiqueta nunca entran: los tres de uso diario quedan a la vista y el
+// resto se agrupa en "Más".
+const PRINCIPALES = ["/dashboard", "/dashboard/turnos", "/dashboard/registro-clinico"]
+
 export function DashboardNavbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
-  // Fase E: la recepción SOLO ve el panel de turnos.
+  // Fase E: la recepción SOLO ve el panel de turnos. Fase J: el auditor, solo el suyo.
   const links =
     user?.rol === "recepcion"
       ? [TURNOS_LINK]
-      : user?.esAdmin
-        ? [...LINKS, ADMIN_LINK]
-        : LINKS
+      : user?.rol === "auditor"
+        ? [AUDITORIA_LINK]
+        : user?.esAdmin
+          ? [...LINKS, AUDITORIA_LINK, ADMIN_LINK]
+          : LINKS
+
+  // Con un único enlace (recepción, auditoría) va siempre a la vista.
+  const esPrincipal = (to: string) => links.length === 1 || PRINCIPALES.includes(to)
+  const principales = links.filter((l) => esPrincipal(l.to))
+  const secundarios = links.filter((l) => !esPrincipal(l.to))
 
   async function handleLogout() {
     await logout()
@@ -120,6 +150,7 @@ export function DashboardNavbar() {
     admin: "Administrador/a",
     profesional: "Profesional",
     recepcion: "Recepción",
+    auditor: "Auditoría",
   }
 
   return (
@@ -127,8 +158,8 @@ export function DashboardNavbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Logo to="/dashboard" />
-          <nav className="hidden items-center gap-1 md:flex">
-            {links.map((l) => (
+          <nav className="hidden items-center gap-1 lg:flex">
+            {principales.map((l) => (
               <NavLink
                 key={l.to}
                 to={l.to}
@@ -144,12 +175,34 @@ export function DashboardNavbar() {
                 {l.label}
               </NavLink>
             ))}
+            {secundarios.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-muted-foreground"
+                  >
+                    Más <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  {secundarios.map((l) => (
+                    <DropdownMenuItem key={l.to} asChild>
+                      <NavLink to={l.to} end={l.end}>
+                        <l.icon /> {l.label}
+                      </NavLink>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
         </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <div className="hidden items-center gap-2 md:flex">
+          <div className="hidden items-center gap-2 lg:flex">
             <Button asChild variant="ghost" size="sm">
               <a href={HELP_URL} target="_blank" rel="noreferrer">
                 <LifeBuoy /> Ayuda
@@ -192,11 +245,13 @@ export function DashboardNavbar() {
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard/config">
-                    <User /> Mi perfil
-                  </Link>
-                </DropdownMenuItem>
+                {user?.rol !== "auditor" && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/config">
+                      <User /> Mi perfil
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onSelect={handleLogout} variant="destructive">
                   <LogOut /> Cerrar sesión
                 </DropdownMenuItem>
@@ -206,7 +261,7 @@ export function DashboardNavbar() {
 
           {/* Móvil */}
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild className="md:hidden">
+            <SheetTrigger asChild className="lg:hidden">
               <Button variant="outline" size="icon" aria-label="Abrir menú">
                 <Menu />
               </Button>

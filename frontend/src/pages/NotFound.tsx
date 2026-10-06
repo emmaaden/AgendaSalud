@@ -6,7 +6,7 @@ import { HELP_URL } from "@/lib/site"
 
 export default function NotFound() {
   return (
-    <Container className="flex min-h-[70vh] flex-col items-center justify-center py-16 text-center">
+    <Container className="flex min-h-[70dvh] flex-col items-center justify-center py-16 text-center">
       <p className="font-heading text-7xl font-semibold text-primary sm:text-8xl">
         404
       </p>

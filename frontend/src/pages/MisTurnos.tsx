@@ -31,7 +31,7 @@ type Turno = {
   id: number
   inicio: string
   fin: string | null
-  estado: "reservado" | "cancelado"
+  estado: "reservado" | "cancelado" | "atendido" | "ausente"
   profesional_nombre: string | null
   especialidad: string | null
   paciente_nombre: string | null
@@ -72,7 +72,7 @@ export default function MisTurnos() {
   // Gating por rol: mientras carga la sesión, spinner; si no es paciente, al login.
   if (loadingUser) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60dvh] items-center justify-center">
         <Loader2 className="size-6 animate-spin text-primary" />
       </div>
     )
@@ -122,7 +122,7 @@ export default function MisTurnos() {
         <div className="mx-auto max-w-2xl space-y-8">
           {/* Datos del paciente + accesos */}
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-4">
                 <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary">
                   <User className="size-6" />
@@ -241,6 +241,16 @@ export default function MisTurnos() {
                         {t.estado === "cancelado" && (
                           <Badge variant="destructive" className="ml-auto">
                             Cancelado
+                          </Badge>
+                        )}
+                        {t.estado === "atendido" && (
+                          <Badge variant="outline" className="ml-auto">
+                            Atendido
+                          </Badge>
+                        )}
+                        {t.estado === "ausente" && (
+                          <Badge variant="secondary" className="ml-auto">
+                            No asististe
                           </Badge>
                         )}
                       </li>

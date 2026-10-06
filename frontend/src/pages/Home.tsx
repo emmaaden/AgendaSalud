@@ -29,7 +29,7 @@ const features = [
     icon: CalendarClock,
     title: "Turnos online",
     description:
-      "Reservá tu consulta en minutos, elegí profesional y horario disponible, y recibí la confirmación por email.",
+      "Reservá tu consulta online: elegí profesional y horario disponible, y recibí la confirmación por email.",
     to: "/turnos",
     cta: "Pedir turno",
   },
@@ -60,31 +60,31 @@ const steps = [
   {
     icon: CalendarPlus,
     title: "Seleccioná el horario",
-    description: "Vé los turnos disponibles en tiempo real y reservá.",
+    description: "Mirá los horarios libres del profesional y reservá el tuyo.",
   },
   {
     icon: ClipboardList,
     title: "Recibí la confirmación",
-    description: "Te llega el detalle del turno por email al instante.",
+    description: "Te enviamos el detalle del turno por email.",
   },
 ]
 
 const values = [
   {
     icon: ShieldCheck,
-    title: "Datos protegidos",
+    title: "Acceso controlado",
     description:
-      "Tu información clínica se maneja con seguridad y confidencialidad.",
+      "Tu historia clínica solo la ve el personal autorizado de tu clínica, y queda registrado cada acceso.",
   },
   {
     icon: Clock,
-    title: "Disponible 24/7",
-    description: "Reservá o consultá cuando quieras, sin llamadas ni esperas.",
+    title: "Sin llamadas",
+    description: "Reservá o consultá tus turnos online, sin esperar en el teléfono.",
   },
   {
     icon: Smartphone,
     title: "Desde cualquier dispositivo",
-    description: "Una experiencia rápida y clara en el celular o la computadora.",
+    description: "Funciona en el navegador del celular o de la computadora.",
   },
 ]
 
@@ -251,6 +251,8 @@ function ProximoTurnoCard() {
   )
 }
 
+// Solo datos verificables: nada de «100 % online» ni «24/7» (son promesas de
+// disponibilidad que no se pueden garantizar ni probar).
 // Cantidad real de especialidades con al menos un profesional (misma fuente que
 // la página de turnos). Si no se puede obtener, la estadística no se muestra:
 // nunca un número inventado.
@@ -268,8 +270,7 @@ function useEspecialidadesActivas() {
 function HeroStats() {
   const especialidades = useEspecialidadesActivas()
   const stats: { label: string; value: React.ReactNode }[] = [
-    { label: "Online", value: "100%" },
-    { label: "Disponible", value: "24/7" },
+    { label: "Reservar es gratis", value: "$0" },
   ]
   if (especialidades === null) {
     stats.push({
@@ -281,7 +282,7 @@ function HeroStats() {
   }
 
   return (
-    <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
+    <dl className="mt-10 grid max-w-md grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6">
       {stats.map((s) => (
         // dt = etiqueta, dd = valor; flex-col-reverse muestra el valor arriba.
         <div key={s.label} className="flex flex-col-reverse">
@@ -311,7 +312,7 @@ export default function Home() {
         <Container className="grid items-center gap-12 py-16 sm:py-24 lg:grid-cols-2">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium text-primary">
-              <span className="size-1.5 rounded-full bg-primary" />
+              <span aria-hidden className="size-1.5 rounded-full bg-primary" />
               Salud simple y organizada
             </span>
             <h1 className="mt-5 text-4xl font-semibold leading-tight sm:text-5xl">
@@ -320,7 +321,7 @@ export default function Home() {
             </h1>
             <p className="mt-5 max-w-xl text-lg text-muted-foreground">
               Reservá turnos online, accedé a tu historia clínica y gestioná tu
-              consultorio desde un solo lugar. Rápido, claro y profesional.
+              consultorio desde un solo lugar.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
@@ -409,7 +410,7 @@ export default function Home() {
             <Button asChild size="lg">
               <Link to="/turnos">
                 <CalendarPlus />
-                Empezar ahora
+                Pedir turno
               </Link>
             </Button>
           </div>
@@ -435,7 +436,7 @@ export default function Home() {
                 <Link to="/planes">Ver planes</Link>
               </Button>
               <Button asChild variant="ghost" size="lg">
-                <Link to="/register/profesional">Soy profesional</Link>
+                <Link to="/register/profesional">Crear cuenta profesional</Link>
               </Button>
             </div>
           </div>
@@ -467,7 +468,7 @@ export default function Home() {
               ¿Listo para empezar?
             </h2>
             <p className="relative mx-auto mt-3 max-w-xl text-primary-foreground/80">
-              Creá tu cuenta gratis o reservá tu próximo turno en segundos.
+              Creá tu cuenta de paciente sin costo o reservá tu próximo turno online.
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-3">
               <Button asChild size="lg" variant="secondary">
@@ -477,7 +478,7 @@ export default function Home() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="border-white/30 bg-transparent text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
+                className="border-white/30 bg-transparent text-primary-foreground hover:bg-white/10 hover:text-primary-foreground dark:border-white/30 dark:bg-transparent dark:hover:bg-white/10"
               >
                 <Link to="/turnos">Pedir turno</Link>
               </Button>

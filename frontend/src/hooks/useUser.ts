@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
 
+// Rol de la membresía en una clínica (Fase J: + auditor).
+export type RolClinica = "admin" | "profesional" | "recepcion" | "auditor"
+
 export type ClinicaMembresia = {
   clinicaId: string
   nombre: string | null
-  rol: "admin" | "profesional" | "recepcion"
+  rol: RolClinica
 }
 
 export type CurrentUser = {
@@ -16,8 +19,10 @@ export type CurrentUser = {
   role: string
   // Fase A (multi-clínica): clínica activa, rol en ella y todas las membresías.
   clinicaId: string | null
-  rol: "admin" | "profesional" | "recepcion" | null
+  rol: RolClinica | null
   esAdmin: boolean
+  // Fase J: alcance del auditor (obra social) en la clínica activa; null = interno.
+  alcanceObraSocial?: string | null
   clinicas: ClinicaMembresia[]
   needsClinicSelection: boolean
 }

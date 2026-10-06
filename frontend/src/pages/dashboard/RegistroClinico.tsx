@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import {
   Search,
@@ -11,13 +12,19 @@ import {
   FileText,
   User,
   Stethoscope,
+  ShieldCheck,
+  Pencil,
+  Tags,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Field } from "@/components/form/Field"
+import { DictationTextarea } from "@/components/form/DictationTextarea"
 import { SelectField } from "@/components/form/SelectField"
+import { CoberturaFields } from "@/components/form/CoberturaFields"
+import { CodificacionEditor, CodificacionResumen } from "@/components/form/CodificacionEditor"
 import { Container } from "@/components/site/Section"
 import {
   Dialog,
@@ -31,6 +38,15 @@ import { Odontogram, type Diente } from "@/components/dashboard/Odontogram"
 import { api, ApiError } from "@/lib/api"
 import { downloadPatientHistoryPdf, type Paciente } from "@/lib/patientPdf"
 import { useAuth } from "@/contexts/AuthContext"
+import {
+  COBERTURA_VACIA,
+  CODIFICACION_VACIA,
+  coberturaPayload,
+  codificacionPayload,
+  type Cobertura,
+  type Codificacion,
+} from "@/lib/catalogos"
+import { ESTADO_AUDITORIA, type EstadoAuditoria } from "@/lib/auditoria"
 
 const SEXO = [
   { value: "Masculino", label: "Masculino" },
@@ -57,7 +73,6 @@ const emptyForm = {
   direccion: "",
   fechaNacimiento: "",
   edad: "",
-  obraSocial: "",
   sintomas: "",
   diagnostico: "",
   tratamiento: "",
@@ -139,7 +154,7 @@ function MenuCard({
   return (
     <button onClick={onClick} className="group text-left">
       <Card className="h-full transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:ring-primary/40 motion-reduce:group-hover:translate-y-0">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
             <Icon className="size-6" />
           </div>
@@ -167,6 +182,8 @@ function RegistrarPaciente({
   onBack: () => void
 }) {
   const [form, setForm] = useState({ ...emptyForm })
+  const [cobertura, setCobertura] = useState<Cobertura>(COBERTURA_VACIA)
+  const [codificacion, setCodificacion] = useState<Codificacion>(CODIFICACION_VACIA)
   const [dientes, setDientes] = useState<Diente[]>([])
   const [saving, setSaving] = useState(false)
   const [clave, setClave] = useState<string | null>(null)
@@ -176,8 +193,8 @@ function RegistrarPaciente({
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault()
-    const req = ["nombre", "dni", "telefono", "email", "sexo", "direccion", "fechaNacimiento", "obraSocial"] as const
-    if (req.some((k) => !form[k])) {
+    const req = ["nombre", "dni", "telefono", "email", "sexo", "direccion", "fechaNacimiento"] as const
+    if (req.some((k) => !form[k]) || !cobertura.idObraSocial) {
       toast.warning("Completá los datos personales obligatorios.")
       return
     }
@@ -194,7 +211,7 @@ function RegistrarPaciente({
         direccion: form.direccion,
         fechaNacimiento: form.fechaNacimiento,
         edad: form.edad,
-        obraSocial: form.obraSocial,
+        ...coberturaPayload(cobertura),
         area,
         profesional,
         sintomas: form.sintomas,
@@ -202,6 +219,7 @@ function RegistrarPaciente({
         tratamiento: form.tratamiento,
         fecha: new Date(),
         ...(isOdonto ? { dientes } : {}),
+        ...codificacionPayload(codificacion),
       })
       setClave(password)
     } catch (err) {
@@ -223,7 +241,7 @@ function RegistrarPaciente({
 
       <form onSubmit={guardar} className="space-y-6">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <h2 className="flex items-center gap-2 font-semibold">
               <User className="size-5 text-primary" /> Datos personales
             </h2>
@@ -257,35 +275,34 @@ function RegistrarPaciente({
               <Field label="Edad" htmlFor="edad">
                 <Input id="edad" type="number" className="h-10" value={form.edad} onChange={set("edad")} />
               </Field>
-              <Field label="Obra social" htmlFor="obraSocial" required className="sm:col-span-2">
-                <Input id="obraSocial" className="h-10" value={form.obraSocial} onChange={set("obraSocial")} />
-              </Field>
+              <CoberturaFields value={cobertura} onChange={setCobertura} required idPrefix="reg" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <h2 className="flex items-center gap-2 font-semibold">
               <Stethoscope className="size-5 text-primary" /> Primera consulta
             </h2>
             <div className="mt-4 space-y-4">
               <Field label="Síntomas" htmlFor="sintomas">
-                <Textarea id="sintomas" rows={2} value={form.sintomas} onChange={set("sintomas")} />
+                <DictationTextarea id="sintomas" rows={2} value={form.sintomas} onValueChange={(v) => setForm((f) => ({ ...f, sintomas: v }))} />
               </Field>
               <Field label="Diagnóstico" htmlFor="diagnostico">
-                <Textarea id="diagnostico" rows={2} value={form.diagnostico} onChange={set("diagnostico")} />
+                <DictationTextarea id="diagnostico" rows={2} value={form.diagnostico} onValueChange={(v) => setForm((f) => ({ ...f, diagnostico: v }))} />
               </Field>
               <Field label="Tratamiento" htmlFor="tratamiento">
-                <Textarea id="tratamiento" rows={2} value={form.tratamiento} onChange={set("tratamiento")} />
+                <DictationTextarea id="tratamiento" rows={2} value={form.tratamiento} onValueChange={(v) => setForm((f) => ({ ...f, tratamiento: v }))} />
               </Field>
+              <CodificacionEditor value={codificacion} onChange={setCodificacion} />
             </div>
           </CardContent>
         </Card>
 
         {isOdonto && (
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <h2 className="font-semibold">Odontograma</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Tocá un diente para registrar su estado.
@@ -353,7 +370,30 @@ function BuscarPaciente({
   const [diagnostico, setDiagnostico] = useState("")
   const [tratamiento, setTratamiento] = useState("")
   const [dientes, setDientes] = useState<Diente[]>([])
+  const [codificacion, setCodificacion] = useState<Codificacion>(CODIFICACION_VACIA)
   const [saving, setSaving] = useState(false)
+  // Fase K: edición de la cobertura del paciente.
+  const [editCob, setEditCob] = useState<Cobertura | null>(null)
+  const [savingCob, setSavingCob] = useState(false)
+
+  async function guardarCobertura() {
+    if (!paciente || !editCob) return
+    if (!editCob.idObraSocial) {
+      toast.warning("Elegí la obra social.")
+      return
+    }
+    setSavingCob(true)
+    try {
+      await api.put("/pacient/cobertura", { dni: paciente.dni, ...coberturaPayload(editCob) })
+      toast.success("Cobertura actualizada")
+      setEditCob(null)
+      setPaciente(await api.post<Paciente>("/pacient/get-data-pacient", { dni: paciente.dni }))
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "No se pudo actualizar la cobertura.")
+    } finally {
+      setSavingCob(false)
+    }
+  }
 
   async function buscar(e: React.FormEvent) {
     e.preventDefault()
@@ -374,7 +414,7 @@ function BuscarPaciente({
 
   async function guardarConsulta() {
     if (!paciente) return
-    if (!sintomas && !diagnostico && !tratamiento) {
+    if (!sintomas && !diagnostico && !tratamiento && !codificacion.diagnosticos.length && !codificacion.practicas.length) {
       toast.warning("Cargá al menos un dato de la consulta.")
       return
     }
@@ -389,11 +429,13 @@ function BuscarPaciente({
         tratamiento,
         fecha: new Date(),
         ...(isOdonto ? { dientes } : {}),
+        ...codificacionPayload(codificacion),
       })
       toast.success("Consulta guardada")
       setSintomas("")
       setDiagnostico("")
       setTratamiento("")
+      setCodificacion(CODIFICACION_VACIA)
       // Refrescar ficha
       const data = await api.post<Paciente>("/pacient/get-data-pacient", {
         dni: paciente.dni,
@@ -415,7 +457,7 @@ function BuscarPaciente({
           <ArrowLeft /> Volver
         </Button>
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <form onSubmit={buscar} className="flex flex-col gap-3 sm:flex-row">
               <Input
                 type="number"
@@ -445,6 +487,8 @@ function BuscarPaciente({
     ["Fecha de nacimiento", paciente.fechaNacimiento],
     ["Edad", paciente.edad],
     ["Obra social", paciente.obraSocial],
+    ["N.º de afiliado", paciente.nroAfiliado],
+    ["Plan", paciente.plan],
     ["Fecha de apertura", paciente.fechaApertura],
   ]
 
@@ -454,21 +498,41 @@ function BuscarPaciente({
         <Button variant="ghost" onClick={() => setPaciente(null)}>
           <ArrowLeft /> Nueva búsqueda
         </Button>
-        <Button variant="outline" onClick={() => downloadPatientHistoryPdf(paciente)}>
-          <Download /> Descargar PDF
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link to={`/dashboard/autorizaciones?dni=${encodeURIComponent(paciente.dni)}`}>
+              <ShieldCheck /> Solicitar autorización
+            </Link>
+          </Button>
+          <Button variant="outline" onClick={() => downloadPatientHistoryPdf(paciente)}>
+            <Download /> Descargar PDF
+          </Button>
+        </div>
       </div>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary">
               <User className="size-6" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-xl font-semibold">{paciente.fullName}</h2>
               <p className="text-sm text-muted-foreground">Ficha del paciente</p>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setEditCob({
+                  idObraSocial: paciente.idObraSocial ? String(paciente.idObraSocial) : "",
+                  nroAfiliado: paciente.nroAfiliado || "",
+                  plan: paciente.plan || "",
+                })
+              }
+            >
+              <Pencil /> Cobertura
+            </Button>
           </div>
           <dl className="mt-6 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
             {datos.map(([label, value]) => (
@@ -483,20 +547,21 @@ function BuscarPaciente({
 
       {/* Nueva consulta */}
       <Card className="mt-6">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <h3 className="flex items-center gap-2 font-semibold">
             <Stethoscope className="size-5 text-primary" /> Nueva consulta
           </h3>
           <div className="mt-4 space-y-4">
             <Field label="Síntomas" htmlFor="s-sintomas">
-              <Textarea id="s-sintomas" rows={2} value={sintomas} onChange={(e) => setSintomas(e.target.value)} />
+              <DictationTextarea id="s-sintomas" rows={2} value={sintomas} onValueChange={setSintomas} />
             </Field>
             <Field label="Diagnóstico" htmlFor="s-diagnostico">
-              <Textarea id="s-diagnostico" rows={2} value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)} />
+              <DictationTextarea id="s-diagnostico" rows={2} value={diagnostico} onValueChange={setDiagnostico} />
             </Field>
             <Field label="Tratamiento" htmlFor="s-tratamiento">
-              <Textarea id="s-tratamiento" rows={2} value={tratamiento} onChange={(e) => setTratamiento(e.target.value)} />
+              <DictationTextarea id="s-tratamiento" rows={2} value={tratamiento} onValueChange={setTratamiento} />
             </Field>
+            <CodificacionEditor value={codificacion} onChange={setCodificacion} dni={paciente.dni} />
             {isOdonto && (
               <div>
                 <p className="mb-2 text-sm font-medium">Odontograma</p>
@@ -539,6 +604,21 @@ function BuscarPaciente({
                   <p><span className="font-medium text-muted-foreground">Diagnóstico: </span>{e.diagnostico}</p>
                   <p><span className="font-medium text-muted-foreground">Tratamiento: </span>{e.tratamiento}</p>
                 </div>
+                {((e.diagnosticos?.length ?? 0) > 0 || (e.practicas?.length ?? 0) > 0) && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                      <Tags className="size-4" /> Codificación
+                    </p>
+                    <CodificacionResumen diagnosticos={e.diagnosticos} practicas={e.practicas} />
+                  </div>
+                )}
+                {e.auditoria && e.auditoria !== "pendiente" && (
+                  <div className="mt-3">
+                    <Badge variant={ESTADO_AUDITORIA[e.auditoria as EstadoAuditoria]?.variant ?? "outline"}>
+                      Auditoría: {ESTADO_AUDITORIA[e.auditoria as EstadoAuditoria]?.label ?? e.auditoria}
+                    </Badge>
+                  </div>
+                )}
                 {e.dientes && e.dientes.length > 0 && (
                   <div className="mt-4 border-t border-border pt-4">
                     <p className="mb-2 text-sm font-medium text-muted-foreground">Odontograma</p>
@@ -552,6 +632,38 @@ function BuscarPaciente({
       ) : (
         <p className="mt-4 text-sm text-muted-foreground">No hay consultas registradas.</p>
       )}
+
+      <Dialog open={!!editCob} onOpenChange={(o) => !o && setEditCob(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cobertura del paciente</DialogTitle>
+            <DialogDescription>
+              Obra social, número de afiliado y plan. Se usan en las autorizaciones y en la
+              auditoría.
+            </DialogDescription>
+          </DialogHeader>
+          {editCob && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <CoberturaFields
+                value={editCob}
+                onChange={setEditCob}
+                required
+                idPrefix="edit-cob"
+                textoLegado={!paciente.idObraSocial ? paciente.obraSocial : undefined}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditCob(null)} disabled={savingCob}>
+              Cancelar
+            </Button>
+            <Button onClick={guardarCobertura} disabled={savingCob}>
+              {savingCob ? <Loader2 className="animate-spin" /> : <Save />}
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -199,7 +199,7 @@ export default function HistoriasClinicas() {
       {/* Resumen de importación */}
       {resumen && (
         <Card className="mt-6">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <h3 className="flex items-center gap-2 font-semibold">
               <CheckCircle2 className="size-5 text-primary" /> Resultado de la importación
             </h3>
@@ -227,7 +227,7 @@ export default function HistoriasClinicas() {
 
       {/* Pacientes en alcance */}
       <Card className="mt-6">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <h2 className="flex items-center gap-2 font-semibold">
             <Users className="size-5 text-primary" /> Pacientes en alcance
             <Badge variant="secondary" className="ml-1 font-normal">

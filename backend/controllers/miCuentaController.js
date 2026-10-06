@@ -11,6 +11,8 @@
 
 const { supabase } = require('../config/supabaseClient');
 const { serializarDiente } = require('../utils/odontograma');
+const { columnasCobertura } = require('../utils/cobertura');
+const { serializarCodificacion, SELECT_CODIFICACION } = require('../utils/codificacion');
 
 // Campos de persona que el paciente puede editar (NO dni / id_auth / clinica_id).
 const CAMPOS_PERSONA = ['nombre', 'apellido', 'telefono', 'direccion', 'sexo'];
@@ -65,7 +67,7 @@ async function getPersonaPaciente(session) {
     const authId = session.user.id;
     const { data, error } = await supabase
         .from('persona')
-        .select('id, nombre, apellido, dni, telefono, direccion, sexo, fecha_nacimiento, email, paciente(id, obra_social)')
+        .select('id, clinica_id, nombre, apellido, dni, telefono, direccion, sexo, fecha_nacimiento, email, paciente(id, obra_social, id_obra_social, nro_afiliado, plan)')
         .eq('id_auth', authId)
         .maybeSingle();
     if (error) throw error;
@@ -91,6 +93,10 @@ exports.getPerfil = async (req, res) => {
             email: persona.email || '',
             fechaNacimiento: persona.fecha_nacimiento || '', // ISO 'YYYY-MM-DD'
             obraSocial: (paciente && paciente.obra_social) || '',
+            // Fase K: cobertura estructurada.
+            idObraSocial: (paciente && paciente.id_obra_social) || null,
+            nroAfiliado: (paciente && paciente.nro_afiliado) || '',
+            plan: (paciente && paciente.plan) || '',
         });
     } catch (err) {
         console.error('Error en mi-cuenta/perfil (GET):', err);
@@ -124,14 +130,21 @@ exports.updatePerfil = async (req, res) => {
             if (error) throw error;
         }
 
-        // Obra social vive en paciente.
+        // Obra social vive en paciente. Fase K: del catálogo (global o de su clínica)
+        // + afiliado + plan; el texto libre queda solo por compatibilidad.
         const paciente = persona.paciente && persona.paciente[0];
-        if (req.body.obraSocial !== undefined && paciente) {
-            const { error } = await supabase
-                .from('paciente')
-                .update({ obra_social: req.body.obraSocial || null })
-                .eq('id', paciente.id);
-            if (error) throw error;
+        if (paciente) {
+            const cob = await columnasCobertura(req.body, persona.clinica_id || null);
+            if (!cob.ok) return res.status(400).json({ error: cob.error });
+            const cols = { ...cob.cols };
+            if (req.body.obraSocial !== undefined && cols.id_obra_social === undefined) {
+                cols.obra_social = req.body.obraSocial || null;
+                cols.id_obra_social = null;
+            }
+            if (Object.keys(cols).length) {
+                const { error } = await supabase.from('paciente').update(cols).eq('id', paciente.id);
+                if (error) throw error;
+            }
         }
 
         return res.json({ message: 'Datos actualizados.' });
@@ -155,7 +168,8 @@ exports.exportHistoria = async (req, res) => {
 
         const { data: registros, error } = await supabase
             .from('registro_clinico')
-            .select('id, fecha, profesional_nombre, area, sintomas, diagnostico, tratamiento, registro_diente(numero, condicion, cara, estado, notas)')
+            .select(`id, fecha, profesional_nombre, area, sintomas, diagnostico, tratamiento,
+                registro_diente(numero, condicion, cara, estado, notas), ${SELECT_CODIFICACION}`)
             .eq('id_paciente', paciente.id)
             .order('fecha', { ascending: true });
         if (error) throw error;
@@ -176,6 +190,8 @@ exports.exportHistoria = async (req, res) => {
                 email: persona.email || null,
                 direccion: persona.direccion || null,
                 obraSocial: paciente.obra_social || null,
+                nroAfiliado: paciente.nro_afiliado || null,
+                plan: paciente.plan || null,
                 registros: (registros || []).map((r) => ({
                     origenId: r.id,
                     fecha: r.fecha,
@@ -185,6 +201,7 @@ exports.exportHistoria = async (req, res) => {
                     diagnostico: r.diagnostico || null,
                     tratamiento: r.tratamiento || null,
                     odontograma: (r.registro_diente || []).map(serializarDiente),
+                    ...serializarCodificacion(r),
                 })),
             }],
         };
@@ -212,7 +229,8 @@ exports.getHistoria = async (req, res) => {
 
         const { data: registros, error: regError } = await supabase
             .from('registro_clinico')
-            .select('id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, registro_diente(numero, condicion, cara, estado, notas)')
+            .select(`id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento,
+                registro_diente(numero, condicion, cara, estado, notas), ${SELECT_CODIFICACION}`)
             .eq('id_paciente', paciente.id)
             .order('fecha', { ascending: true });
         if (regError) throw regError;
@@ -225,6 +243,7 @@ exports.getHistoria = async (req, res) => {
             diagnostico: r.diagnostico || '',
             tratamiento: r.tratamiento || '',
             dientes: (r.registro_diente || []).map(serializarDiente),
+            ...serializarCodificacion(r),
         }));
 
         const fechaApertura = registros && registros.length > 0 ? fmtFecha(registros[0].fecha) : '';
@@ -239,11 +258,55 @@ exports.getHistoria = async (req, res) => {
             fechaNacimiento: fmtFecha(persona.fecha_nacimiento),
             edad: calcEdad(persona.fecha_nacimiento),
             obraSocial: paciente.obra_social || '',
+            nroAfiliado: paciente.nro_afiliado || '',
+            plan: paciente.plan || '',
             fechaApertura,
             history,
         });
     } catch (err) {
         console.error('Error en mi-cuenta/historia:', err);
         return res.status(500).json({ error: 'Error al obtener tu historia clínica.' });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Fase K: GET /api/mi-cuenta/accesos -> quién accedió a MI historia clínica
+// (bitácora hc_acceso). Transparencia para el paciente (Ley 26.529). No expone la IP
+// ni el user-agent de quien accedió.
+// ---------------------------------------------------------------------------
+const ACCIONES_PACIENTE = [
+    'ver_hc', 'crear_registro', 'registrar_paciente', 'exportar_hc', 'importar_hc',
+    'ver_registro_auditoria', 'revisar', 'responder',
+    'solicitar_autorizacion', 'ver_autorizacion', 'resolver_autorizacion',
+    'ver_adjunto_autorizacion', 'editar_cobertura',
+];
+
+exports.misAccesos = async (req, res) => {
+    try {
+        const persona = await getPersonaPaciente(req.session);
+        const paciente = persona && persona.paciente && persona.paciente[0];
+        if (!paciente) return res.json({ accesos: [] });
+
+        const { data, error } = await supabase
+            .from('hc_acceso')
+            .select('id, creado_en, actor_nombre, actor_rol, accion')
+            .eq('id_paciente', paciente.id)
+            .in('accion', ACCIONES_PACIENTE)
+            .order('creado_en', { ascending: false })
+            .limit(200);
+        if (error) throw error;
+
+        return res.json({
+            accesos: (data || []).map((a) => ({
+                id: a.id,
+                fecha: a.creado_en,
+                actor: a.actor_nombre || '',
+                rol: a.actor_rol || '',
+                accion: a.accion,
+            })),
+        });
+    } catch (err) {
+        console.error('Error en mi-cuenta/accesos:', err);
+        return res.status(500).json({ error: 'Error al obtener los accesos a tu historia clínica.' });
     }
 };

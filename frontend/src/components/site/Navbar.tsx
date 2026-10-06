@@ -42,7 +42,7 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo />
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav aria-label="Principal" className="hidden items-center gap-1 md:flex">
           {NAV_LINKS.map((l) => (
             <DesktopLink key={l.to} {...l} />
           ))}
@@ -53,6 +53,7 @@ export function Navbar() {
             className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             Ayuda
+            <span className="sr-only"> por WhatsApp (se abre en una pestaña nueva)</span>
           </a>
         </nav>
 
@@ -100,7 +101,7 @@ export function Navbar() {
                   <Logo />
                 </SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col gap-1 px-4">
+              <nav aria-label="Principal" className="flex flex-col gap-1 px-4">
                 {NAV_LINKS.map((l) => (
                   <SheetClose asChild key={l.to}>
                     <NavLink
@@ -123,7 +124,8 @@ export function Navbar() {
                   rel="noreferrer"
                   className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 >
-                  <LifeBuoy className="size-4" /> Ayuda
+                  <LifeBuoy className="size-4" aria-hidden /> Ayuda
+                  <span className="sr-only"> por WhatsApp (se abre en una pestaña nueva)</span>
                 </a>
               </nav>
               <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">

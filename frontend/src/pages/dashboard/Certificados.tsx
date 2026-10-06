@@ -220,7 +220,7 @@ export default function Certificados() {
 
       {/* Buscar paciente */}
       <Card className="mt-6">
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <h2 className="font-semibold">Paciente</h2>
           <form onSubmit={buscar} className="mt-3 flex flex-wrap gap-2">
             <Input
@@ -249,7 +249,7 @@ export default function Certificados() {
         <>
           {/* Emitir */}
           <Card className="mt-6">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <h2 className="flex items-center gap-2 font-semibold">
                 <FilePlus2 className="size-5 text-primary" /> Nuevo certificado
               </h2>
@@ -332,7 +332,7 @@ export default function Certificados() {
 
           {/* Listado del paciente */}
           <Card className="mt-6">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <h2 className="font-semibold">Certificados de {paciente.nombre}</h2>
               <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
                 {certificados.map((c) => (

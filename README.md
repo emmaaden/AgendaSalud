@@ -6,7 +6,6 @@ AgendaSalud es una plataforma diseñada para gestionar turnos médicos y registr
 - **Gestión de turnos médicos:** Los usuarios pueden consultar la disponibilidad y reservar citas fácilmente.
 - **Registro clínico:** Herramientas para que los profesionales lleven un control organizado de la información de sus pacientes.
 - **Interfaz intuitiva:** Diseñada para ser fácil de usar tanto por pacientes como por profesionales.
-- **Integración con Google Calendar:** Sincronización automática de turnos con calendarios personales o profesionales.
 - **Planes personalizables:** Adaptable a las necesidades de diferentes profesionales y consultorios.
 
 ## Licencia

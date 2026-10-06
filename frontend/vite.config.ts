@@ -21,10 +21,16 @@ const API_PREFIXES = [
   '/hc',
   '/staff',
   '/estudios',
+  '/dictado',
+  '/auditoria',
+  '/catalogos',
+  '/autorizaciones',
   '/professionals',
   '/available-slots',
   '/create-event',
   '/api',
+  '/robots.txt',
+  '/sitemap.xml',
 ]
 
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:3000'

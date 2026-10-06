@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { slugify } = require('../utils/slug');
-const { getMembresiasActivas } = require('../utils/membresias');
+const { getMembresiasActivas, roleSinProfesional } = require('../utils/membresias');
+const { columnasCobertura } = require('../utils/cobertura');
 require('dotenv').config();
 
 // service_role: SALTEA la RLS. Se usa SOLO para operaciones sobre tablas.
@@ -35,10 +36,11 @@ exports.register = async (req, res) => {
         // Resuelve un código de activación validando que apunte al rol esperado.
         // Fase E: el código lleva `rol` ('profesional' | 'recepcion'). Un código de
         // recepción no puede usarse para crear un profesional, y viceversa.
-        async function resolverCodigo(rolEsperado) {
+        // Fase J: el alta sin matrícula (formulario de staff) acepta también 'auditor'.
+        async function resolverCodigo(...rolesEsperados) {
             const { data: cod, error: codErr } = await supabase
                 .from("codigo_activacion")
-                .select("id, clinica_id, usado, rol")
+                .select("id, clinica_id, usado, rol, alcance_obra_social, alcance_id_obra_social")
                 .eq("codigo", String(activationCode).trim())
                 .maybeSingle();
             if (codErr) throw codErr;
@@ -46,7 +48,7 @@ exports.register = async (req, res) => {
                 return { error: "Código de activación inválido o ya utilizado." };
             }
             // Compat: los códigos previos a la Fase E no tienen rol -> 'profesional'.
-            if ((cod.rol || 'profesional') !== rolEsperado) {
+            if (!rolesEsperados.includes(cod.rol || 'profesional')) {
                 return { error: "El código no corresponde a este tipo de cuenta." };
             }
             return { cod };
@@ -68,7 +70,7 @@ exports.register = async (req, res) => {
             if (!tieneCodigo) {
                 return res.status(400).json({ error: "La recepción se une con un código de activación." });
             }
-            const r = await resolverCodigo('recepcion');
+            const r = await resolverCodigo('recepcion', 'auditor');
             if (r.error) return res.status(400).json({ error: r.error });
             clinicaId = r.cod.clinica_id;
             codigoRow = r.cod;
@@ -77,7 +79,18 @@ exports.register = async (req, res) => {
         // Creamos usuario en Supabase Auth (cliente anon: si el signUp devolviera sesión
         // —confirmación de email desactivada— no debe adjuntarse al cliente service_role,
         // porque los INSERT siguientes dejarían de saltear la RLS).
-        const { data, error } = await supabaseAuth.auth.signUp({ email, password });
+        // Prueba del consentimiento (Ley 25.326): qué versión de los textos legales aceptó
+        // y cuándo. Va en los metadatos del usuario de Auth (sin cambios de esquema).
+        const consentimiento = {
+            acepta_terminos: true,
+            version_legal: req.body.versionLegal || null,
+            aceptado_at: new Date().toISOString(),
+        };
+        const { data, error } = await supabaseAuth.auth.signUp({
+            email,
+            password,
+            options: { data: { consentimiento } },
+        });
         if (error) { return res.status(400).json({ error: error.message }); }
 
         const user = data.user;
@@ -119,10 +132,12 @@ exports.register = async (req, res) => {
                 dni,
                 nombre,
                 apellido,
-                fecha_nacimiento: fechaNacimiento,
-                telefono,
-                direccion,
-                sexo,
+                // Campos opcionales (minimización): un string vacío se guarda como NULL
+                // (una fecha vacía, además, rompería el INSERT en la columna date).
+                fecha_nacimiento: fechaNacimiento || null,
+                telefono: telefono || null,
+                direccion: direccion || null,
+                sexo: sexo || null,
                 clinica_id: clinicaId
             }])
             .select()
@@ -133,9 +148,13 @@ exports.register = async (req, res) => {
         const id_persona = persona_data.id;
 
         if (role === "PACIENTE") {
+            // Fase K: cobertura del catálogo global (el paciente aún no tiene clínica).
+            // Si no eligió del catálogo, se conserva el texto libre (compatibilidad).
+            const cob = await columnasCobertura(req.body, null);
+            const cols = cob.ok ? cob.cols : {};
             const { error: err } = await supabase
                 .from("paciente")
-                .insert([{ id_persona, obra_social: obraSocial }]);
+                .insert([{ id_persona, obra_social: obraSocial || null, ...cols }]);
             if (err) throw err;
         }
 
@@ -187,12 +206,16 @@ exports.register = async (req, res) => {
             // Fase E: la recepción NO tiene fila en `profesional` (no es un profesional:
             // sin matrícula ni especialidad). Su pertenencia y permisos viven en la
             // membresía. La clínica activa se resuelve luego a partir de ella.
+            // Fase J: con un código de auditor queda como 'auditor' (con el alcance del código).
+            const esAuditor = codigoRow && codigoRow.rol === 'auditor';
             const { error: err_mem } = await supabase
                 .from("membresia")
                 .insert([{
                     id_persona,
                     clinica_id: clinicaId,
-                    rol: 'recepcion',
+                    rol: esAuditor ? 'auditor' : 'recepcion',
+                    alcance_obra_social: esAuditor ? (codigoRow.alcance_obra_social || null) : null,
+                    alcance_id_obra_social: esAuditor ? (codigoRow.alcance_id_obra_social || null) : null,
                     activo: true,
                 }]);
             if (err_mem) throw err_mem;
@@ -299,14 +322,16 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Fase E: sin fila en `profesional` pero con membresía activa => RECEPCIÓN.
-        if (!role) role = "recepcion";
+        // Fase E: sin fila en `profesional` pero con membresía activa => RECEPCIÓN
+        // (Fase J: o AUDITOR, si esa es su membresía).
+        if (!role) role = roleSinProfesional(membresias);
 
         if (membresias.length === 1) {
             const m = membresias[0];
             req.session.user = {
                 idRole, id: userId, personaId, email: data.user.email, role,
                 clinicaId: m.clinicaId, rol: m.rol, esAdmin: m.esAdmin,
+                alcanceObraSocial: m.alcanceObraSocial, alcanceIdObraSocial: m.alcanceIdObraSocial,
             };
             return res.json({ message: "Login exitoso", user: req.session.user });
         }
@@ -314,7 +339,7 @@ exports.login = async (req, res) => {
         // Varias clínicas: no se fija ninguna todavía; el cliente debe elegir.
         req.session.user = {
             idRole, id: userId, personaId, email: data.user.email, role,
-            clinicaId: null, rol: null, esAdmin: false,
+            clinicaId: null, rol: null, esAdmin: false, alcanceObraSocial: null, alcanceIdObraSocial: null,
         };
         return res.json({
             message: "Elegí la clínica para trabajar",
@@ -373,6 +398,13 @@ exports.selectClinica = async (req, res) => {
         req.session.user.clinicaId = elegida.clinicaId;
         req.session.user.rol = elegida.rol;
         req.session.user.esAdmin = elegida.esAdmin;
+        req.session.user.alcanceObraSocial = elegida.alcanceObraSocial;
+        req.session.user.alcanceIdObraSocial = elegida.alcanceIdObraSocial;
+        // Fase J: una cuenta sin fila en `profesional` es auditor o recepción según
+        // la clínica elegida (puede ser auditor en una y recepción en otra).
+        if (!req.session.user.idRole) {
+            req.session.user.role = roleSinProfesional([elegida]);
+        }
 
         return res.json({
             message: 'Clínica seleccionada',

@@ -60,7 +60,7 @@ export default function Login() {
       subtitle="Accedé a tus turnos y tus datos. Si sos profesional, gestioná tu agenda y tu clínica."
       bullets={[
         "Pacientes: mirá y cancelá tus turnos",
-        "Turnos y calendario sincronizados",
+        "Profesionales: agenda de turnos en un panel",
         "Historia clínica digital",
       ]}
     >
