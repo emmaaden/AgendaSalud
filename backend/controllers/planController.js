@@ -2,6 +2,8 @@
 // clínica activa (estado, uso de asientos) para el panel.
 
 const planes = require('../utils/planes');
+const { supabase } = require('../config/supabaseClient');
+const mp = require('../utils/mercadopago');
 
 // GET /api/planes/catalogo — público. Planes vigentes + textos de cada feature.
 exports.catalogo = async (req, res) => {
@@ -25,17 +27,43 @@ exports.miClinica = async (req, res) => {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica activa seleccionada.' });
 
-        const [plan, uso, todos] = await Promise.all([
+        const [plan, uso, todos, susRes, pagosRes] = await Promise.all([
             planes.getPlanClinica(clinicaId),
             planes.usoClinica(clinicaId),
             planes.getPlanes(),
+            // Fase M: débito automático de Mercado Pago y últimos cobros.
+            supabase.from('suscripcion')
+                .select('mp_estado, mp_payer_email, monto, renovacion_automatica, proximo_cobro')
+                .eq('clinica_id', clinicaId).maybeSingle(),
+            supabase.from('suscripcion_pago')
+                .select('id, fecha, monto, estado, plan_id, ciclo, periodo_desde, periodo_hasta')
+                .eq('clinica_id', clinicaId).order('fecha', { ascending: false }).limit(24),
         ]);
+        const s = susRes.data;
         return res.json({
             plan,
             uso,
             planes: [...todos.values()].filter((p) => p.activo || p.id === plan?.planId),
             features: planes.FEATURES,
             diasGracia: planes.DIAS_GRACIA,
+            pagoOnline: mp.configurado(),
+            debito: s && s.mp_estado ? {
+                estado: s.mp_estado,
+                payerEmail: s.mp_payer_email,
+                monto: s.monto == null ? null : Number(s.monto),
+                renovacionAutomatica: s.renovacion_automatica,
+                proximoCobro: s.proximo_cobro,
+            } : null,
+            pagos: (pagosRes.data || []).map((p) => ({
+                id: p.id,
+                fecha: p.fecha,
+                monto: p.monto == null ? null : Number(p.monto),
+                estado: p.estado,
+                planId: p.plan_id,
+                ciclo: p.ciclo,
+                periodoDesde: p.periodo_desde,
+                periodoHasta: p.periodo_hasta,
+            })),
         });
     } catch (err) {
         console.error('Error en planes/mi-clinica:', err);

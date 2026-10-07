@@ -358,6 +358,17 @@ module.exports = {
             page: paginaQuery,
         }),
     },
+    // Fase M: contratación del plan de la clínica con Mercado Pago.
+    pagos: {
+        contratar: z.object({
+            planId: z.string().trim().min(1).max(40),
+            ciclo: z.enum(['mensual', 'anual'], 'Ciclo inválido'),
+            profesionalesExtra: z.number().int().min(0).max(500).optional(),
+            // Obligatorio solo si hay que pasar por el checkout (lo exige el servicio).
+            payerEmail: z.email('Ingresá el email de tu cuenta de Mercado Pago').optional(),
+        }),
+    },
+
     // Fase L: panel de la plataforma (activación manual de planes y precios).
     plataforma: {
         suscripcion: z.object({

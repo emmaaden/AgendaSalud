@@ -137,6 +137,13 @@ export default function Privacidad() {
                   almacenamiento de archivos), el proveedor de alojamiento del servidor
                   y el proveedor de envío de emails.
                 </li>
+                <li>
+                  Si contratás un plan para tu clínica: Mercado Pago, que procesa el pago
+                  y el débito automático. Le enviamos el email que indiques para pagar, el
+                  plan y el monto; los datos de la tarjeta los cargás directamente en
+                  Mercado Pago y nunca pasan por AgendaSalud. A los pacientes no se les
+                  cobra nada.
+                </li>
                 <li>Autoridades judiciales o administrativas, cuando la ley lo exija.</li>
               </ul>
             </>

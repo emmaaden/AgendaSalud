@@ -6,6 +6,8 @@
 
 const { supabase } = require('../config/supabaseClient');
 const planes = require('../utils/planes');
+const suscripcionMp = require('../utils/suscripcionMp');
+const mp = require('../utils/mercadopago');
 
 // GET /plataforma/clinicas — todas las clínicas con su suscripción y uso.
 exports.listarClinicas = async (req, res) => {
@@ -44,13 +46,20 @@ exports.listarClinicas = async (req, res) => {
                     pruebaHasta: s.prueba_hasta,
                     periodoHasta: s.periodo_hasta,
                     notas: s.notas,
+                    // Fase M: débito automático de Mercado Pago.
+                    mpEstado: s.mp_estado,
+                    mpPayerEmail: s.mp_payer_email,
+                    monto: s.monto == null ? null : Number(s.monto),
+                    proximoCobro: s.proximo_cobro,
                 },
                 uso: uso.get(c.id) || { profesionales: 0, recepcion: 0, auditores: 0 },
             };
         });
 
         const todos = await planes.getPlanes();
-        return res.json({ clinicas, planes: [...todos.values()], features: planes.FEATURES });
+        return res.json({
+            clinicas, planes: [...todos.values()], features: planes.FEATURES, pagoOnline: mp.configurado(),
+        });
     } catch (err) {
         console.error('Error en plataforma/clinicas:', err);
         return res.status(500).json({ error: 'No se pudieron listar las clínicas.' });
@@ -139,5 +148,18 @@ exports.actualizarPlan = async (req, res) => {
     } catch (err) {
         console.error('Error en plataforma/planes:', err);
         return res.status(500).json({ error: 'No se pudo actualizar el plan.' });
+    }
+};
+
+// POST /plataforma/clinicas/:id/sincronizar — Fase M: vuelve a leer de Mercado Pago el
+// débito y los cobros de la clínica (p. ej. si un webhook no llegó).
+exports.sincronizarMp = async (req, res) => {
+    try {
+        if (!mp.configurado()) return res.status(503).json({ error: 'Mercado Pago no está configurado (MP_ACCESS_TOKEN).' });
+        await suscripcionMp.sincronizarClinica(req.params.id);
+        return res.json({ message: 'Sincronizado con Mercado Pago' });
+    } catch (err) {
+        console.error('Error en plataforma/sincronizar:', err);
+        return res.status(502).json({ error: 'No se pudo sincronizar con Mercado Pago.' });
     }
 };

@@ -96,6 +96,28 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 
 ## 7. Changelog
 
+### 2026-10-06 — Fase M: suscripción de las clínicas con Mercado Pago
+- **Cobro a la clínica, nunca al paciente.** Suscripciones de MP «sin plan asociado, con pago
+  pendiente» (`POST /preapproval`): el admin elige plan/ciclo/profesionales extra en
+  `/dashboard/plan`, paga en el checkout de MP y queda el débito automático (mensual o anual =
+  frecuencia 12 meses). Cliente HTTP propio en `utils/mercadopago.js` (sin SDK).
+- **Lógica en `utils/suscripcionMp.js`.** MP es la fuente de verdad: webhook
+  (`POST /api/pagos/mp/webhook`, firma `x-signature` validada con `MP_WEBHOOK_SECRET`), la vuelta
+  del checkout (`?pago=mp` → `/api/pagos/suscripcion/sincronizar`) y el botón del panel de
+  plataforma vuelven a leer el preapproval y sus cobros (`/authorized_payments/search`).
+- **Períodos:** al autorizarse el débito se aplica el plan con acceso provisorio (lo que quedaba de
+  la prueba/período o 3 días). Cada cobro aprobado se registra una vez (`suscripcion_pago`, UNIQUE por
+  id de MP) y extiende desde el mayor entre la fecha del cobro, el fin de lo ya pagado y el fin de la
+  prueba: pagar durante la prueba no pierde días.
+- **Cambios:** mismo ciclo con débito activo → `PUT` del monto y el plan rige ya (sin prorrateo); cambio
+  de ciclo → checkout nuevo y, al autorizarse, se cancela el débito anterior. Se valida que los miembros
+  activos entren en el plan elegido. Baja: `PUT status=cancelled`; el plan sigue hasta el fin del período.
+- **DB:** `db/faseM_mercadopago.sql` (columnas `mp_*`, `monto`, `renovacion_automatica`, `proximo_cobro`
+  en `suscripcion`; tablas `suscripcion_checkout` y `suscripcion_pago`, solo service_role).
+- **Legal:** Términos (débito automático, cambio de plan), Reembolsos (baja desde el panel, período
+  mensual o anual) y Privacidad (Mercado Pago como procesador de pagos de las clínicas).
+- **Pendiente:** credenciales de prueba de MP para el test de punta a punta, facturación ARCA de cada cobro.
+
 ### 2026-10-06 — Fase L: planes, suscripciones y permisos por plan
 - **Modelo:** tablas `plan` (precio mensual/anual, profesionales incluidos, precio por profesional
   extra, tope de recepción, `features text[]`) y `suscripcion` (una por clínica: plan, estado

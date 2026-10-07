@@ -30,6 +30,7 @@ const autorizacionRoutes = require('./routes/autorizacionRoutes'); // Fase K: au
 const legalRoutes = require('./routes/legalRoutes'); // robots/sitemap + botón de arrepentimiento y de baja
 const planRoutes = require('./routes/planRoutes'); // Fase L: catálogo de planes y plan de la clínica
 const plataformaRoutes = require('./routes/plataformaRoutes'); // Fase L: activación de planes (equipo de la plataforma)
+const pagoRoutes = require('./routes/pagoRoutes'); // Fase M: suscripción de la clínica con Mercado Pago
 // (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
@@ -221,6 +222,7 @@ app.use('/autorizaciones', autorizacionRoutes); // Fase K: autorizaciones previa
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
 app.use('/api/planes', planRoutes); // Fase L: catálogo público + plan y uso de la clínica activa
+app.use('/api/pagos', pagoRoutes); // Fase M: contratar/cancelar con Mercado Pago + webhook (fuera del guard de solo lectura)
 app.use('/plataforma', plataformaRoutes); // Fase L: panel de la plataforma (PLATAFORMA_ADMIN_EMAILS)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
 

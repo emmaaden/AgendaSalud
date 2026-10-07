@@ -98,8 +98,14 @@ export default function Terminos() {
                 historias clínicas nunca depende del plan.
               </li>
               <li>
-                La contratación y el medio de pago se acuerdan por WhatsApp o email; te
-                enviamos la confirmación por escrito.
+                El plan se contrata desde el panel de la clínica y se paga con Mercado
+                Pago mediante débito automático, que se renueva en cada período (mensual o
+                anual) hasta que lo des de baja. También podés contratar por WhatsApp o
+                email; en ese caso te enviamos la confirmación por escrito.
+              </li>
+              <li>
+                Si cambiás de plan con el mismo período de pago, el cambio rige en el acto
+                y el nuevo precio se cobra desde el débito siguiente.
               </li>
               <li>
                 Podés arrepentirte dentro de los 10 días corridos y dar de baja el plan

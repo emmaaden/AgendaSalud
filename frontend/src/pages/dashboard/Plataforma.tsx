@@ -39,6 +39,18 @@ type Suscripcion = {
   pruebaHasta: string | null
   periodoHasta: string | null
   notas: string | null
+  // Fase M: débito automático de Mercado Pago.
+  mpEstado: "pending" | "authorized" | "paused" | "cancelled" | null
+  mpPayerEmail: string | null
+  monto: number | null
+  proximoCobro: string | null
+}
+
+const MP_LABEL: Record<string, string> = {
+  pending: "Pendiente",
+  authorized: "Débito activo",
+  paused: "En pausa",
+  cancelled: "Dado de baja",
 }
 
 type ClinicaPlataforma = {
@@ -50,7 +62,7 @@ type ClinicaPlataforma = {
   uso: { profesionales: number; recepcion: number; auditores: number }
 }
 
-type Datos = { clinicas: ClinicaPlataforma[]; planes: Plan[] }
+type Datos = { clinicas: ClinicaPlataforma[]; planes: Plan[]; pagoOnline: boolean }
 
 /** Formulario de suscripción (fechas como YYYY-MM-DD para <input type="date">). */
 type FormSub = {
@@ -105,6 +117,7 @@ export default function Plataforma() {
   const [editando, setEditando] = useState<ClinicaPlataforma | null>(null)
   const [form, setForm] = useState<FormSub | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [sincronizando, setSincronizando] = useState(false)
 
   const cargar = useCallback(async () => {
     try {
@@ -173,6 +186,21 @@ export default function Plataforma() {
     }
   }
 
+  async function sincronizar() {
+    if (!editando) return
+    setSincronizando(true)
+    try {
+      await api.post(`/plataforma/clinicas/${editando.id}/sincronizar`)
+      toast.success("Sincronizado con Mercado Pago.")
+      setEditando(null)
+      cargar()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "No se pudo sincronizar.")
+    } finally {
+      setSincronizando(false)
+    }
+  }
+
   if (!datos) {
     return (
       <div className="flex min-h-[60dvh] items-center justify-center">
@@ -207,6 +235,7 @@ export default function Plataforma() {
                   <TableHead>Plan</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Vence</TableHead>
+                  <TableHead>Mercado Pago</TableHead>
                   <TableHead className="text-right">Profesionales</TableHead>
                   <TableHead className="sr-only">Acciones</TableHead>
                 </TableRow>
@@ -234,6 +263,9 @@ export default function Plataforma() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {fechaCorta(s?.estadoGuardado === "prueba" ? s.pruebaHasta : s?.periodoHasta ?? null)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {s?.mpEstado ? MP_LABEL[s.mpEstado] ?? s.mpEstado : "Manual"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {c.uso.profesionales} / {max}
@@ -266,6 +298,21 @@ export default function Plataforma() {
 
           {form && (
             <div className="grid gap-4">
+              {editando?.suscripcion?.mpEstado && (
+                <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                  <p className="font-medium">
+                    Mercado Pago: {MP_LABEL[editando.suscripcion.mpEstado] ?? editando.suscripcion.mpEstado}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {editando.suscripcion.monto != null && `${formatoPesos(editando.suscripcion.monto)} por ciclo`}
+                    {editando.suscripcion.proximoCobro && ` · próximo cobro ${fechaCorta(editando.suscripcion.proximoCobro)}`}
+                    {editando.suscripcion.mpPayerEmail && ` · ${editando.suscripcion.mpPayerEmail}`}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Con débito activo, los cobros extienden el período solos: editá a mano solo para corregir.
+                  </p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => activar(1)}>
                   Activar 1 mes
@@ -273,6 +320,11 @@ export default function Plataforma() {
                 <Button type="button" variant="outline" size="sm" onClick={() => activar(12)}>
                   Activar 1 año
                 </Button>
+                {datos.pagoOnline && (
+                  <Button type="button" variant="outline" size="sm" onClick={sincronizar} disabled={sincronizando}>
+                    {sincronizando && <Loader2 className="animate-spin" />} Sincronizar con Mercado Pago
+                  </Button>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

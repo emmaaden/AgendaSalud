@@ -50,10 +50,14 @@ export default function Reembolsos() {
           title: "Baja del plan",
           body: (
             <ul>
-              <li>Podés dar de baja tu plan cuando quieras, sin penalidades.</li>
+              <li>
+                Podés dar de baja tu plan cuando quieras, sin penalidades: desde el panel
+                (Plan → «Dar de baja la renovación»), con el Botón de baja de servicio o
+                por el mismo medio por el que contrataste.
+              </li>
               <li>
                 La baja corta los cobros siguientes. El plan sigue activo hasta el final
-                del mes que ya pagaste; ese mes no se reintegra, salvo lo indicado en
+                del período (mes o año) que ya pagaste; ese período no se reintegra, salvo lo indicado en
                 «Fallas del servicio».
               </li>
               <li>
