@@ -109,6 +109,21 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - **Historia clínica en PDF:** el odontograma se dibuja con colores y símbolos como en la web
   (`lib/odontogramaPdf.ts`) en lugar del listado de texto; las notas por diente siguen como texto.
 
+### 2026-10-07 — Fase M2: control diario, precios y pago atrasado
+- **Control diario** (`utils/controlSuscripciones.js`, al arrancar y cada 24 h; o
+  `POST /internal/control-suscripciones` con `x-cron-token`): aplica cambios de precio avisados,
+  manda avisos pendientes y sincroniza con MP los débitos con el período por vencer/vencido o el
+  próximo cobro pasado, y los intentos de pago pendientes de la última semana. Respaldo de los
+  webhooks: idempotente.
+- **Precios:** Plataforma → «Avisar y programar» lleva los débitos vigentes de un plan al precio de
+  hoy. Columnas `monto_nuevo`, `monto_nuevo_desde`, `aviso_precio_enviado_en`
+  (`db/faseM2_precios.sql`). Se avisa por email al admin; rige ≥ 30 días después del aviso (si sale
+  tarde, la fecha se corre) y **sin aviso no se aplica**. La página Plan muestra el cambio.
+- **Pago atrasado (gracia/vencida):** la página Plan muestra «Pagar ahora»; se paga por el checkout
+  con otro medio y el cobro es inmediato; al autorizarse se cancela el débito que fallaba. Ya no se
+  «cambia el monto» de un débito que está fallando (`puedeCambiarSinCheckout` exige estado activa).
+- **Términos:** aviso de 30 días ante cambios de precio y 5 días de gracia si un débito falla.
+
 ### 2026-10-07 — Fase M: baja del débito automático
 - **Botón de baja (`/baja`):** si lo usa el admin de la clínica con la sesión iniciada y hay un
   débito activo, se ofrece (marcado) cancelarlo en el acto; el backend lo cancela en Mercado Pago

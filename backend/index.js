@@ -579,6 +579,43 @@ if (isMailerConfigured()) {
 }
 
 // ---------------------------------------------------------------------------
+// Fase M2: control diario de las suscripciones (respaldo de los webhooks de MP,
+// cambios de precio programados). Corre al minuto de arrancar y después cada 24 h.
+// Para hostings que duermen: POST /internal/control-suscripciones desde un cron
+// externo, con el header x-cron-token = CRON_TOKEN (o REMINDERS_TOKEN).
+// ---------------------------------------------------------------------------
+const { controlDiario } = require('./utils/controlSuscripciones');
+
+async function correrControl(origen) {
+    try {
+        const r = await controlDiario();
+        console.log(`[control suscripciones] (${origen})`, JSON.stringify(r));
+        return r;
+    } catch (e) {
+        console.error(`[control suscripciones] (${origen}) error:`, e.message);
+        throw e;
+    }
+}
+
+app.post('/internal/control-suscripciones', async (req, res) => {
+    const esperado = process.env.CRON_TOKEN || process.env.REMINDERS_TOKEN;
+    if (!esperado || req.get('x-cron-token') !== esperado) {
+        return res.status(403).json({ error: 'No autorizado' });
+    }
+    try {
+        res.json({ ok: true, ...(await correrControl('cron externo')) });
+    } catch {
+        res.status(500).json({ error: 'Error en el control de suscripciones' });
+    }
+});
+
+if (require('./utils/mercadopago').configurado()) {
+    setTimeout(() => correrControl('arranque').catch(() => {}), 60 * 1000).unref();
+    setInterval(() => correrControl('diario').catch(() => {}), 24 * 60 * 60 * 1000).unref();
+    console.log('Control diario de suscripciones activo (al arrancar y cada 24 h).');
+}
+
+// ---------------------------------------------------------------------------
 // Fallback del SPA (solo producción)
 // Cualquier GET de navegación que no sea una ruta de API ni un archivo estático
 // devuelve el index.html del build, para que el routing client-side y el 404

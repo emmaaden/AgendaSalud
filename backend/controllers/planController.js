@@ -4,7 +4,7 @@
 const planes = require('../utils/planes');
 const { supabase } = require('../config/supabaseClient');
 const mp = require('../utils/mercadopago');
-const { fechaPrimerCobro } = require('../utils/suscripcionMp');
+const { fechaPrimerCobro, puedeCambiarSinCheckout } = require('../utils/suscripcionMp');
 
 // GET /api/planes/catalogo — público. Planes vigentes + textos de cada feature.
 exports.catalogo = async (req, res) => {
@@ -35,7 +35,7 @@ exports.miClinica = async (req, res) => {
             planes.getPlanes(),
             // Fase M: débito automático de Mercado Pago y últimos cobros.
             supabase.from('suscripcion')
-                .select('estado, prueba_hasta, periodo_hasta, mp_estado, mp_payer_email, monto, renovacion_automatica, proximo_cobro')
+                .select('estado, ciclo, prueba_hasta, periodo_hasta, mp_preapproval_id, mp_estado, mp_payer_email, monto, renovacion_automatica, proximo_cobro, monto_nuevo, monto_nuevo_desde, aviso_precio_enviado_en')
                 .eq('clinica_id', clinicaId).maybeSingle(),
             supabase.from('suscripcion_pago')
                 .select('id, fecha, monto, estado, plan_id, ciclo, periodo_desde, periodo_hasta')
@@ -63,7 +63,13 @@ exports.miClinica = async (req, res) => {
                 monto: s.monto == null ? null : Number(s.monto),
                 renovacionAutomatica: s.renovacion_automatica,
                 proximoCobro: s.proximo_cobro,
+                // Fase M2: nuevo precio ya avisado (rige desde `desde`).
+                cambioPrecio: s.monto_nuevo != null && s.aviso_precio_enviado_en ? {
+                    monto: Number(s.monto_nuevo), desde: s.monto_nuevo_desde,
+                } : null,
             } : null,
+            // Con el pago atrasado no se cambia el débito actual: se paga de nuevo.
+            cambioSinCheckout: !!s && puedeCambiarSinCheckout(s, s.ciclo),
             pagos: (pagosRes.data || []).map((p) => ({
                 id: p.id,
                 fecha: p.fecha,

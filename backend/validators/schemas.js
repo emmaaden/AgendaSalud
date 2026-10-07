@@ -395,5 +395,9 @@ module.exports = {
             destacado: z.boolean().optional(),
             activo: z.boolean().optional(),
         }),
+        // Fase M2: llevar los débitos vigentes al precio actual del plan.
+        aplicarPrecios: z.object({
+            dias: z.number().int().min(30, 'El aviso tiene que ser de al menos 30 días').max(365),
+        }),
     },
 };

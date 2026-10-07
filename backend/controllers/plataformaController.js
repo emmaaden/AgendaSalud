@@ -51,6 +51,10 @@ exports.listarClinicas = async (req, res) => {
                     mpPayerEmail: s.mp_payer_email,
                     monto: s.monto == null ? null : Number(s.monto),
                     proximoCobro: s.proximo_cobro,
+                    // Fase M2: cambio de precio programado.
+                    montoNuevo: s.monto_nuevo == null ? null : Number(s.monto_nuevo),
+                    montoNuevoDesde: s.monto_nuevo_desde,
+                    avisoPrecioEnviadoEn: s.aviso_precio_enviado_en,
                 },
                 uso: uso.get(c.id) || { profesionales: 0, recepcion: 0, auditores: 0 },
             };
@@ -176,5 +180,19 @@ exports.cancelarDebito = async (req, res) => {
         if (err instanceof suscripcionMp.ErrorNegocio) return res.status(err.status).json({ error: err.message });
         console.error('Error en plataforma/cancelar-debito:', err);
         return res.status(502).json({ error: 'No se pudo cancelar el débito en Mercado Pago.' });
+    }
+};
+
+// POST /plataforma/planes/:id/aplicar-precios — Fase M2: programa el precio actual del
+// plan para los débitos vigentes que cobran otro monto, y avisa a cada clínica. Rige
+// `dias` días después del aviso (mínimo 30).
+exports.aplicarPrecios = async (req, res) => {
+    try {
+        const r = await suscripcionMp.programarActualizacionPrecios(req.params.id, req.body.dias);
+        return res.json(r);
+    } catch (err) {
+        if (err instanceof suscripcionMp.ErrorNegocio) return res.status(err.status).json({ error: err.message });
+        console.error('Error en plataforma/aplicar-precios:', err);
+        return res.status(500).json({ error: 'No se pudieron programar los nuevos precios.' });
     }
 };

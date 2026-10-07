@@ -44,6 +44,10 @@ type Suscripcion = {
   mpPayerEmail: string | null
   monto: number | null
   proximoCobro: string | null
+  // Fase M2: cambio de precio programado.
+  montoNuevo: number | null
+  montoNuevoDesde: string | null
+  avisoPrecioEnviadoEn: string | null
 }
 
 const MP_LABEL: Record<string, string> = {
@@ -330,6 +334,15 @@ export default function Plataforma() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     Con débito activo, los cobros extienden el período solos: editá a mano solo para corregir.
                   </p>
+                  {editando.suscripcion.montoNuevo != null && (
+                    <p className="mt-1 text-xs">
+                      Nuevo precio programado: {formatoPesos(editando.suscripcion.montoNuevo)} desde el{" "}
+                      {fechaCorta(editando.suscripcion.montoNuevoDesde)}
+                      {editando.suscripcion.avisoPrecioEnviadoEn
+                        ? ` (avisado el ${fechaCorta(editando.suscripcion.avisoPrecioEnviadoEn)}).`
+                        : " (sin avisar: no se aplica hasta que salga el email)."}
+                    </p>
+                  )}
                   {editando.suscripcion.mpEstado === "authorized" &&
                     (confirmarCancelacion ? (
                       <div className="mt-3 flex flex-wrap items-center gap-2" role="alert">
@@ -487,6 +500,38 @@ function PrecioPlan({ plan, onGuardado }: { plan: Plan; onGuardado: () => void }
     profesionalesIncluidos: String(plan.profesionalesIncluidos),
   })
   const [guardando, setGuardando] = useState(false)
+  // Fase M2: llevar los débitos vigentes al precio de hoy, con aviso previo.
+  const [dias, setDias] = useState("30")
+  const [aplicando, setAplicando] = useState(false)
+
+  async function aplicarAVigentes() {
+    const d = Number.parseInt(dias, 10)
+    if (!Number.isInteger(d) || d < 30) {
+      toast.error("El aviso tiene que ser de al menos 30 días.")
+      return
+    }
+    setAplicando(true)
+    try {
+      const r = await api.post<{ programadas: number; avisadas: number; sinAvisar: number }>(
+        `/plataforma/planes/${plan.id}/aplicar-precios`,
+        { dias: d }
+      )
+      if (r.programadas === 0 && r.sinAvisar === 0) {
+        toast.success(`Todos los débitos del plan ${plan.nombre} ya cobran el precio de hoy.`)
+      } else {
+        toast.success(
+          `Programado en ${r.programadas} clínica${r.programadas === 1 ? "" : "s"}. ` +
+            `Avisadas por email: ${r.avisadas}.` +
+            (r.sinAvisar > 0 ? ` Sin avisar: ${r.sinAvisar} (configurá el email; sin aviso no se aplica).` : "")
+        )
+      }
+      onGuardado()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "No se pudieron programar los precios.")
+    } finally {
+      setAplicando(false)
+    }
+  }
 
   async function guardar() {
     const n = (s: string) => Number(s.replace(/\./g, "").replace(",", "."))
@@ -540,6 +585,27 @@ function PrecioPlan({ plan, onGuardado }: { plan: Plan; onGuardado: () => void }
       <Button variant="outline" onClick={guardar} disabled={guardando}>
         {guardando && <Loader2 className="animate-spin" />} Guardar {plan.nombre}
       </Button>
+      <div className="grid gap-1.5 border-t border-border pt-3">
+        <Label htmlFor={`${plan.id}-dias`}>Aplicar a los débitos vigentes en (días)</Label>
+        <div className="flex gap-2">
+          <Input
+            id={`${plan.id}-dias`}
+            type="number"
+            inputMode="numeric"
+            min={30}
+            className="w-24"
+            value={dias}
+            onChange={(e) => setDias(e.target.value)}
+          />
+          <Button variant="outline" className="flex-1" onClick={aplicarAVigentes} disabled={aplicando}>
+            {aplicando && <Loader2 className="animate-spin" />} Avisar y programar
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Guardá primero el precio. Avisa por email a cada clínica y el débito cambia al cumplirse el plazo
+          (mínimo 30 días); hasta entonces puede darse de baja sin costo.
+        </p>
+      </div>
     </div>
   )
 }

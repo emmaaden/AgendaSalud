@@ -68,6 +68,8 @@ type Debito = {
   monto: number | null
   renovacionAutomatica: boolean
   proximoCobro: string | null
+  /** Nuevo precio ya avisado: rige desde `desde` (Fase M2). */
+  cambioPrecio: { monto: number; desde: string | null } | null
 }
 
 type Pago = {
@@ -92,6 +94,8 @@ type MiClinica = {
   primerCobro: string | null
   /** Hay un intento de pago de la última hora sin confirmar. */
   pagoPendiente: boolean
+  /** El plan se puede cambiar tocando solo el monto del débito (al día, mismo ciclo). */
+  cambioSinCheckout: boolean
   debito: Debito | null
   pagos: Pago[]
 }
@@ -246,6 +250,10 @@ export default function Plan() {
   const vigente = plan.estado === "activa" || plan.estado === "gracia"
   const regalo = planes[0] ? mesesDeRegalo(planes[0]) : 0
   const debitoActivo = debito?.estado === "authorized"
+  // Pago atrasado: el débito falló (gracia) o el plan venció. Se paga de nuevo por el
+  // checkout (otro medio de pago); el débito anterior se cancela solo al autorizarse.
+  const atrasado = plan.estado === "gracia" || plan.estado === "vencida"
+  const planActual = planes.find((p) => p.id === plan.planId)
 
   let detalle = ""
   if (plan.estado === "prueba") detalle = `La prueba termina el ${fecha(plan.pruebaHasta)}.`
@@ -280,6 +288,28 @@ export default function Plan() {
         </p>
       </div>
 
+      {atrasado && pagoOnline && planActual && (
+        <Card className="mb-6 border-destructive/40">
+          <CardContent className="flex flex-col items-start gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold">
+                {plan.estado === "gracia" ? "Tenés un pago pendiente" : "Tu plan está vencido"}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {plan.estado === "gracia"
+                  ? debitoActivo
+                    ? `No pudimos cobrar el último débito. Mercado Pago lo reintenta, pero si no se cobra en ${plan.diasRestantes ?? 0} días la clínica pasa a solo lectura. Podés pagar ya con otro medio.`
+                    : `Si no se paga en ${plan.diasRestantes ?? 0} días, la clínica pasa a solo lectura.`
+                  : "La clínica está en solo lectura. Al pagar se reactiva enseguida, con todos tus datos."}
+              </p>
+            </div>
+            <Button size="lg" onClick={() => setEleccion({ plan: planActual, ciclo: plan.ciclo })}>
+              Pagar ahora
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="grid gap-6 p-4 sm:p-6 md:grid-cols-2">
           <div>
@@ -308,6 +338,13 @@ export default function Plan() {
                       {debito.proximoCobro && ` · próximo cobro el ${fecha(debito.proximoCobro)}`}
                       {debito.payerEmail && ` · ${debito.payerEmail}`}
                     </p>
+                    {debito.cambioPrecio && (
+                      <p className="mt-1 text-muted-foreground">
+                        Desde el {fecha(debito.cambioPrecio.desde)} el débito pasa a{" "}
+                        <strong className="text-foreground">{formatoPesos(debito.cambioPrecio.monto)}</strong> por{" "}
+                        {plan.ciclo === "anual" ? "año" : "mes"}. Si no estás de acuerdo, podés darlo de baja antes sin costo.
+                      </p>
+                    )}
                     <Button
                       variant="link"
                       size="sm"
@@ -380,7 +417,7 @@ export default function Plan() {
                 </a>
               </Button>
             )
-          } else if (esActual && mismoCiclo && debitoActivo) {
+          } else if (esActual && mismoCiclo && datos.cambioSinCheckout) {
             accion =
               p.precioProfesionalExtra != null ? (
                 <Button variant="outline" size="lg" className="w-full" onClick={() => setEleccion({ plan: p, ciclo })}>
@@ -486,7 +523,7 @@ export default function Plan() {
           uso={uso.profesionales}
           extrasActuales={eleccion.plan.id === plan.planId ? plan.profesionalesExtra : 0}
           emailInicial={debito?.payerEmail || user?.email || ""}
-          cambioDirecto={debitoActivo && eleccion.ciclo === plan.ciclo}
+          cambioDirecto={datos.cambioSinCheckout && eleccion.ciclo === plan.ciclo}
           primerCobro={datos.primerCobro}
           onClose={() => setEleccion(null)}
           onAplicado={async () => {

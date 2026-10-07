@@ -52,10 +52,13 @@ function calcularMonto(plan, ciclo, extras) {
 }
 
 // Día del primer débito de una contratación nueva: cuando termina lo que la clínica
-// ya tiene (la prueba, el último período pago o una activación manual vigente). Así no se cobra durante la prueba ni
-// se paga dos veces el mismo tramo al pasar de mensual a anual. null = cobrar ya.
+// ya tiene (la prueba, el último período pago o una activación manual vigente). Así no
+// se cobra durante la prueba ni se paga dos veces el mismo tramo al pasar de mensual a
+// anual. null = cobrar ya; siempre así con el pago atrasado (gracia o vencida), aunque
+// haya un cobro viejo que diga otra cosa (p. ej. tras una corrección manual).
 // (Margen de una hora: MP pide una fecha futura y el checkout tarda unos minutos.)
 async function fechaPrimerCobro(clinicaId, sus) {
+    if (!sus || ['gracia', 'vencida', 'cancelada'].includes(planes.calcularEstado(sus))) return null;
     const { data: ultimo } = await supabase.from('suscripcion_pago').select('periodo_hasta')
         .eq('clinica_id', clinicaId).not('periodo_hasta', 'is', null)
         .order('periodo_hasta', { ascending: false }).limit(1);
@@ -95,6 +98,12 @@ async function verificarQueEntra(clinicaId, plan, extras) {
     }
 }
 
+// ¿Se puede cambiar el plan tocando solo el monto del débito actual?
+function puedeCambiarSinCheckout(sus, ciclo) {
+    return !!sus && !!sus.mp_preapproval_id && sus.mp_estado === 'authorized'
+        && sus.ciclo === ciclo && planes.calcularEstado(sus) === 'activa';
+}
+
 async function iniciarContratacion({ clinicaId, clinicaNombre, personaId, planId, ciclo, profesionalesExtra, payerEmail, backUrl }) {
     const plan = (await planes.getPlanes()).get(planId);
     if (!plan || !plan.activo) throw new ErrorNegocio(400, 'El plan elegido no existe.');
@@ -102,13 +111,16 @@ async function iniciarContratacion({ clinicaId, clinicaNombre, personaId, planId
     await verificarQueEntra(clinicaId, plan, extras);
     const monto = calcularMonto(plan, ciclo, extras);
 
-    // Débito vigente con el mismo ciclo: se cambia el monto y el plan rige ya.
-    // (Sin prorrateo: el nuevo monto se cobra desde el próximo débito.)
+    // Débito vigente con el mismo ciclo y el plan AL DÍA: se cambia el monto y el plan
+    // rige ya (sin prorrateo: el nuevo monto se cobra desde el próximo débito).
+    // Con el pago atrasado (gracia/vencida) no: el débito actual está fallando, así que
+    // se pasa por el checkout para pagar con otro medio (y se cancela el anterior).
     const sus = await filaSuscripcion(clinicaId);
-    if (sus && sus.mp_preapproval_id && sus.mp_estado === 'authorized' && sus.ciclo === ciclo) {
+    if (puedeCambiarSinCheckout(sus, ciclo)) {
         await mp.cambiarMonto(sus.mp_preapproval_id, monto);
         const { error } = await supabase.from('suscripcion').update({
-            plan_id: plan.id, profesionales_extra: extras, monto, actualizada_en: new Date().toISOString(),
+            plan_id: plan.id, profesionales_extra: extras, monto, monto_nuevo: null, monto_nuevo_desde: null, aviso_precio_enviado_en: null,
+            actualizada_en: new Date().toISOString(),
         }).eq('clinica_id', clinicaId);
         if (error) throw error;
         planes.invalidar(clinicaId);
@@ -243,6 +255,7 @@ async function sincronizarSuscripcion(preapprovalId) {
             proximo_cobro: proximoCobro,
             estado: 'activa',
             periodo_hasta: provisorio.toISOString(),
+            monto_nuevo: null, monto_nuevo_desde: null, aviso_precio_enviado_en: null,
             actualizada_en: ahora.toISOString(),
         }).eq('clinica_id', clinicaId);
         if (error) throw error;
@@ -320,10 +333,137 @@ async function cancelarRenovacion(clinicaId) {
     return { periodoHasta: sus.periodo_hasta };
 }
 
+// ---------------------------------------------------------------------------
+// Actualización de precios de los débitos vigentes (Fase M2)
+// ---------------------------------------------------------------------------
+// Al subir el precio de un plan, los débitos que ya existen siguen con el monto viejo.
+// Se PROGRAMA el nuevo monto, se avisa por email al admin de la clínica y rige recién
+// DIAS_AVISO_PRECIO días después del aviso. Hasta entonces la clínica puede darse de baja.
+
+const DIAS_AVISO_PRECIO = 30;
+
+const formatoPesos = (n) => new Intl.NumberFormat('es-AR', {
+    style: 'currency', currency: 'ARS', maximumFractionDigits: 0,
+}).format(n);
+const fechaLarga = (f) => new Date(f).toLocaleDateString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'long',
+});
+
+// Programa el precio actual del plan para los débitos activos que cobran otro monto.
+async function programarActualizacionPrecios(planId, dias = DIAS_AVISO_PRECIO) {
+    const plan = (await planes.getPlanes()).get(planId);
+    if (!plan) throw new ErrorNegocio(404, 'Plan no encontrado.');
+    if (dias < DIAS_AVISO_PRECIO) throw new ErrorNegocio(400, `El aviso tiene que ser de al menos ${DIAS_AVISO_PRECIO} días.`);
+    const { data: subs, error } = await supabase.from('suscripcion')
+        .select('clinica_id, ciclo, profesionales_extra, monto, monto_nuevo')
+        .eq('plan_id', planId).eq('mp_estado', 'authorized');
+    if (error) throw error;
+
+    const desde = new Date(Date.now() + dias * DIA_MS).toISOString();
+    let programadas = 0;
+    for (const s of subs || []) {
+        const nuevo = calcularMonto(plan, s.ciclo, s.profesionales_extra || 0);
+        const actual = s.monto == null ? null : Number(s.monto);
+        if (nuevo === actual) continue; // ya cobra el precio vigente
+        if (s.monto_nuevo != null && Number(s.monto_nuevo) === nuevo) continue; // ya programado
+        const { error: uErr } = await supabase.from('suscripcion').update({
+            monto_nuevo: nuevo, monto_nuevo_desde: desde, aviso_precio_enviado_en: null,
+            actualizada_en: new Date().toISOString(),
+        }).eq('clinica_id', s.clinica_id);
+        if (uErr) throw uErr;
+        programadas++;
+    }
+    const avisos = await enviarAvisosPrecio();
+    return { programadas, ...avisos };
+}
+
+// Emails de los admins activos de una clínica.
+async function emailsAdmins(clinicaId) {
+    const { data } = await supabase.from('membresia')
+        .select('persona:id_persona ( email )')
+        .eq('clinica_id', clinicaId).eq('rol', 'admin').eq('activo', true);
+    return [...new Set((data || []).map((m) => (Array.isArray(m.persona) ? m.persona[0] : m.persona)?.email).filter(Boolean))];
+}
+
+// Avisa los cambios programados que todavía no se avisaron. Si el aviso sale tarde, la
+// fecha se corre para respetar los días de anticipación. Sin email configurado no se
+// avisa ni se aplica nada (queda pendiente y se ve en el panel de plataforma).
+async function enviarAvisosPrecio() {
+    const { isMailerConfigured, sendMail } = require('./mailer');
+    const { data: pendientes, error } = await supabase.from('suscripcion')
+        .select('clinica_id, plan_id, ciclo, monto, monto_nuevo, monto_nuevo_desde, clinica:clinica_id ( nombre )')
+        .not('monto_nuevo', 'is', null).is('aviso_precio_enviado_en', null);
+    if (error) throw error;
+    if (!pendientes || pendientes.length === 0) return { avisadas: 0, sinAvisar: 0 };
+    if (!isMailerConfigured()) return { avisadas: 0, sinAvisar: pendientes.length };
+
+    const todos = await planes.getPlanes();
+    let avisadas = 0;
+    for (const s of pendientes) {
+        const destinos = await emailsAdmins(s.clinica_id);
+        if (destinos.length === 0) continue;
+        const desde = maxFecha(s.monto_nuevo_desde, new Date(Date.now() + DIAS_AVISO_PRECIO * DIA_MS));
+        const plan = todos.get(s.plan_id);
+        const clinica = (Array.isArray(s.clinica) ? s.clinica[0] : s.clinica)?.nombre || 'tu clínica';
+        const periodo = s.ciclo === 'anual' ? 'año' : 'mes';
+        const texto = `Hola,\n\nTe avisamos que desde el ${fechaLarga(desde)} el plan ${plan ? plan.nombre : ''} de ${clinica} `
+            + `pasa de ${formatoPesos(Number(s.monto))} a ${formatoPesos(Number(s.monto_nuevo))} por ${periodo}. `
+            + 'Hasta esa fecha se te sigue cobrando el precio actual.\n\n'
+            + 'Si no estás de acuerdo, podés dar de baja la renovación antes, sin costo, desde el panel (Plan → «Dar de baja la renovación»).\n\nAgendaSalud';
+        const ok = await sendMail({
+            to: destinos.join(','),
+            subject: `Cambio de precio de tu plan desde el ${fechaLarga(desde)} - AgendaSalud`,
+            text: texto,
+            // El nombre de la clínica lo carga el usuario: se escapa en el HTML.
+            html: texto.split('\n\n').map((p) => `<p>${p.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join(''),
+        });
+        if (!ok) continue;
+        const { error: uErr } = await supabase.from('suscripcion').update({
+            aviso_precio_enviado_en: new Date().toISOString(), monto_nuevo_desde: desde.toISOString(),
+        }).eq('clinica_id', s.clinica_id);
+        if (uErr) throw uErr;
+        avisadas++;
+    }
+    return { avisadas, sinAvisar: pendientes.length - avisadas };
+}
+
+// Aplica en Mercado Pago los cambios de precio avisados cuya fecha ya llegó.
+async function aplicarCambiosDePrecio() {
+    const { data: listos, error } = await supabase.from('suscripcion')
+        .select('clinica_id, mp_preapproval_id, mp_estado, monto_nuevo')
+        .not('monto_nuevo', 'is', null).not('aviso_precio_enviado_en', 'is', null)
+        .lte('monto_nuevo_desde', new Date().toISOString());
+    if (error) throw error;
+    let aplicados = 0;
+    for (const s of listos || []) {
+        const limpiar = { monto_nuevo: null, monto_nuevo_desde: null, aviso_precio_enviado_en: null, actualizada_en: new Date().toISOString() };
+        if (s.mp_estado !== 'authorized' || !s.mp_preapproval_id) {
+            // Se dio de baja antes de la fecha: no hay nada que cambiar.
+            await supabase.from('suscripcion').update(limpiar).eq('clinica_id', s.clinica_id);
+            continue;
+        }
+        try {
+            await mp.cambiarMonto(s.mp_preapproval_id, Number(s.monto_nuevo));
+        } catch (e) {
+            console.error('[precios] no se pudo cambiar el monto en MP', s.clinica_id, e.message);
+            continue; // se reintenta en el próximo control
+        }
+        await supabase.from('suscripcion').update({ ...limpiar, monto: Number(s.monto_nuevo) }).eq('clinica_id', s.clinica_id);
+        planes.invalidar(s.clinica_id);
+        aplicados++;
+    }
+    return { aplicados };
+}
+
 module.exports = {
     ErrorNegocio,
+    DIAS_AVISO_PRECIO,
     calcularMonto,
     fechaPrimerCobro,
+    puedeCambiarSinCheckout,
+    programarActualizacionPrecios,
+    enviarAvisosPrecio,
+    aplicarCambiosDePrecio,
     iniciarContratacion,
     procesarCobro,
     sincronizarSuscripcion,

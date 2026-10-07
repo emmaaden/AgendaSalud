@@ -108,6 +108,16 @@ export default function Terminos() {
                 y el nuevo precio se cobra desde el débito siguiente.
               </li>
               <li>
+                Si actualizamos el precio de tu plan, te avisamos por email con al menos 30
+                días de anticipación. Hasta esa fecha se te cobra el precio anterior, y si no
+                estás de acuerdo podés dar de baja la renovación antes, sin costo.
+              </li>
+              <li>
+                Si un débito no se puede cobrar, tenés 5 días de gracia para pagar desde el
+                panel con otro medio; después la clínica queda en solo lectura hasta que se
+                pague.
+              </li>
+              <li>
                 Podés arrepentirte dentro de los 10 días corridos y dar de baja el plan
                 cuando quieras, por el mismo medio por el que contrataste o con el{" "}
                 <Link to="/arrepentimiento" className={LINK}>

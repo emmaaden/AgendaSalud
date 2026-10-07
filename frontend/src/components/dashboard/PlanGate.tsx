@@ -82,7 +82,7 @@ export function PlanBanner() {
   const enDias = dias === 1 ? "1 día" : `${dias} días`
   const accion = user?.esAdmin ? (
     <Link to="/dashboard/plan" className="font-medium">
-      Elegir un plan
+      {plan.estado === "gracia" ? "Pagar ahora" : "Elegir un plan"}
     </Link>
   ) : (
     <span>Avisale al administrador de la clínica.</span>
