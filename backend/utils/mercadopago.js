@@ -87,10 +87,18 @@ function obtenerCobro(id) {
     return request('GET', `/authorized_payments/${encodeURIComponent(id)}`);
 }
 
+// MP rechaza limit > ~15 («Invalid value for limit»): se pagina de a 10.
 async function cobrosDeSuscripcion(preapprovalId) {
-    const qs = new URLSearchParams({ preapproval_id: preapprovalId, limit: '50' });
-    const data = await request('GET', `/authorized_payments/search?${qs}`);
-    return (data && data.results) || [];
+    const cobros = [];
+    for (let offset = 0; offset < 1000; offset += 10) {
+        const qs = new URLSearchParams({ preapproval_id: preapprovalId, limit: '10', offset: String(offset) });
+        const data = await request('GET', `/authorized_payments/search?${qs}`);
+        const pagina = (data && data.results) || [];
+        cobros.push(...pagina);
+        const total = data && data.paging ? data.paging.total : 0;
+        if (pagina.length === 0 || cobros.length >= total) break;
+    }
+    return cobros;
 }
 
 // --- Webhooks ------------------------------------------------------------------

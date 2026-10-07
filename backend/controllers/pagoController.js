@@ -29,10 +29,29 @@ function backUrl(req) {
     return `${base}/dashboard/plan?pago=mp`;
 }
 
+// Mercado Pago rechaza back_url que no sea pública (p. ej. localhost): se avisa
+// antes de llamarlo, con un mensaje que explica qué configurar.
+function backUrlValida(url) {
+    try {
+        const u = new URL(url);
+        return u.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
+    } catch {
+        return false;
+    }
+}
+
 // POST /api/pagos/suscripcion — admin: contratar o cambiar de plan.
 exports.contratar = async (req, res) => {
     try {
         const u = req.session.user;
+        const vuelta = backUrl(req);
+        if (!backUrlValida(vuelta)) {
+            console.error(`[mp] back_url inválida para Mercado Pago: ${vuelta}`);
+            return res.status(500).json({
+                error: 'El pago online no está bien configurado: la dirección de vuelta (MP_BACK_URL o APP_URL) '
+                    + 'tiene que ser pública y con https. En desarrollo usá un túnel.',
+            });
+        }
         if (!u.clinicaId) return res.status(400).json({ error: 'No tenés una clínica activa seleccionada.' });
         const { data: clinica } = await supabase
             .from('clinica').select('nombre').eq('id', u.clinicaId).maybeSingle();
@@ -44,7 +63,7 @@ exports.contratar = async (req, res) => {
             ciclo: req.body.ciclo,
             profesionalesExtra: req.body.profesionalesExtra || 0,
             payerEmail: req.body.payerEmail,
-            backUrl: backUrl(req),
+            backUrl: vuelta,
         });
         return res.json(r);
     } catch (err) {
