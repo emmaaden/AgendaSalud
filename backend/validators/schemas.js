@@ -358,4 +358,29 @@ module.exports = {
             page: paginaQuery,
         }),
     },
+    // Fase L: panel de la plataforma (activación manual de planes y precios).
+    plataforma: {
+        suscripcion: z.object({
+            planId: z.string().trim().min(1).max(40).optional(),
+            estado: z.enum(['prueba', 'activa', 'vencida', 'cancelada'], 'Estado inválido').optional(),
+            ciclo: z.enum(['mensual', 'anual'], 'Ciclo inválido').optional(),
+            profesionalesExtra: z.number().int().min(0).max(500).optional(),
+            // ISO (YYYY-MM-DD o fecha-hora). null = sin vencimiento.
+            pruebaHasta: z.string().trim().max(40).nullable().optional(),
+            periodoHasta: z.string().trim().max(40).nullable().optional(),
+            notas: z.string().trim().max(2000).nullable().optional(),
+        }),
+        plan: z.object({
+            nombre: z.string().trim().min(1).max(60).optional(),
+            descripcion: z.string().trim().max(500).nullable().optional(),
+            precioMensual: z.number().min(0).max(100000000).optional(),
+            precioAnual: z.number().min(0).max(1000000000).optional(),
+            profesionalesIncluidos: z.number().int().min(1).max(1000).optional(),
+            precioProfesionalExtra: z.number().min(0).max(100000000).nullable().optional(),
+            maxRecepcion: z.number().int().min(0).max(1000).nullable().optional(),
+            features: z.array(z.string().trim().min(1).max(40)).max(50).optional(),
+            destacado: z.boolean().optional(),
+            activo: z.boolean().optional(),
+        }),
+    },
 };

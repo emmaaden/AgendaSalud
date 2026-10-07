@@ -38,6 +38,7 @@ import { Odontogram, type Diente } from "@/components/dashboard/Odontogram"
 import { api, ApiError } from "@/lib/api"
 import { downloadPatientHistoryPdf, type Paciente } from "@/lib/patientPdf"
 import { useAuth } from "@/contexts/AuthContext"
+import { tieneFeature } from "@/lib/planes"
 import {
   COBERTURA_VACIA,
   CODIFICACION_VACIA,
@@ -361,6 +362,7 @@ function BuscarPaciente({
   area: string
   onBack: () => void
 }) {
+  const { user } = useAuth()
   const [dni, setDni] = useState("")
   const [loading, setLoading] = useState(false)
   const [paciente, setPaciente] = useState<Paciente | null>(null)
@@ -499,11 +501,13 @@ function BuscarPaciente({
           <ArrowLeft /> Nueva búsqueda
         </Button>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link to={`/dashboard/autorizaciones?dni=${encodeURIComponent(paciente.dni)}`}>
-              <ShieldCheck /> Solicitar autorización
-            </Link>
-          </Button>
+          {tieneFeature(user?.plan, "autorizaciones") && (
+            <Button variant="outline" asChild>
+              <Link to={`/dashboard/autorizaciones?dni=${encodeURIComponent(paciente.dni)}`}>
+                <ShieldCheck /> Solicitar autorización
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={() => downloadPatientHistoryPdf(paciente)}>
             <Download /> Descargar PDF
           </Button>

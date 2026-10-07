@@ -6,10 +6,15 @@ const express = require('express');
 const router = express.Router();
 const recepcionController = require('../controllers/recepcionController');
 const { requireStaffClinica } = require('../middleware/auth');
+const { requireFeature } = require('../middleware/plan');
 const { validate } = require('../middleware/validate');
 const schemas = require('../validators/schemas');
 
 router.use(requireStaffClinica);
+
+// Fase L: el rol de recepción depende del plan (el profesional siempre maneja su agenda).
+const recepcionPorPlan = requireFeature('recepcion');
+router.use((req, res, next) => (req.session.user.rol === 'recepcion' ? recepcionPorPlan(req, res, next) : next()));
 
 router.get('/turnos', recepcionController.listarTurnos);
 router.get('/profesionales', recepcionController.listarProfesionales);

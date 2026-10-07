@@ -9,6 +9,7 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const planes = require('../utils/planes');
 
 // Resuelve un slug de clínica a su fila (id, nombre, slug). Devuelve null si no existe.
 async function resolverClinicaPorSlug(slug) {
@@ -40,7 +41,12 @@ exports.clinicaPublica = async (req, res) => {
     try {
         const clinica = await resolverClinicaPorSlug(req.query.clinica);
         if (!clinica) return res.status(404).json({ error: 'Clínica no encontrada.' });
-        return res.json({ id: clinica.id, nombre: clinica.nombre, slug: clinica.slug });
+        // Fase L: con la suscripción vencida la clínica no recibe turnos online.
+        const sinServicio = await planes.clinicasSinServicio();
+        return res.json({
+            id: clinica.id, nombre: clinica.nombre, slug: clinica.slug,
+            recibeTurnos: !sinServicio.has(clinica.id),
+        });
     } catch (err) {
         console.error('Error en clinica-publica:', err);
         return res.status(500).json({ error: 'Error al obtener la clínica.' });
@@ -66,9 +72,11 @@ exports.listProfessionals = async (req, res) => {
             .from('especialidad_profesional')
             .select(`
                 especialidad:id_especialidad ( nombre ),
-                profesional:id_profesional ( id, persona ( nombre, apellido ) )
+                profesional:id_profesional ( id, persona ( nombre, apellido, clinica_id ) )
             `);
         if (error) throw error;
+        // Fase L: fuera los profesionales de clínicas con la suscripción vencida.
+        const sinServicio = await planes.clinicasSinServicio();
 
         const porArea = new Map();
         for (const row of data || []) {
@@ -76,6 +84,7 @@ exports.listProfessionals = async (req, res) => {
             const p = row.profesional;
             if (!area || !p) continue;
             if (idsPermitidos && !idsPermitidos.has(p.id)) continue; // fuera de la clínica
+            if (p.persona && sinServicio.has(p.persona.clinica_id)) continue; // sin suscripción vigente
 
             const nombre = [p.persona && p.persona.nombre, p.persona && p.persona.apellido]
                 .filter(Boolean)
@@ -114,9 +123,10 @@ exports.getBookingHours = async (req, res) => {
                 id_profesional,
                 horario_inicio,
                 horario_fin,
-                profesional:id_profesional ( id, persona ( nombre, apellido ) )
+                profesional:id_profesional ( id, persona ( nombre, apellido, clinica_id ) )
             `);
         if (error) throw error;
+        const sinServicio = await planes.clinicasSinServicio();
 
         const agg = new Map();
         for (const h of data || []) {
@@ -125,6 +135,7 @@ exports.getBookingHours = async (req, res) => {
             if (idsPermitidos && !idsPermitidos.has(id)) continue;
 
             const persona = h.profesional && h.profesional.persona;
+            if (persona && sinServicio.has(persona.clinica_id)) continue; // sin suscripción vigente
             const fullName = [persona && persona.nombre, persona && persona.apellido]
                 .filter(Boolean)
                 .join(' ');

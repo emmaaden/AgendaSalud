@@ -17,10 +17,11 @@ import { Container } from "@/components/site/Section"
 import { ObservacionesAuditoria } from "@/components/dashboard/ObservacionesAuditoria"
 import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
+import { ESTADO_LABEL, tieneFeature } from "@/lib/planes"
 
 type ClinicaInfo = {
   esAdmin?: boolean
-  clinica?: { nombre?: string; slug?: string; plan?: string }
+  clinica?: { nombre?: string; slug?: string }
 }
 
 const accesos = [
@@ -117,7 +118,7 @@ export default function DashboardHome() {
       </div>
 
       {/* Fase J: observaciones de auditoría sobre mis registros (si hay). */}
-      <ObservacionesAuditoria />
+      {tieneFeature(user?.plan, "auditoria") && <ObservacionesAuditoria />}
 
       {clinica?.esAdmin && (
         <Card className="mt-8">
@@ -130,7 +131,9 @@ export default function DashboardHome() {
                 <h2 className="text-lg font-semibold">Gestión de la clínica</h2>
                 <p className="text-sm text-muted-foreground">
                   {clinica.clinica?.nombre || "—"}
-                  {clinica.clinica?.plan ? ` · Plan ${clinica.clinica.plan}` : ""}
+                  {user?.plan?.nombre
+                    ? ` · Plan ${user.plan.nombre} (${ESTADO_LABEL[user.plan.estado].toLowerCase()})`
+                    : ""}
                 </p>
               </div>
             </div>
@@ -157,13 +160,18 @@ export default function DashboardHome() {
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4">
               <div className="flex items-center gap-2 text-sm">
                 <ShieldCheck className="size-4 text-primary" />
-                <span className="font-medium">Profesionales y códigos de activación</span>
+                <span className="font-medium">Profesionales, códigos de activación y plan</span>
               </div>
-              <Button asChild size="sm">
-                <Link to="/dashboard/admin">
-                  Administración <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/dashboard/plan">Plan</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link to="/dashboard/admin">
+                    Administración <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

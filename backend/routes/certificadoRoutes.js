@@ -7,6 +7,10 @@ const router = express.Router();
 const multer = require('multer');
 const certificadoController = require('../controllers/certificadoController');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireFeature } = require('../middleware/plan');
+
+// Fase L: emitir certificados y cargar la firma depende del plan; leer y descargar, no.
+const emitir = [requireRole('profesional'), requireFeature('certificados')];
 const { validate } = require('../middleware/validate');
 const schemas = require('../validators/schemas');
 
@@ -33,11 +37,11 @@ const soloImagen = multer({
 
 // Firma/sello del profesional.
 router.get('/firma', requireRole('profesional'), certificadoController.estadoFirma);
-router.post('/firma', requireRole('profesional'), soloImagen.single('firma'), certificadoController.subirFirma);
+router.post('/firma', emitir, soloImagen.single('firma'), certificadoController.subirFirma);
 
 // Emisión (profesional).
-router.post('/generar', requireRole('profesional'), validate(schemas.certificado.generar), certificadoController.generar);
-router.post('/subir', requireRole('profesional'), upload.single('archivo'), certificadoController.subir);
+router.post('/generar', emitir, validate(schemas.certificado.generar), certificadoController.generar);
+router.post('/subir', emitir, upload.single('archivo'), certificadoController.subir);
 
 // Listado por paciente (profesional). ?dni=...
 router.get('/', requireRole('profesional'), certificadoController.listarPorPaciente);

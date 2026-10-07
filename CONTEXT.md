@@ -96,6 +96,29 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 
 ## 7. Changelog
 
+### 2026-10-06 — Fase L: planes, suscripciones y permisos por plan
+- **Modelo:** tablas `plan` (precio mensual/anual, profesionales incluidos, precio por profesional
+  extra, tope de recepción, `features text[]`) y `suscripcion` (una por clínica: plan, estado
+  `prueba|activa|vencida|cancelada`, ciclo, profesionales extra, `prueba_hasta`, `periodo_hasta`).
+  Se eliminó `clinica.plan`. Migración `db/faseL_planes.sql` (aplicada vía MCP).
+- **Permisos = rol ∩ plan.** Catálogo de funciones en `utils/planes.js` (espejo en
+  `frontend/src/lib/planes.ts`). `middleware/plan.js`: `requireFeature(f)` (402 `PLAN_FEATURE`),
+  `soloLectura` montado sobre los datos de la clínica (402 `PLAN_SOLO_LECTURA` en escrituras; los
+  POST de lectura están en una lista blanca) y `requirePlataforma`.
+- **Por plan:** Profesional = todo lo clínico + 1 recepción; Equipo = + catálogos propios y
+  recepción sin tope; Clínica = + autorizaciones previas y auditoría. Exportar HC nunca se limita.
+- **Sin plan gratis:** clínica nueva → 14 días de prueba del plan Clínica (en el registro y, para
+  clínicas viejas, en el primer uso). Vencida (o período pago + 5 días de gracia) → solo lectura y
+  sin turnos online (se ocultan sus profesionales del listado público y se rechaza la reserva).
+- **Asientos:** solo profesionales (admin + profesional). Se verifican al generar códigos (contando
+  los pendientes), al canjearlos en el registro y al reactivar/cambiar de rol un miembro.
+- **Activación manual** hasta integrar Mercado Pago: panel `/dashboard/plataforma` (env
+  `PLATAFORMA_ADMIN_EMAILS`) para activar/renovar suscripciones y editar precios. El admin de la
+  clínica ve plan, estado y uso en `/dashboard/plan` y contrata por WhatsApp.
+- **UI:** `/planes` lee el catálogo de la base (mensual/anual), aviso de prueba/pago pendiente/solo
+  lectura debajo del navbar, `FeatureGate` en Auditoría, Autorizaciones, Certificados y catálogos;
+  el navbar, el dictado y los roles/códigos ofrecidos se filtran por plan.
+
 ### 2026-10-06 — Cumplimiento legal y accesibilidad del sitio público
 - **Legal (AR):** páginas nuevas/reescritas de Privacidad (Ley 25.326, Ley 26.529, transferencia a
   EE. UU. — Supabase `us-east-2`), Términos (sin cláusula de exención total, nula por art. 37

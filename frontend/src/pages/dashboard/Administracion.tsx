@@ -48,6 +48,8 @@ import { CatalogosClinica } from "@/components/dashboard/CatalogosClinica"
 import { useObrasSociales } from "@/lib/catalogos"
 import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
+import { tieneFeature } from "@/lib/planes"
+import { FeatureGate } from "@/components/dashboard/PlanGate"
 
 type Rol = "admin" | "profesional" | "recepcion" | "auditor"
 
@@ -114,6 +116,14 @@ export default function Administracion() {
   const [alcanceOs, setAlcanceOs] = useState("")
   const { datos: obrasSociales } = useObrasSociales()
 
+  // Fase L: solo se ofrecen los roles que el plan de la clínica incluye (el miembro que
+  // ya tiene un rol lo conserva aunque el plan cambie).
+  const conRecepcion = tieneFeature(user?.plan, "recepcion")
+  const conAuditoria = tieneFeature(user?.plan, "auditoria")
+  const rolesDisponibles = (Object.keys(ROL_META) as Rol[]).filter(
+    (r) => (r !== "recepcion" || conRecepcion) && (r !== "auditor" || conAuditoria)
+  )
+
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
@@ -166,8 +176,9 @@ export default function Administracion() {
       })
       toast.success(`Código generado: ${d.codigo}`)
       await cargar()
-    } catch {
-      toast.error("No se pudo generar el código.")
+    } catch (err) {
+      // Fase L: el backend explica si se llegó al tope del plan.
+      toast.error(err instanceof ApiError ? err.message : "No se pudo generar el código.")
     } finally {
       setGenerating(false)
     }
@@ -320,7 +331,7 @@ export default function Administracion() {
                       )}
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel>Rol</DropdownMenuLabel>
-                      {(Object.keys(ROL_META) as Rol[]).map((r) => (
+                      {rolesDisponibles.map((r) => (
                         <DropdownMenuItem
                           key={r}
                           disabled={r === m.rol}
@@ -376,12 +387,16 @@ export default function Administracion() {
                 <DropdownMenuItem onSelect={() => generarCodigo("profesional")}>
                   <Stethoscope /> Profesional
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => generarCodigo("recepcion")}>
-                  <ClipboardList /> Recepción
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => abrirAlcance({ tipo: "codigo" })}>
-                  <ClipboardCheck /> Auditoría
-                </DropdownMenuItem>
+                {conRecepcion && (
+                  <DropdownMenuItem onSelect={() => generarCodigo("recepcion")}>
+                    <ClipboardList /> Recepción
+                  </DropdownMenuItem>
+                )}
+                {conAuditoria && (
+                  <DropdownMenuItem onSelect={() => abrirAlcance({ tipo: "codigo" })}>
+                    <ClipboardCheck /> Auditoría
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -502,8 +517,10 @@ export default function Administracion() {
         </DialogContent>
       </Dialog>
 
-      {/* Fase K: catálogos propios de la clínica */}
-      <CatalogosClinica />
+      {/* Fase K: catálogos propios de la clínica (Fase L: desde el plan Equipo). */}
+      <FeatureGate feature="catalogos" compacto className="mt-6">
+        <CatalogosClinica />
+      </FeatureGate>
     </Container>
   )
 }

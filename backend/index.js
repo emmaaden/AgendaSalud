@@ -28,6 +28,8 @@ const auditoriaRoutes = require('./routes/auditoriaRoutes'); // Fase J: auditor�
 const catalogoRoutes = require('./routes/catalogoRoutes'); // Fase K: obras sociales, CIE-10 y prácticas
 const autorizacionRoutes = require('./routes/autorizacionRoutes'); // Fase K: autorizaciones previas
 const legalRoutes = require('./routes/legalRoutes'); // robots/sitemap + botón de arrepentimiento y de baja
+const planRoutes = require('./routes/planRoutes'); // Fase L: catálogo de planes y plan de la clínica
+const plataformaRoutes = require('./routes/plataformaRoutes'); // Fase L: activación de planes (equipo de la plataforma)
 // (los guards de auth se aplican en cada router; el dashboard pasó al SPA)
 const { supabase } = require('./config/supabaseClient');
 const { getMembresiasActivas } = require('./utils/membresias');
@@ -36,6 +38,8 @@ const { sendMail, isMailerConfigured } = require('./utils/mailer');
 const { slotsDisponibles, estaLibre } = require('./utils/disponibilidad');
 const { validate } = require('./middleware/validate');
 const schemas = require('./validators/schemas');
+const planes = require('./utils/planes');
+const { soloLectura } = require('./middleware/plan');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -189,6 +193,14 @@ if (isProd) {
 // cargaba recursos de terceros (Google Fonts, jsDelivr) sin informarlo. Los archivos
 // se conservan en el repo solo como referencia, igual que backend/dashboard/.
 
+// Fase L: con la suscripción vencida, el staff solo lee y exporta. Se monta sobre los
+// datos de la CLÍNICA; quedan afuera /auth, el perfil propio (/profesional, /avatars),
+// /admin (dar de baja miembros para volver al cupo) y todo lo del paciente.
+app.use([
+    '/hour', '/pacient', '/ortodoncia', '/clinica', '/certificados', '/hc', '/staff',
+    '/dictado', '/auditoria', '/catalogos', '/autorizaciones',
+], soloLectura);
+
 app.use('/auth', authRoutes);
 app.use('/hour', horariosRoutes);
 app.use('/pacient', pacienteRoutes); // Fase 1: historia clínica (rol profesional)
@@ -208,6 +220,8 @@ app.use('/catalogos', catalogoRoutes); // Fase K: catálogos (obras sociales, CI
 app.use('/autorizaciones', autorizacionRoutes); // Fase K: autorizaciones previas de prácticas
 app.use('/api/turnos', turnosRoutes); // Fase 3: turnos del paciente (mis turnos / gestión por token)
 app.use('/api/mi-cuenta', miCuentaRoutes); // Fase 3: autogestión del paciente (perfil / historia)
+app.use('/api/planes', planRoutes); // Fase L: catálogo público + plan y uso de la clínica activa
+app.use('/plataforma', plataformaRoutes); // Fase L: panel de la plataforma (PLATAFORMA_ADMIN_EMAILS)
 app.use('/', publicRoutes); // público: /professionals, /api/get-hours (página de turnos)
 
 // Config pública para el cliente (solo datos NO sensibles).
@@ -254,6 +268,24 @@ app.get('/api/user', async (req, res) => {
     // Necesita elegir clínica si tiene varias y todavía no fijó ninguna.
     const needsClinicSelection = esStaff && !u.clinicaId && clinicas.length > 1;
 
+    // Fase L: plan de la clínica activa (qué funciones incluye y si está vigente).
+    let plan = null;
+    if (esStaff && u.clinicaId) {
+        try {
+            const pc = await planes.getPlanClinica(u.clinicaId);
+            plan = pc && {
+                id: pc.planId,
+                nombre: pc.planNombre,
+                estado: pc.estado,
+                soloLectura: pc.soloLectura,
+                diasRestantes: pc.diasRestantes,
+                features: pc.features,
+            };
+        } catch (err) {
+            console.error('Error obteniendo el plan en /api/user:', err.message);
+        }
+    }
+
     res.json({
         user: u.email,
         email: u.email,
@@ -270,6 +302,9 @@ app.get('/api/user', async (req, res) => {
         alcanceIdObraSocial: u.alcanceIdObraSocial || null,
         clinicas,
         needsClinicSelection,
+        plan,
+        // Fase L: equipo de la plataforma (activa planes y edita precios).
+        esPlataforma: planes.esAdminPlataforma(u.email),
     });
 });
 
@@ -369,6 +404,11 @@ app.post('/create-event', createEventLimiter, validate(schemas.calendar.createEv
         // clinica_id del turno: se deriva SIEMPRE del profesional (para que aparezca
         // en el panel de su clínica). El slug, si viene, solo valida pertenencia.
         const clinicaProf = (prof.persona && prof.persona.clinica_id) || null;
+
+        // Fase L: una clínica con la suscripción vencida no recibe turnos online.
+        if (clinicaProf && (await planes.getPlanClinica(clinicaProf)).soloLectura) {
+            return res.status(403).json({ error: 'Este profesional no está tomando turnos online por el momento.' });
+        }
 
         // 2. Si la reserva es sobre una clínica, el profesional debe ser de esa clínica.
         if (clinica) {

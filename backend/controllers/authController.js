@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { slugify } = require('../utils/slug');
 const { getMembresiasActivas, roleSinProfesional } = require('../utils/membresias');
 const { columnasCobertura } = require('../utils/cobertura');
+const planes = require('../utils/planes');
 require('dotenv').config();
 
 // service_role: SALTEA la RLS. Se usa SOLO para operaciones sobre tablas.
@@ -76,6 +77,19 @@ exports.register = async (req, res) => {
             codigoRow = r.cod;
         }
 
+        // Fase L: unirse con código ocupa un lugar del plan de la clínica (profesionales,
+        // recepción) o requiere la función (auditoría). Se verifica ANTES de crear el
+        // usuario para no dejar cuentas a medias.
+        if (codigoRow) {
+            const bloqueo = await planes.verificarAlta(clinicaId, codigoRow.rol || 'profesional');
+            if (bloqueo) {
+                return res.status(bloqueo.status).json({
+                    error: `La clínica no puede sumar esta cuenta: ${bloqueo.error} Pedile al administrador que lo revise.`,
+                    code: bloqueo.code,
+                });
+            }
+        }
+
         // Creamos usuario en Supabase Auth (cliente anon: si el signUp devolviera sesión
         // —confirmación de email desactivada— no debe adjuntarse al cliente service_role,
         // porque los INSERT siguientes dejarían de saltear la RLS).
@@ -123,6 +137,8 @@ exports.register = async (req, res) => {
             if (!cli) throw cliErr || new Error('No se pudo crear la clínica');
             clinicaId = cli.id;
             esAdmin = true;
+            // Fase L: toda clínica nueva arranca con la prueba del plan completo.
+            await planes.crearPrueba(clinicaId);
         }
 
         const { data: persona_data, error: persona_error } = await supabase

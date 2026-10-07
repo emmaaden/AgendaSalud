@@ -88,6 +88,16 @@ export default function Terminos() {
                 . El precio es mensual y no cambia durante el período ya pagado.
               </li>
               <li>
+                Las clínicas nuevas tienen 14 días de prueba sin costo y sin medio de
+                pago. Para el paciente el servicio es siempre gratuito.
+              </li>
+              <li>
+                Si al terminar la prueba o el período pago no se contrata o renueva un
+                plan, la clínica queda en modo solo lectura: podés ver y exportar todos tus
+                datos, pero no cargar datos nuevos ni recibir turnos online. Exportar las
+                historias clínicas nunca depende del plan.
+              </li>
+              <li>
                 La contratación y el medio de pago se acuerdan por WhatsApp o email; te
                 enviamos la confirmación por escrito.
               </li>

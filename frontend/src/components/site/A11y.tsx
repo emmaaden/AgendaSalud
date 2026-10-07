@@ -59,6 +59,8 @@ const TITULOS: Record<string, string> = {
   "/dashboard/estudios": "Estudios · Panel",
   "/dashboard/auditoria": "Auditoría · Panel",
   "/dashboard/autorizaciones": "Autorizaciones · Panel",
+  "/dashboard/plan": "Plan · Panel",
+  "/dashboard/plataforma": "Plataforma · Panel",
 }
 
 /** Actualiza document.title según la ruta actual. Montar una vez por layout. */

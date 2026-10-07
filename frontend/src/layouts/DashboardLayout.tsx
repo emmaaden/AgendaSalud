@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext"
 import { DashboardNavbar } from "@/components/dashboard/DashboardNavbar"
 import { PageLoader } from "@/components/site/PageLoader"
 import { MAIN_ID, SkipLink } from "@/components/site/A11y"
+import { PlanBanner } from "@/components/dashboard/PlanGate"
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -60,6 +61,8 @@ function Guarded() {
       <ScrollToTop />
       <DashboardNavbar />
       <main id={MAIN_ID} tabIndex={-1} className="flex-1 focus:outline-none">
+        {/* Fase L: prueba, pago pendiente o solo lectura. */}
+        <PlanBanner />
         {/* Suspense acá: mientras carga una página lazy, el navbar queda visible. */}
         <Suspense fallback={<PageLoader />}>
           <Outlet />

@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/layouts/DashboardLayout"
 import { Toaster } from "@/components/ui/sonner"
 import { PageLoader } from "@/components/site/PageLoader"
 import { RouteTitle } from "@/components/site/A11y"
+import { FeatureGate } from "@/components/dashboard/PlanGate"
 
 // Carga inicial: solo lo que ve quien llega al sitio.
 import Home from "@/pages/Home"
@@ -58,6 +59,8 @@ const DashboardEstudios = lazy(
 )
 const DashboardAuditoria = lazy(() => import("@/pages/dashboard/Auditoria"))
 const DashboardAutorizaciones = lazy(() => import("@/pages/dashboard/Autorizaciones"))
+const DashboardPlan = lazy(() => import("@/pages/dashboard/Plan"))
+const DashboardPlataforma = lazy(() => import("@/pages/dashboard/Plataforma"))
 
 /**
  * Redirección de rutas legacy que conserva ?query y #hash: el enlace de recuperación de
@@ -86,12 +89,33 @@ function App() {
           <Route path="/dashboard/admin" element={<DashboardAdministracion />} />
           <Route
             path="/dashboard/certificados"
-            element={<DashboardCertificados />}
+            element={
+              <FeatureGate feature="certificados">
+                <DashboardCertificados />
+              </FeatureGate>
+            }
           />
           <Route path="/dashboard/historias" element={<DashboardHistorias />} />
           <Route path="/dashboard/estudios" element={<DashboardEstudios />} />
-          <Route path="/dashboard/auditoria" element={<DashboardAuditoria />} />
-          <Route path="/dashboard/autorizaciones" element={<DashboardAutorizaciones />} />
+          {/* Fase L: funciones que dependen del plan de la clínica. */}
+          <Route
+            path="/dashboard/auditoria"
+            element={
+              <FeatureGate feature="auditoria">
+                <DashboardAuditoria />
+              </FeatureGate>
+            }
+          />
+          <Route
+            path="/dashboard/autorizaciones"
+            element={
+              <FeatureGate feature="autorizaciones">
+                <DashboardAutorizaciones />
+              </FeatureGate>
+            }
+          />
+          <Route path="/dashboard/plan" element={<DashboardPlan />} />
+          <Route path="/dashboard/plataforma" element={<DashboardPlataforma />} />
         </Route>
 
         <Route element={<PublicLayout />}>

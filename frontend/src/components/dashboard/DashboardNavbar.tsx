@@ -18,6 +18,8 @@ import {
   ChevronDown,
   ClipboardCheck,
   ShieldPlus,
+  CreditCard,
+  Gauge,
 } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -41,16 +43,26 @@ import { Logo } from "@/components/site/Logo"
 import { HELP_URL } from "@/lib/site"
 import { useAuth } from "@/contexts/AuthContext"
 import { ThemeToggle } from "@/components/site/ThemeToggle"
+import { ESTADO_LABEL, tieneFeature, type Feature } from "@/lib/planes"
+
+type NavItem = {
+  to: string
+  label: string
+  icon: typeof LayoutDashboard
+  end: boolean
+  /** Fase L: función del plan que habilita el enlace (sin ella no se muestra). */
+  feature?: Feature
+}
 
 // Enlace de gestión de turnos (Fase E): lo ve todo el staff.
-const TURNOS_LINK = {
+const TURNOS_LINK: NavItem = {
   to: "/dashboard/turnos",
   label: "Turnos",
   icon: CalendarClock,
   end: false,
 }
 
-const LINKS = [
+const LINKS: NavItem[] = [
   { to: "/dashboard", label: "Inicio", icon: LayoutDashboard, end: true },
   TURNOS_LINK,
   { to: "/dashboard/config", label: "Configuración", icon: Settings, end: false },
@@ -84,22 +96,39 @@ const LINKS = [
     label: "Autorizaciones",
     icon: ShieldPlus,
     end: false,
+    feature: "autorizaciones",
   },
 ]
 
 // Fase J: panel de auditoría médica (auditor y admin de la clínica activa).
-const AUDITORIA_LINK = {
+const AUDITORIA_LINK: NavItem = {
   to: "/dashboard/auditoria",
   label: "Auditoría",
   icon: ClipboardCheck,
   end: false,
+  feature: "auditoria",
 }
 
 // Enlace solo para el admin de la clínica activa (Fase B).
-const ADMIN_LINK = {
+const ADMIN_LINK: NavItem = {
   to: "/dashboard/admin",
   label: "Administración",
   icon: ShieldCheck,
+  end: false,
+}
+
+// Fase L: plan y uso de la clínica (admin) y panel de la plataforma (equipo interno).
+const PLAN_LINK: NavItem = {
+  to: "/dashboard/plan",
+  label: "Plan",
+  icon: CreditCard,
+  end: false,
+}
+
+const PLATAFORMA_LINK: NavItem = {
+  to: "/dashboard/plataforma",
+  label: "Plataforma",
+  icon: Gauge,
   end: false,
 }
 
@@ -113,15 +142,23 @@ export function DashboardNavbar() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
-  // Fase E: la recepción SOLO ve el panel de turnos. Fase J: el auditor, solo el suyo.
-  const links =
+  // Fase E: la recepción SOLO ve el panel de turnos. Fase J: el auditor, solo el suyo
+  // (aunque el plan ya no lo incluya: la página le explica por qué).
+  // Fase L: el resto de los enlaces se filtra por las funciones del plan.
+  const porRol =
     user?.rol === "recepcion"
       ? [TURNOS_LINK]
       : user?.rol === "auditor"
         ? [AUDITORIA_LINK]
         : user?.esAdmin
-          ? [...LINKS, AUDITORIA_LINK, ADMIN_LINK]
+          ? [...LINKS, AUDITORIA_LINK, ADMIN_LINK, PLAN_LINK]
           : LINKS
+  const links = [
+    ...(porRol.length === 1
+      ? porRol
+      : porRol.filter((l) => !l.feature || tieneFeature(user?.plan, l.feature))),
+    ...(user?.esPlataforma ? [PLATAFORMA_LINK] : []),
+  ]
 
   // Con un único enlace (recepción, auditoría) va siempre a la vista.
   const esPrincipal = (to: string) => links.length === 1 || PRINCIPALES.includes(to)
@@ -233,6 +270,9 @@ export function DashboardNavbar() {
                       </p>
                       <p className="mt-0.5 pl-5 text-xs text-muted-foreground">
                         {ROL_LABEL[clinicaActiva.rol] ?? clinicaActiva.rol}
+                        {user?.plan?.nombre
+                          ? ` · Plan ${user.plan.nombre} (${ESTADO_LABEL[user.plan.estado].toLowerCase()})`
+                          : ""}
                       </p>
                     </div>
                     {puedeCambiarClinica && (

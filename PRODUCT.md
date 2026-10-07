@@ -21,7 +21,12 @@ Plataforma para gestionar turnos médicos y registrar información clínica: el 
 
 ## Positioning
 
-Abierto (no confirmado). Evidencia: combina turnos online + historia clínica digital + herramientas odontológicas (odontograma por caras, consulta de valor de ortodoncia por DNI) en un solo producto para consultorios pequeños de Argentina.
+**«El consultorio entero en una app, y el paciente también»** (definido 2026-10-06). Un ecosistema del que ni el profesional ni el paciente tengan que salir:
+
+- **Profesional:** turno → consulta (HC, dictado, certificado, estudios, CIE-10/obra social) → cobro → factura → recordatorio, todo dentro de la app.
+- **Paciente:** siempre gratis; con su cuenta reserva, guarda y comparte estudios, y ve certificados e historia.
+- **Segmento:** consultorios de 1 a 10 profesionales en Argentina; odontología como vertical de entrada (odontograma y ortodoncia ya resueltos).
+- **Piezas que faltan para cerrar el ecosistema** (en este orden): cobros con Mercado Pago (señas contra el ausentismo + suscripción propia), recordatorios por WhatsApp, facturación ARCA, receta electrónica (vía plataforma inscripta en ReNaPDiS) y teleconsulta.
 
 ## Operating Context
 
@@ -35,7 +40,7 @@ Abierto (no confirmado). Evidencia: combina turnos online + historia clínica di
 - Frontend: React + Vite + TypeScript + Tailwind v4 + shadcn/ui; siempre componentes de `@/components/ui`, sin CSS arbitrario (ver `CLAUDE.md`).
 - Backend: Node/Express + Supabase con RLS por JWT; CSP estricta en la SPA.
 - Roles: paciente, profesional, recepción, admin. Multi-clínica.
-- Planes: Básico y superiores (`/planes`); los precios concretos no están confirmados en este archivo.
+- Planes (Fase L, precios finales con IVA, oct-2026): **Profesional** $14.900 (1 profesional), **Equipo** $32.900 (3 profesionales, +$9.900 c/u), **Clínica** $74.900 (10 profesionales, +$5.900 c/u). Anual = 10 meses. Sin plan gratis: 14 días de prueba del plan Clínica y después solo lectura. Solo los profesionales ocupan asiento. Precios editables en la tabla `plan` (panel /dashboard/plataforma).
 
 ## Brand Commitments
 
