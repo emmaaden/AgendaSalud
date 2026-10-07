@@ -96,6 +96,19 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 
 ## 7. Changelog
 
+### 2026-10-07 — Ficha para la obra social y odontograma gráfico en los PDF
+- **Ficha para la obra social** (botón «Ficha obra social» en la ficha del paciente, Registro clínico):
+  PDF con encabezado de la clínica y el profesional (nombre, especialidad, matrícula), datos del
+  afiliado, odontograma (permanente + temporal) y registro de prestaciones (fecha, código, pieza,
+  caras, firma del paciente) con renglones en blanco y firma/sello del profesional. Sigue el modelo
+  de la ficha odontológica de Unimed. Se elige período, qué prácticas van (por defecto solo las del
+  profesional que la emite) y las caras, que se proponen a partir de lo que cambió en el odontograma
+  de esa consulta. Código en `lib/fichaObraSocialPdf.ts` + `components/dashboard/FichaObraSocialDialog.tsx`.
+- **Backend:** `GET /pacient/emisor` (clínica, profesional, especialidad, matrícula) y el historial de
+  `get-data-pacient` suma `fechaIso` e `idProfesional` por registro.
+- **Historia clínica en PDF:** el odontograma se dibuja con colores y símbolos como en la web
+  (`lib/odontogramaPdf.ts`) en lugar del listado de texto; las notas por diente siguen como texto.
+
 ### 2026-10-06 — Fase M: suscripción de las clínicas con Mercado Pago
 - **Cobro a la clínica, nunca al paciente.** Suscripciones de MP «sin plan asociado, con pago
   pendiente» (`POST /preapproval`): el admin elige plan/ciclo/profesionales extra en

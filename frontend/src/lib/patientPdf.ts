@@ -1,5 +1,11 @@
 import { jsPDF } from "jspdf"
 import { describeDiente, type Diente } from "@/lib/odontograma"
+import {
+  drawLeyendaOdontograma,
+  drawOdontograma,
+  medirOdontograma,
+  tieneTemporales,
+} from "@/lib/odontogramaPdf"
 import { LOGO_PDF } from "@/lib/brandMark"
 import type { CodificacionRegistro } from "@/lib/catalogos"
 
@@ -7,6 +13,9 @@ export type HistoryEntry = {
   profesional: string
   area: string
   fecha: string
+  /** Fecha cruda (ISO) y profesional del registro: filtran la ficha para la obra social. */
+  fechaIso?: string
+  idProfesional?: number | null
   sintomas: string
   diagnostico: string
   tratamiento: string
@@ -104,8 +113,10 @@ export function downloadPatientHistoryPdf(p: Paciente) {
     doc.setFont("helvetica", "bold")
     doc.text(`${l}:`, 110, yR)
     doc.setFont("helvetica", "normal")
-    doc.text(String(v), 165, yR)
-    yR += 10
+    // Valores largos (dirección) en varios renglones, sin salirse de la hoja.
+    const renglones: string[] = doc.splitTextToSize(String(v), 35)
+    doc.text(renglones, 165, yR)
+    yR += 10 + (renglones.length - 1) * 5
   })
 
   const lineY = Math.max(yL, yR) + 5
@@ -150,23 +161,25 @@ export function downloadPatientHistoryPdf(p: Paciente) {
       doc.splitTextToSize(`Prácticas: ${px.join("; ")}`, 180).forEach((l: string) => line(l))
     }
     if (entry.dientes && entry.dientes.length) {
+      // Odontograma dibujado (mismos colores y símbolos que en la web).
+      const temporales = tieneTemporales(entry.dientes)
+      const alto = medirOdontograma(190, temporales) + 6
       line("")
+      if (y + alto > maxHeight) {
+        doc.addPage()
+        y = 20
+      }
       line("Odontograma:", true)
-      // Agrupado por diente, ordenado por número FDI.
-      const porDiente = new Map<string, typeof entry.dientes>()
-      entry.dientes.forEach((d) => {
-        const n = d.numero.replace("tooth-", "")
-        if (!porDiente.has(n)) porDiente.set(n, [])
-        porDiente.get(n)!.push(d)
-      })
-      ;[...porDiente.keys()]
-        .sort((a, b) => Number(a) - Number(b))
-        .forEach((n) => {
-          const hallazgos = porDiente.get(n)!
-          line(`  Diente ${n}:`, true)
-          hallazgos.forEach((d) => {
-            doc.splitTextToSize(`    - ${describeDiente(d)}`, 175).forEach((l: string) => line(l))
-          })
+      y += drawOdontograma(doc, 10, y - 3, 190, entry.dientes, { temporales })
+      y += drawLeyendaOdontograma(doc, 10, y - 2, 190) + 3
+      // Las notas no se ven en el dibujo: van como texto, por diente.
+      entry.dientes
+        .filter((d) => d.notas)
+        .sort((a, b) => Number(a.numero.replace("tooth-", "")) - Number(b.numero.replace("tooth-", "")))
+        .forEach((d) => {
+          doc
+            .splitTextToSize(`  Diente ${d.numero.replace("tooth-", "")}: ${describeDiente(d)}`, 180)
+            .forEach((l: string) => line(l))
         })
     }
     if (y > maxHeight) {
