@@ -88,6 +88,10 @@ type MiClinica = {
   features: Record<string, string>
   diasGracia: number
   pagoOnline: boolean
+  /** Si se contrata ahora, día del primer débito (fin de la prueba o de lo pagado). */
+  primerCobro: string | null
+  /** Hay un intento de pago de la última hora sin confirmar. */
+  pagoPendiente: boolean
   debito: Debito | null
   pagos: Pago[]
 }
@@ -185,27 +189,45 @@ export default function Plan() {
       const d = await api.get<MiClinica>("/api/planes/mi-clinica")
       setDatos(d)
       setCiclo(d.plan.ciclo)
+      return d
     } catch {
       toast.error("No se pudo cargar el plan de la clínica.")
+      return null
     }
   }, [])
 
-  // Al volver del checkout (?pago=mp, y MP agrega ?preapproval_id=…) se sincroniza
-  // antes de mostrar (en local no llegan webhooks) y se limpia la URL.
+  // Se le pregunta a Mercado Pago por el pago (en local no llegan webhooks):
+  //   - al volver del checkout (?pago=mp; MP agrega ?preapproval_id=…), antes de mostrar;
+  //   - si al abrir la página hay un intento de la última hora sin confirmar (el admin
+  //     cerró el checkout sin volver por la URL de vuelta), una vez y sin bloquear.
   const volviendoDeMp = searchParams.has("pago") || searchParams.has("preapproval_id")
   useEffect(() => {
     if (!user?.esAdmin) return
-    if (!volviendoDeMp) {
-      cargar()
-      return
+    let vivo = true
+
+    async function sincronizar(avisarError: boolean) {
+      try {
+        await api.post("/api/pagos/suscripcion/sincronizar")
+      } catch {
+        if (avisarError) toast.error("No pudimos confirmar el pago todavía. Si pagaste, se actualiza en unos minutos.")
+      }
+      if (vivo) await Promise.all([cargar(), refresh()])
     }
-    api
-      .post("/api/pagos/suscripcion/sincronizar")
-      .catch(() => toast.error("No pudimos confirmar el pago todavía. Si pagaste, se actualiza en unos minutos."))
-      .finally(async () => {
-        await Promise.all([cargar(), refresh()])
-        navigate("/dashboard/plan", { replace: true })
-      })
+
+    async function iniciar() {
+      if (volviendoDeMp) {
+        await sincronizar(true)
+        if (vivo) navigate("/dashboard/plan", { replace: true })
+        return
+      }
+      const d = await cargar()
+      if (vivo && d?.pagoPendiente) await sincronizar(false)
+    }
+
+    iniciar()
+    return () => {
+      vivo = false
+    }
   }, [user?.esAdmin, volviendoDeMp, cargar, refresh, navigate])
 
   // El plan lo gestiona el admin de la clínica activa.
@@ -465,6 +487,7 @@ export default function Plan() {
           extrasActuales={eleccion.plan.id === plan.planId ? plan.profesionalesExtra : 0}
           emailInicial={debito?.payerEmail || user?.email || ""}
           cambioDirecto={debitoActivo && eleccion.ciclo === plan.ciclo}
+          primerCobro={datos.primerCobro}
           onClose={() => setEleccion(null)}
           onAplicado={async () => {
             setEleccion(null)
@@ -506,6 +529,7 @@ function ContratarDialog({
   extrasActuales,
   emailInicial,
   cambioDirecto,
+  primerCobro,
   onClose,
   onAplicado,
 }: {
@@ -514,6 +538,7 @@ function ContratarDialog({
   extrasActuales: number
   emailInicial: string
   cambioDirecto: boolean
+  primerCobro: string | null
   onClose: () => void
   onAplicado: () => void
 }) {
@@ -562,7 +587,9 @@ function ContratarDialog({
             <DialogDescription>
               {cambioDirecto
                 ? "Se cambia tu débito automático: el plan rige ya y el nuevo monto se cobra desde el próximo débito."
-                : "Te llevamos a Mercado Pago para pagar. Queda el débito automático y lo podés dar de baja cuando quieras."}
+                : primerCobro
+                  ? `Te llevamos a Mercado Pago para dejar el débito automático. No se te cobra nada hasta el ${fecha(primerCobro)}: ese día es el primer débito. Lo podés dar de baja cuando quieras.`
+                  : "Te llevamos a Mercado Pago para pagar. Queda el débito automático y lo podés dar de baja cuando quieras."}
             </DialogDescription>
           </DialogHeader>
 

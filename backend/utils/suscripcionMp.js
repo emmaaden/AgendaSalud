@@ -51,6 +51,22 @@ function calcularMonto(plan, ciclo, extras) {
     return Math.round(plan.precioMensual + extraMensual);
 }
 
+// Día del primer débito de una contratación nueva: cuando termina lo que la clínica
+// ya tiene (la prueba, el último período pago o una activación manual vigente). Así no se cobra durante la prueba ni
+// se paga dos veces el mismo tramo al pasar de mensual a anual. null = cobrar ya.
+// (Margen de una hora: MP pide una fecha futura y el checkout tarda unos minutos.)
+async function fechaPrimerCobro(clinicaId, sus) {
+    const { data: ultimo } = await supabase.from('suscripcion_pago').select('periodo_hasta')
+        .eq('clinica_id', clinicaId).not('periodo_hasta', 'is', null)
+        .order('periodo_hasta', { ascending: false }).limit(1);
+    const fin = maxFecha(
+        sus && sus.estado === 'prueba' ? sus.prueba_hasta : null,
+        sus && sus.estado === 'activa' ? sus.periodo_hasta : null,
+        ultimo && ultimo[0] && ultimo[0].periodo_hasta,
+    );
+    return fin && fin.getTime() > Date.now() + 60 * 60 * 1000 ? fin : null;
+}
+
 async function filaSuscripcion(clinicaId) {
     const { data, error } = await supabase
         .from('suscripcion').select('*').eq('clinica_id', clinicaId).maybeSingle();
@@ -100,6 +116,7 @@ async function iniciarContratacion({ clinicaId, clinicaNombre, personaId, planId
     }
 
     if (!payerEmail) throw new ErrorNegocio(400, 'Ingresá el email de tu cuenta de Mercado Pago.');
+    const inicio = await fechaPrimerCobro(clinicaId, sus);
     const pre = await mp.crearSuscripcion({
         reason: `AgendaSalud · Plan ${plan.nombre} (${ciclo}) · ${clinicaNombre || 'Clínica'}`.slice(0, 250),
         externalReference: clinicaId,
@@ -107,6 +124,7 @@ async function iniciarContratacion({ clinicaId, clinicaNombre, personaId, planId
         monto,
         meses: mesesDe(ciclo),
         backUrl,
+        inicio,
     });
     if (!pre || !pre.id || !pre.init_point) throw new ErrorNegocio(502, 'Mercado Pago no devolvió el enlace de pago.');
 
@@ -123,7 +141,7 @@ async function iniciarContratacion({ clinicaId, clinicaNombre, personaId, planId
         creado_por: personaId || null,
     });
     if (error) throw error;
-    return { initPoint: pre.init_point, monto };
+    return { initPoint: pre.init_point, monto, primerCobro: inicio ? inicio.toISOString() : null };
 }
 
 // Registra un cobro (factura de MP). Si está aprobado y todavía no tiene período,
@@ -305,6 +323,7 @@ async function cancelarRenovacion(clinicaId) {
 module.exports = {
     ErrorNegocio,
     calcularMonto,
+    fechaPrimerCobro,
     iniciarContratacion,
     procesarCobro,
     sincronizarSuscripcion,

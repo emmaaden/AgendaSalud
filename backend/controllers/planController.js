@@ -4,6 +4,7 @@
 const planes = require('../utils/planes');
 const { supabase } = require('../config/supabaseClient');
 const mp = require('../utils/mercadopago');
+const { fechaPrimerCobro } = require('../utils/suscripcionMp');
 
 // GET /api/planes/catalogo — público. Planes vigentes + textos de cada feature.
 exports.catalogo = async (req, res) => {
@@ -27,19 +28,25 @@ exports.miClinica = async (req, res) => {
         const clinicaId = req.session.user.clinicaId;
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica activa seleccionada.' });
 
-        const [plan, uso, todos, susRes, pagosRes] = await Promise.all([
+        const haceUnaHora = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const [plan, uso, todos, susRes, pagosRes, pendRes] = await Promise.all([
             planes.getPlanClinica(clinicaId),
             planes.usoClinica(clinicaId),
             planes.getPlanes(),
             // Fase M: débito automático de Mercado Pago y últimos cobros.
             supabase.from('suscripcion')
-                .select('mp_estado, mp_payer_email, monto, renovacion_automatica, proximo_cobro')
+                .select('estado, prueba_hasta, periodo_hasta, mp_estado, mp_payer_email, monto, renovacion_automatica, proximo_cobro')
                 .eq('clinica_id', clinicaId).maybeSingle(),
             supabase.from('suscripcion_pago')
                 .select('id, fecha, monto, estado, plan_id, ciclo, periodo_desde, periodo_hasta')
                 .eq('clinica_id', clinicaId).order('fecha', { ascending: false }).limit(24),
+            // Intento de pago reciente sin confirmar: el panel sincroniza solo al abrirse
+            // (por si el admin no volvió del checkout por la URL de vuelta).
+            supabase.from('suscripcion_checkout').select('mp_preapproval_id', { count: 'exact', head: true })
+                .eq('clinica_id', clinicaId).eq('estado', 'pending').gte('creado_en', haceUnaHora),
         ]);
         const s = susRes.data;
+        const primerCobro = mp.configurado() ? await fechaPrimerCobro(clinicaId, s) : null;
         return res.json({
             plan,
             uso,
@@ -47,6 +54,9 @@ exports.miClinica = async (req, res) => {
             features: planes.FEATURES,
             diasGracia: planes.DIAS_GRACIA,
             pagoOnline: mp.configurado(),
+            // Si se contrata ahora, cuándo sería el primer débito (null = al pagar).
+            primerCobro: primerCobro ? primerCobro.toISOString() : null,
+            pagoPendiente: mp.configurado() && (pendRes.count || 0) > 0,
             debito: s && s.mp_estado ? {
                 estado: s.mp_estado,
                 payerEmail: s.mp_payer_email,

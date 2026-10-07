@@ -51,7 +51,8 @@ async function request(method, path, body) {
 
 // --- Suscripciones (preapproval sin plan asociado, con pago pendiente) ---------
 
-function crearSuscripcion({ reason, externalReference, payerEmail, monto, meses, backUrl }) {
+// `inicio` (Date, opcional): fecha del primer débito. Sin ella, MP cobra al autorizar.
+function crearSuscripcion({ reason, externalReference, payerEmail, monto, meses, backUrl, inicio }) {
     return request('POST', '/preapproval', {
         reason,
         external_reference: externalReference,
@@ -59,6 +60,7 @@ function crearSuscripcion({ reason, externalReference, payerEmail, monto, meses,
         auto_recurring: {
             frequency: meses,
             frequency_type: 'months',
+            ...(inicio ? { start_date: inicio.toISOString() } : {}),
             transaction_amount: monto,
             currency_id: 'ARS',
         },
