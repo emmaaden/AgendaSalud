@@ -56,6 +56,11 @@ export default function Reembolsos() {
                 por el mismo medio por el que contrataste.
               </li>
               <li>
+                Si usás el Botón de baja con la sesión iniciada como administrador de la
+                clínica, el débito automático se cancela en el acto; sin sesión, lo
+                cancelamos nosotros y te confirmamos por email.
+              </li>
+              <li>
                 La baja corta los cobros siguientes. El plan sigue activo hasta el final
                 del período (mes o año) que ya pagaste; ese período no se reintegra, salvo lo indicado en
                 «Fallas del servicio».

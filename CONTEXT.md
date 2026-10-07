@@ -109,6 +109,18 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
 - **Historia clínica en PDF:** el odontograma se dibuja con colores y símbolos como en la web
   (`lib/odontogramaPdf.ts`) en lugar del listado de texto; las notas por diente siguen como texto.
 
+### 2026-10-07 — Fase M: baja del débito automático
+- **Botón de baja (`/baja`):** si lo usa el admin de la clínica con la sesión iniciada y hay un
+  débito activo, se ofrece (marcado) cancelarlo en el acto; el backend lo cancela en Mercado Pago
+  dentro de `POST /api/solicitudes-consumo` (`cancelarDebito: true`) y la constancia/email dicen si
+  la baja quedó efectiva. Sin sesión, sigue siendo una solicitud con código y gestión manual.
+- **Plataforma:** botón «Cancelar débito en Mercado Pago» por clínica
+  (`POST /plataforma/clinicas/:id/cancelar-debito`) para las bajas que llegan por fuera del panel.
+- En todos los casos el plan sigue hasta el fin del período pago.
+- Antes: paginación de `/authorized_payments/search` (MP rechaza limit > ~15), validación de la URL de
+  vuelta (MP rechaza localhost), primer débito al terminar la prueba/lo pagado (`start_date`) y
+  sincronización automática de la página Plan con un intento de pago pendiente.
+
 ### 2026-10-06 — Fase M: suscripción de las clínicas con Mercado Pago
 - **Cobro a la clínica, nunca al paciente.** Suscripciones de MP «sin plan asociado, con pago
   pendiente» (`POST /preapproval`): el admin elige plan/ciclo/profesionales extra en

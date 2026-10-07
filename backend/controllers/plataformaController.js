@@ -163,3 +163,18 @@ exports.sincronizarMp = async (req, res) => {
         return res.status(502).json({ error: 'No se pudo sincronizar con Mercado Pago.' });
     }
 };
+
+// POST /plataforma/clinicas/:id/cancelar-debito — Fase M: baja pedida por fuera del
+// panel (Botón de baja sin sesión, email, WhatsApp). Corta los débitos siguientes; el
+// plan sigue hasta el fin del período pago.
+exports.cancelarDebito = async (req, res) => {
+    try {
+        if (!mp.configurado()) return res.status(503).json({ error: 'Mercado Pago no está configurado (MP_ACCESS_TOKEN).' });
+        const r = await suscripcionMp.cancelarRenovacion(req.params.id);
+        return res.json({ message: 'Débito cancelado', ...r });
+    } catch (err) {
+        if (err instanceof suscripcionMp.ErrorNegocio) return res.status(err.status).json({ error: err.message });
+        console.error('Error en plataforma/cancelar-debito:', err);
+        return res.status(502).json({ error: 'No se pudo cancelar el débito en Mercado Pago.' });
+    }
+};

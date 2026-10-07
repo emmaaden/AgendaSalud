@@ -5,6 +5,8 @@
 
 const crypto = require('crypto');
 const { sendMail } = require('../utils/mailer');
+const { supabase } = require('../config/supabaseClient');
+const suscripcionMp = require('../utils/suscripcionMp');
 
 function escapeHtml(s) {
     return String(s || '')
@@ -36,10 +38,45 @@ const TITULOS = {
 // Responde SIEMPRE con el código en pantalla. Además intenta avisar por email al titular
 // del sitio y al consumidor; si el mailer no está configurado, `notificado` = false y el
 // frontend ofrece enviar la solicitud por email (para que no se pierda).
+// Baja en el acto (Fase M): si quien pide la baja es el ADMIN de una clínica con la
+// sesión iniciada y lo pidió, se cancela el débito de Mercado Pago ya mismo (tan
+// simple como contratar). Sin sesión, la solicitud se gestiona a mano como siempre.
+// Devuelve { clinica, efectiva, periodoHasta, motivo } o null si no aplica.
+async function bajaEnElActo(req) {
+    const u = req.session && req.session.isAuthenticated && req.session.user;
+    if (!u || u.role !== 'profesional' || !u.esAdmin || !u.clinicaId) return null;
+    const { data: cli } = await supabase.from('clinica').select('nombre').eq('id', u.clinicaId).maybeSingle();
+    const clinica = { id: u.clinicaId, nombre: cli ? cli.nombre : null };
+    try {
+        const r = await suscripcionMp.cancelarRenovacion(u.clinicaId);
+        return { clinica, efectiva: true, periodoHasta: r.periodoHasta || null };
+    } catch (err) {
+        if (err instanceof suscripcionMp.ErrorNegocio) {
+            return { clinica, efectiva: false, motivo: 'La clínica no tenía un débito automático activo.' };
+        }
+        console.error('[baja] no se pudo cancelar el débito en el acto:', err.message);
+        return { clinica, efectiva: false, motivo: 'No se pudo cancelar el débito en el acto; lo gestionamos a mano.' };
+    }
+}
+
+function fechaAR(iso) {
+    return iso
+        ? new Date(iso).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'long' })
+        : null;
+}
+
 exports.solicitudConsumo = async (req, res) => {
-    const { tipo, nombre, email, servicio, detalle } = req.body;
+    const { tipo, nombre, email, servicio, detalle, cancelarDebito } = req.body;
     const codigo = generarCodigo(tipo);
     const titulo = TITULOS[tipo];
+    const baja = tipo === 'baja' && cancelarDebito === true ? await bajaEnElActo(req) : null;
+    let estadoBaja = null;
+    if (baja && baja.efectiva) {
+        estadoBaja = 'Efectivizada en el acto: se canceló el débito automático en Mercado Pago'
+            + (baja.periodoHasta ? `; el plan sigue vigente hasta el ${fechaAR(baja.periodoHasta)}.` : '.');
+    } else if (baja) {
+        estadoBaja = `Pendiente: ${baja.motivo}`;
+    }
     const fecha = new Date().toLocaleString('es-AR', {
         timeZone: 'America/Argentina/Buenos_Aires',
         dateStyle: 'full',
@@ -54,6 +91,7 @@ exports.solicitudConsumo = async (req, res) => {
         `Email: ${email}`,
         `Servicio/plan: ${servicio || '—'}`,
         `Detalle: ${detalle || '—'}`,
+        ...(baja ? [`Clínica: ${baja.clinica.nombre || '—'} (${baja.clinica.id})`, `Estado de la baja: ${estadoBaja}`] : []),
     ].join('\n');
     const resumenHtml = `<ul>
         <li><strong>Código:</strong> ${codigo}</li>
@@ -62,6 +100,8 @@ exports.solicitudConsumo = async (req, res) => {
         <li><strong>Email:</strong> ${escapeHtml(email)}</li>
         <li><strong>Servicio/plan:</strong> ${escapeHtml(servicio || '—')}</li>
         <li><strong>Detalle:</strong> ${escapeHtml(detalle || '—')}</li>
+        ${baja ? `<li><strong>Clínica:</strong> ${escapeHtml(baja.clinica.nombre || '—')}</li>
+        <li><strong>Estado de la baja:</strong> ${escapeHtml(estadoBaja)}</li>` : ''}
     </ul>`;
 
     const destinoTitular = process.env.LEGAL_NOTIFY_EMAIL || process.env.EMAIL_FROM || process.env.EMAIL_USER;
@@ -90,8 +130,13 @@ exports.solicitudConsumo = async (req, res) => {
         notificado = false;
     }
 
-    console.log(`Solicitud de consumo ${codigo} (${tipo}) registrada. Notificada: ${notificado}`);
-    res.json({ codigo, notificado });
+    console.log(`Solicitud de consumo ${codigo} (${tipo}) registrada. Notificada: ${notificado}`
+        + (baja ? `. Baja en el acto: ${baja.efectiva ? 'sí' : 'no'}` : ''));
+    res.json({
+        codigo,
+        notificado,
+        ...(baja ? { bajaEfectiva: baja.efectiva, periodoHasta: baja.periodoHasta || null, motivo: baja.motivo || null } : {}),
+    });
 };
 
 // Rutas públicas e indexables del SPA. Las privadas (panel, cuenta del paciente,

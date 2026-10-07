@@ -12,5 +12,6 @@ router.get('/clinicas', plataformaController.listarClinicas);
 router.patch('/clinicas/:id/suscripcion', validate(schemas.plataforma.suscripcion), plataformaController.actualizarSuscripcion);
 router.patch('/planes/:id', validate(schemas.plataforma.plan), plataformaController.actualizarPlan);
 router.post('/clinicas/:id/sincronizar', plataformaController.sincronizarMp);
+router.post('/clinicas/:id/cancelar-debito', plataformaController.cancelarDebito);
 
 module.exports = router;

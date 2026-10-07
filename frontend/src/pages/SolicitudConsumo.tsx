@@ -1,19 +1,21 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { CircleCheck, Loader2, Mail, Send } from "lucide-react"
+import { CircleCheck, CreditCard, Loader2, Mail, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Field } from "@/components/form/Field"
 import { AvisoDatosPersonales } from "@/components/form/Consentimiento"
 import { Container, PageHero } from "@/components/site/Section"
 import { api, ApiError } from "@/lib/api"
 import { CONTACT_EMAIL } from "@/lib/site"
+import { useUser } from "@/hooks/useUser"
 
 type Tipo = "arrepentimiento" | "baja"
 
@@ -40,7 +42,24 @@ const schema = z.object({
 })
 type FormValues = z.infer<typeof schema>
 
-type Resultado = { codigo: string; notificado: boolean; datos: FormValues }
+type Resultado = {
+  codigo: string
+  notificado: boolean
+  datos: FormValues
+  // Fase M: baja del débito en el acto (solo el admin con sesión que lo pidió).
+  bajaEfectiva?: boolean
+  periodoHasta?: string | null
+  motivo?: string | null
+}
+
+/** Débito automático vigente de la clínica del admin con sesión (Fase M). */
+type DebitoClinica = { clinica: string | null; plan: string | null; periodoHasta: string | null }
+
+function fechaLarga(iso: string | null | undefined) {
+  return iso
+    ? new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" })
+    : ""
+}
 
 /**
  * Botón de arrepentimiento / botón de baja de servicio (Disp. SSDCyLC 954/2025):
@@ -53,16 +72,50 @@ export default function SolicitudConsumo({ tipo }: { tipo: Tipo }) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
+
+  // Fase M: si entra el admin de una clínica con débito automático activo, se le
+  // ofrece darlo de baja en el acto (además de la constancia). Sin sesión, nada cambia.
+  const { user } = useUser()
+  const [debito, setDebito] = useState<DebitoClinica | null>(null)
+  const [cancelarDebito, setCancelarDebito] = useState(true)
+  useEffect(() => {
+    if (tipo !== "baja" || !user?.esAdmin || !user.clinicaId) return
+    let vivo = true
+    api
+      .get<{
+        plan: { planNombre: string | null; periodoHasta: string | null }
+        debito: { estado: string } | null
+      }>("/api/planes/mi-clinica")
+      .then((d) => {
+        if (!vivo || d.debito?.estado !== "authorized") return
+        const clinica = user.clinicas.find((c) => c.clinicaId === user.clinicaId)?.nombre ?? null
+        setDebito({ clinica, plan: d.plan.planNombre, periodoHasta: d.plan.periodoHasta })
+        reset({
+          nombre: user.fullName ?? "",
+          email: user.email,
+          servicio: [d.plan.planNombre && `Plan ${d.plan.planNombre}`, clinica && `clínica «${clinica}»`]
+            .filter(Boolean)
+            .join(", "),
+          detalle: "",
+        })
+      })
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [tipo, user, reset])
 
   async function onSubmit(values: FormValues) {
     setSubmitting(true)
     try {
-      const r = await api.post<{ codigo: string; notificado: boolean }>(
-        "/api/solicitudes-consumo",
-        { tipo, ...values }
-      )
+      const r = await api.post<Omit<Resultado, "datos">>("/api/solicitudes-consumo", {
+        tipo,
+        ...values,
+        ...(debito && cancelarDebito ? { cancelarDebito: true } : {}),
+      })
       setResultado({ ...r, datos: values })
     } catch (err) {
       toast.error(
@@ -114,6 +167,30 @@ export default function SolicitudConsumo({ tipo }: { tipo: Tipo }) {
                     <Textarea id="detalle" rows={4} aria-invalid={!!errors.detalle} {...register("detalle")} />
                   </Field>
 
+                  {debito && (
+                    <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                      <Checkbox
+                        id="cancelar-debito"
+                        checked={cancelarDebito}
+                        onCheckedChange={(v) => setCancelarDebito(v === true)}
+                        className="mt-0.5"
+                      />
+                      <label htmlFor="cancelar-debito" className="text-sm">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <CreditCard className="size-4 text-primary" aria-hidden /> Dar de baja ahora el débito
+                          automático
+                        </span>
+                        <span className="mt-0.5 block text-muted-foreground">
+                          Cancelamos en el acto el débito de Mercado Pago del plan {debito.plan}
+                          {debito.clinica ? ` de «${debito.clinica}»` : ""}: no se te cobra más.
+                          {debito.periodoHasta
+                            ? ` El plan sigue hasta el ${fechaLarga(debito.periodoHasta)}.`
+                            : ""}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
                   <p className="text-xs text-muted-foreground">
                     Usamos estos datos solo para gestionar tu solicitud. Más
                     información en la{" "}
@@ -147,7 +224,7 @@ export default function SolicitudConsumo({ tipo }: { tipo: Tipo }) {
 }
 
 function Confirmacion({ tipo, resultado }: { tipo: Tipo; resultado: Resultado }) {
-  const { codigo, notificado, datos } = resultado
+  const { codigo, notificado, datos, bajaEfectiva, periodoHasta, motivo } = resultado
   const asunto = `${TEXTOS[tipo].titulo} — ${codigo}`
   const cuerpo = [
     `Código: ${codigo}`,
@@ -165,6 +242,17 @@ function Confirmacion({ tipo, resultado }: { tipo: Tipo; resultado: Resultado })
           <CircleCheck className="size-7 shrink-0 text-primary" aria-hidden />
           <h2 className="text-xl font-semibold">Recibimos tu solicitud</h2>
         </div>
+        {bajaEfectiva === true && (
+          <p className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+            <strong>Listo: cancelamos el débito automático en Mercado Pago.</strong> No se te
+            cobra más.{periodoHasta ? ` El plan sigue activo hasta el ${fechaLarga(periodoHasta)}.` : ""}
+          </p>
+        )}
+        {bajaEfectiva === false && motivo && (
+          <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            {motivo} Tu solicitud quedó registrada con este código.
+          </p>
+        )}
         <p className="text-muted-foreground">Tu código de identificación es:</p>
         <p className="rounded-lg border border-border bg-muted/50 px-4 py-3 text-center font-mono text-lg font-semibold tracking-wide">
           {codigo}

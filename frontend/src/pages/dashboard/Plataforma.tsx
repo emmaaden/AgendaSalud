@@ -118,6 +118,9 @@ export default function Plataforma() {
   const [form, setForm] = useState<FormSub | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [sincronizando, setSincronizando] = useState(false)
+  // Fase M: baja del débito pedida por fuera del panel (dos pasos para no tocarlo sin querer).
+  const [confirmarCancelacion, setConfirmarCancelacion] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
 
   const cargar = useCallback(async () => {
     try {
@@ -136,6 +139,7 @@ export default function Plataforma() {
   function abrir(c: ClinicaPlataforma) {
     const s = c.suscripcion
     setEditando(c)
+    setConfirmarCancelacion(false)
     setForm({
       planId: s?.planId ?? "clinica",
       estado: s?.estadoGuardado ?? "prueba",
@@ -183,6 +187,21 @@ export default function Plataforma() {
       toast.error(e instanceof ApiError ? e.message : "No se pudo guardar.")
     } finally {
       setGuardando(false)
+    }
+  }
+
+  async function cancelarDebito() {
+    if (!editando) return
+    setCancelando(true)
+    try {
+      await api.post(`/plataforma/clinicas/${editando.id}/cancelar-debito`)
+      toast.success("Débito cancelado en Mercado Pago. El plan sigue hasta el fin del período pago.")
+      setEditando(null)
+      cargar()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "No se pudo cancelar el débito.")
+    } finally {
+      setCancelando(false)
     }
   }
 
@@ -311,6 +330,28 @@ export default function Plataforma() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     Con débito activo, los cobros extienden el período solos: editá a mano solo para corregir.
                   </p>
+                  {editando.suscripcion.mpEstado === "authorized" &&
+                    (confirmarCancelacion ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2" role="alert">
+                        <span className="text-sm">¿Cancelar el débito? No se le cobra más; el plan sigue hasta el fin del período pago.</span>
+                        <Button type="button" variant="destructive" size="sm" onClick={cancelarDebito} disabled={cancelando}>
+                          {cancelando && <Loader2 className="animate-spin" />} Sí, cancelar
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setConfirmarCancelacion(false)} disabled={cancelando}>
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => setConfirmarCancelacion(true)}
+                      >
+                        Cancelar débito en Mercado Pago
+                      </Button>
+                    ))}
                 </div>
               )}
               <div className="flex flex-wrap gap-2">

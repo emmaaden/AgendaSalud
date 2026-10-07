@@ -332,6 +332,8 @@ module.exports = {
             email: z.email('Email inválido'),
             servicio: z.string().trim().max(120, 'Texto demasiado largo').optional(),
             detalle: z.string().trim().max(1000, 'Texto demasiado largo').optional(),
+            // Fase M: el admin con sesión puede dar de baja el débito en el acto.
+            cancelarDebito: z.boolean().optional(),
         }),
     },
 
