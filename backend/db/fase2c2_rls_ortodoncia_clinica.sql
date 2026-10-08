@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase 2c (parte 2): RLS por JWT para ortodoncia y clínica
+-- Agenlu — Fase 2c (parte 2): RLS por JWT para ortodoncia y clínica
 -- ---------------------------------------------------------------------------
 -- Ejecutar UNA vez en el SQL Editor de Supabase, DESPUÉS de fase2c_rls_jwt.sql.
 -- Es idempotente. Extiende el rollout de RLS a las tablas que usan los

@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const hcController = require('../controllers/hcController');
 const { requireRole } = require('../middleware/auth');
+const { requireFeature } = require('../middleware/plan');
 
 router.use(requireRole('profesional'));
 
@@ -13,6 +14,7 @@ router.get('/export', hcController.exportar);
 router.get('/pacientes', hcController.pacientesEnAlcance);
 
 // Import: parser JSON con límite alto (los archivos de HC pueden ser grandes).
-router.post('/import', express.json({ limit: '20mb' }), hcController.importar);
+// Fase L: exportar no se limita NUNCA (los datos son de la clínica); importar depende del plan.
+router.post('/import', requireFeature('importar_hc'), express.json({ limit: '20mb' }), hcController.importar);
 
 module.exports = router;

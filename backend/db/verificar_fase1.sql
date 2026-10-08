@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Verificación de la Fase 1
+-- Agenlu — Verificación de la Fase 1
 -- Proyecto Supabase: Emma Project (rpdrgmvcxhxuwxkwixyy)
 -- ---------------------------------------------------------------------------
 -- Cómo usar: pegá TODO este archivo en el SQL Editor de Supabase y ejecutá.

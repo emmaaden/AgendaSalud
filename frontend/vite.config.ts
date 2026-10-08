@@ -25,6 +25,7 @@ const API_PREFIXES = [
   '/auditoria',
   '/catalogos',
   '/autorizaciones',
+  '/plataforma',
   '/professionals',
   '/available-slots',
   '/create-event',

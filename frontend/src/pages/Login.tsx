@@ -4,11 +4,13 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Loader2, LogIn } from "lucide-react"
+import { Loader2, LogIn, MailWarning } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field } from "@/components/form/Field"
 import { AuthShell } from "@/components/site/AuthShell"
+import { ReenviarConfirmacion } from "@/components/site/ReenviarConfirmacion"
 import { api, ApiError } from "@/lib/api"
 
 const schema = z.object({
@@ -19,6 +21,8 @@ type FormValues = z.infer<typeof schema>
 
 export default function Login() {
   const [submitting, setSubmitting] = useState(false)
+  // Email de una cuenta que todavía no confirmó su correo (muestra el aviso).
+  const [sinConfirmar, setSinConfirmar] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -27,6 +31,7 @@ export default function Login() {
 
   async function onSubmit(values: FormValues) {
     setSubmitting(true)
+    setSinConfirmar(null)
     try {
       // El backend detecta el rol (profesional/paciente) desde la base; no se envía.
       const res = await api.post<{
@@ -45,12 +50,17 @@ export default function Login() {
             : "/dashboard"
       window.location.href = destino
     } catch (err) {
+      setSubmitting(false)
+      const data = err instanceof ApiError ? (err.data as { code?: string } | null) : null
+      if (data?.code === "EMAIL_NO_CONFIRMADO") {
+        setSinConfirmar(values.email)
+        return
+      }
       const msg =
         err instanceof ApiError
           ? err.message
           : "No se pudo iniciar sesión. Intentá de nuevo."
       toast.error(msg)
-      setSubmitting(false)
     }
   }
 
@@ -70,6 +80,25 @@ export default function Login() {
           Ingresá con tu cuenta de paciente o profesional.
         </p>
       </div>
+
+      {sinConfirmar && (
+        <Alert className="mb-6 border-primary/30 bg-primary/5">
+          <MailWarning className="text-primary" />
+          <AlertTitle>Confirmá tu email para entrar</AlertTitle>
+          <AlertDescription>
+            <p>
+              Te enviamos un enlace a{" "}
+              <strong className="font-medium break-all text-foreground">{sinConfirmar}</strong>{" "}
+              al registrarte. Abrilo para activar tu cuenta y volvé a iniciar sesión.
+              Revisá también la carpeta de spam.
+            </p>
+            <ReenviarConfirmacion
+              email={sinConfirmar}
+              size="sm"
+            />
+          </AlertDescription>
+        </Alert>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <Field label="Email" htmlFor="email" required error={errors.email?.message}>

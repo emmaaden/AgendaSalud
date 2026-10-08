@@ -21,6 +21,9 @@ router.post('/select-clinica', requireAuth, validate(schemas.auth.selectClinica)
 // Recuperación de contraseña (envía el email de recuperación de Supabase).
 router.post('/forgot-password', authLimiter, validate(schemas.auth.forgotPassword), authController.forgotPassword);
 
+// Reenviar el email de confirmación de la cuenta (registro con email sin confirmar).
+router.post('/reenviar-confirmacion', authLimiter, validate(schemas.auth.reenviarConfirmacion), authController.reenviarConfirmacion);
+
 // Área del profesional autenticado (usa la sesión, no el body).
 router.post('/get-area', requireAuth, authController.getArea);
 

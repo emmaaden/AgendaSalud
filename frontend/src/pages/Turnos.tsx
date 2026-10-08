@@ -70,6 +70,8 @@ export default function Turnos() {
   const [view, setView] = useState<View>("menu")
   const [areas, setAreas] = useState<ProfArea[]>([])
   const [clinicaNombre, setClinicaNombre] = useState<string | null>(null)
+  // Fase L: una clínica con la suscripción vencida no recibe turnos online.
+  const [recibeTurnos, setRecibeTurnos] = useState(true)
 
   const [area, setArea] = useState("")
   const [profId, setProfId] = useState("")
@@ -85,10 +87,13 @@ export default function Turnos() {
 
     if (clinica) {
       api
-        .get<{ nombre?: string }>(
+        .get<{ nombre?: string; recibeTurnos?: boolean }>(
           `/clinica-publica?clinica=${encodeURIComponent(clinica)}`
         )
-        .then((d) => d?.nombre && setClinicaNombre(d.nombre))
+        .then((d) => {
+          if (d?.nombre) setClinicaNombre(d.nombre)
+          setRecibeTurnos(d?.recibeTurnos !== false)
+        })
         .catch(() => {})
     }
   }, [clinica])
@@ -132,8 +137,16 @@ export default function Turnos() {
             </div>
           )}
 
+          {!recibeTurnos && (
+            <p className="mb-6 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground" role="status">
+              Esta clínica no está tomando turnos online por el momento. Comunicate
+              directamente con la clínica para reservar.
+            </p>
+          )}
+
           {view === "menu" && (
             <div className="grid gap-4 sm:grid-cols-2">
+              {recibeTurnos && (
               <button
                 type="button"
                 onClick={() => setView("reservar")}
@@ -154,6 +167,7 @@ export default function Turnos() {
                   </CardContent>
                 </Card>
               </button>
+              )}
 
               <Link
                 to={user?.role === "paciente" ? "/mis-turnos" : "/login"}

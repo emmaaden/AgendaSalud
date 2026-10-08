@@ -79,6 +79,9 @@ module.exports = {
         forgotPassword: z.object({
             email: z.email('Email inválido'),
         }),
+        reenviarConfirmacion: z.object({
+            email: z.email('Email inválido'),
+        }),
         saveArea: z.object({
             especialidad: idFlexible,
         }),
@@ -216,10 +219,6 @@ module.exports = {
         delete: z.object({ id: idFlexible }),
     },
 
-    ortodoncia: {
-        getData: z.object({ dni }),
-    },
-
     calendar: {
         availableSlots: z.object({
             date: z.string()
@@ -332,6 +331,8 @@ module.exports = {
             email: z.email('Email inválido'),
             servicio: z.string().trim().max(120, 'Texto demasiado largo').optional(),
             detalle: z.string().trim().max(1000, 'Texto demasiado largo').optional(),
+            // Fase M: el admin con sesión puede dar de baja el débito en el acto.
+            cancelarDebito: z.boolean().optional(),
         }),
     },
 
@@ -356,6 +357,46 @@ module.exports = {
         listar: z.object({
             estado: z.enum(['pendiente', 'aprobada', 'rechazada', 'cancelada']).optional(),
             page: paginaQuery,
+        }),
+    },
+    // Fase M: contratación del plan de la clínica con Mercado Pago.
+    pagos: {
+        contratar: z.object({
+            planId: z.string().trim().min(1).max(40),
+            ciclo: z.enum(['mensual', 'anual'], 'Ciclo inválido'),
+            profesionalesExtra: z.number().int().min(0).max(500).optional(),
+            // Obligatorio solo si hay que pasar por el checkout (lo exige el servicio).
+            payerEmail: z.email('Ingresá el email de tu cuenta de Mercado Pago').optional(),
+        }),
+    },
+
+    // Fase L: panel de la plataforma (activación manual de planes y precios).
+    plataforma: {
+        suscripcion: z.object({
+            planId: z.string().trim().min(1).max(40).optional(),
+            estado: z.enum(['prueba', 'activa', 'vencida', 'cancelada'], 'Estado inválido').optional(),
+            ciclo: z.enum(['mensual', 'anual'], 'Ciclo inválido').optional(),
+            profesionalesExtra: z.number().int().min(0).max(500).optional(),
+            // ISO (YYYY-MM-DD o fecha-hora). null = sin vencimiento.
+            pruebaHasta: z.string().trim().max(40).nullable().optional(),
+            periodoHasta: z.string().trim().max(40).nullable().optional(),
+            notas: z.string().trim().max(2000).nullable().optional(),
+        }),
+        plan: z.object({
+            nombre: z.string().trim().min(1).max(60).optional(),
+            descripcion: z.string().trim().max(500).nullable().optional(),
+            precioMensual: z.number().min(0).max(100000000).optional(),
+            precioAnual: z.number().min(0).max(1000000000).optional(),
+            profesionalesIncluidos: z.number().int().min(1).max(1000).optional(),
+            precioProfesionalExtra: z.number().min(0).max(100000000).nullable().optional(),
+            maxRecepcion: z.number().int().min(0).max(1000).nullable().optional(),
+            features: z.array(z.string().trim().min(1).max(40)).max(50).optional(),
+            destacado: z.boolean().optional(),
+            activo: z.boolean().optional(),
+        }),
+        // Fase M2: llevar los débitos vigentes al precio actual del plan.
+        aplicarPrecios: z.object({
+            dias: z.number().int().min(30, 'El aviso tiene que ser de al menos 30 días').max(365),
         }),
     },
 };

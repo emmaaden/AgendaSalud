@@ -2,12 +2,16 @@ const express = require('express');
 const router = express.Router();
 const auditoriaController = require('../controllers/auditoriaController');
 const { requireRolClinica } = require('../middleware/auth');
+const { requireFeature } = require('../middleware/plan');
 const { validate } = require('../middleware/validate');
 const schemas = require('../validators/schemas');
 
 // Fase J: auditoría médica. Los permisos se deciden por el rol de la MEMBRESÍA en la
 // clínica activa (requireRolClinica), no por el tipo de cuenta.
 const verAuditoria = requireRolClinica('auditor', 'admin');
+
+// Fase L: la auditoría médica es del plan Clínica.
+router.use(requireFeature('auditoria'));
 
 // Bandeja, detalle, filtros, bitácora y resumen: auditor y admin.
 router.get('/registros', verAuditoria, validate(schemas.auditoria.listar, 'query'), auditoriaController.listarRegistros);

@@ -3,12 +3,16 @@ const router = express.Router();
 const multer = require('multer');
 const autorizacionController = require('../controllers/autorizacionController');
 const { requireRolClinica } = require('../middleware/auth');
+const { requireFeature } = require('../middleware/plan');
 const { validate } = require('../middleware/validate');
 const schemas = require('../validators/schemas');
 
 // Fase K: autorizaciones previas. Permisos por el rol de la membresía activa.
 const quienAtiende = requireRolClinica('profesional', 'admin');
 const cualquiera = requireRolClinica('profesional', 'admin', 'auditor');
+
+// Fase L: las autorizaciones previas (las resuelve un auditor) son del plan Clínica.
+router.use(requireFeature('autorizaciones'));
 
 // Adjuntos en memoria: hasta 5 archivos de 10 MB, imágenes PNG/JPG o PDF.
 const upload = multer({

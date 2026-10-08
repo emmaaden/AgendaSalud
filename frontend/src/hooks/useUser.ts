@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
+import type { PlanSesion } from "@/lib/planes"
 
 // Rol de la membresía en una clínica (Fase J: + auditor).
 export type RolClinica = "admin" | "profesional" | "recepcion" | "auditor"
@@ -25,6 +26,10 @@ export type CurrentUser = {
   alcanceObraSocial?: string | null
   clinicas: ClinicaMembresia[]
   needsClinicSelection: boolean
+  // Fase L: plan de la clínica activa (null para el paciente o sin clínica elegida).
+  plan: PlanSesion | null
+  // Fase L: equipo de la plataforma (activa planes y edita precios).
+  esPlataforma: boolean
 }
 
 /**

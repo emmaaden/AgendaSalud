@@ -15,6 +15,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { SelectField } from "@/components/form/SelectField"
 import { api } from "@/lib/api"
+import { useAuth } from "@/contexts/AuthContext"
+import { tieneFeature } from "@/lib/planes"
 import {
   useCie10,
   usePracticas,
@@ -42,11 +44,14 @@ export function CodificacionEditor({
   const { datos: cie10 } = useCie10()
   const { datos: practicas, cargando: cargandoPracticas } = usePracticas()
   const [vigentes, setVigentes] = useState<AutorizacionVigente[]>([])
+  // Fase L: sin autorizaciones previas en el plan no hay vigentes que ofrecer.
+  const { user } = useAuth()
+  const conAutorizaciones = tieneFeature(user?.plan, "autorizaciones")
   const [abiertoDx, setAbiertoDx] = useState(false)
   const [abiertoPx, setAbiertoPx] = useState(false)
 
   useEffect(() => {
-    if (!dni) return
+    if (!dni || !conAutorizaciones) return
     let vivo = true
     api
       .get<{ autorizaciones: AutorizacionVigente[] }>(
@@ -57,7 +62,7 @@ export function CodificacionEditor({
     return () => {
       vivo = false
     }
-  }, [dni])
+  }, [dni, conAutorizaciones])
 
   const descDx = new Map(cie10.map((c) => [c.codigo, c.descripcion]))
   const porId = new Map(practicas.map((p) => [p.id, p]))

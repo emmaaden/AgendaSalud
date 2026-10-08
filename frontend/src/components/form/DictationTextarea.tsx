@@ -4,6 +4,8 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useDictado } from "@/hooks/useDictado"
+import { useAuth } from "@/contexts/AuthContext"
+import { tieneFeature } from "@/lib/planes"
 
 /**
  * Puntuación dictada: "punto", "coma", "punto y aparte", etc. Whisper ya
@@ -44,7 +46,10 @@ export function DictationTextarea({
   value: string
   onValueChange: (value: string) => void
 }) {
-  const { supported, listening, interim, start, stop } = useDictado()
+  const { supported: soportado, listening, interim, start, stop } = useDictado()
+  // Fase L: el dictado depende del plan de la clínica.
+  const { user } = useAuth()
+  const supported = soportado && tieneFeature(user?.plan, "dictado")
   // El reconocedor vive más que un render: leemos siempre el valor actual.
   const valueRef = useRef(value)
   useLayoutEffect(() => {

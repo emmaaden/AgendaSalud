@@ -1,4 +1,4 @@
-# AgendaSalud — Arquitectura del proyecto
+# Agenlu — Arquitectura del proyecto
 
 Monorepo con dos aplicaciones independientes:
 

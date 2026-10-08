@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/layouts/DashboardLayout"
 import { Toaster } from "@/components/ui/sonner"
 import { PageLoader } from "@/components/site/PageLoader"
 import { RouteTitle } from "@/components/site/A11y"
+import { FeatureGate } from "@/components/dashboard/PlanGate"
 
 // Carga inicial: solo lo que ve quien llega al sitio.
 import Home from "@/pages/Home"
@@ -18,6 +19,7 @@ const RegisterPaciente = lazy(() => import("@/pages/RegisterPaciente"))
 const RegisterProfesional = lazy(() => import("@/pages/RegisterProfesional"))
 const RegisterRecepcion = lazy(() => import("@/pages/RegisterRecepcion"))
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"))
+const ConfirmarEmail = lazy(() => import("@/pages/ConfirmarEmail"))
 const Terminos = lazy(() => import("@/pages/Terminos"))
 const Privacidad = lazy(() => import("@/pages/Privacidad"))
 const Cookies = lazy(() => import("@/pages/Cookies"))
@@ -33,7 +35,6 @@ const MiHistoria = lazy(() => import("@/pages/MiHistoria"))
 const MisCertificados = lazy(() => import("@/pages/MisCertificados"))
 const MisEstudios = lazy(() => import("@/pages/MisEstudios"))
 const MiPerfil = lazy(() => import("@/pages/MiPerfil"))
-const ValorOrtodoncia = lazy(() => import("@/pages/ValorOrtodoncia"))
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"))
 const SeleccionarClinica = lazy(() => import("@/pages/SeleccionarClinica"))
 
@@ -58,6 +59,8 @@ const DashboardEstudios = lazy(
 )
 const DashboardAuditoria = lazy(() => import("@/pages/dashboard/Auditoria"))
 const DashboardAutorizaciones = lazy(() => import("@/pages/dashboard/Autorizaciones"))
+const DashboardPlan = lazy(() => import("@/pages/dashboard/Plan"))
+const DashboardPlataforma = lazy(() => import("@/pages/dashboard/Plataforma"))
 
 /**
  * Redirección de rutas legacy que conserva ?query y #hash: el enlace de recuperación de
@@ -86,12 +89,33 @@ function App() {
           <Route path="/dashboard/admin" element={<DashboardAdministracion />} />
           <Route
             path="/dashboard/certificados"
-            element={<DashboardCertificados />}
+            element={
+              <FeatureGate feature="certificados">
+                <DashboardCertificados />
+              </FeatureGate>
+            }
           />
           <Route path="/dashboard/historias" element={<DashboardHistorias />} />
           <Route path="/dashboard/estudios" element={<DashboardEstudios />} />
-          <Route path="/dashboard/auditoria" element={<DashboardAuditoria />} />
-          <Route path="/dashboard/autorizaciones" element={<DashboardAutorizaciones />} />
+          {/* Fase L: funciones que dependen del plan de la clínica. */}
+          <Route
+            path="/dashboard/auditoria"
+            element={
+              <FeatureGate feature="auditoria">
+                <DashboardAuditoria />
+              </FeatureGate>
+            }
+          />
+          <Route
+            path="/dashboard/autorizaciones"
+            element={
+              <FeatureGate feature="autorizaciones">
+                <DashboardAutorizaciones />
+              </FeatureGate>
+            }
+          />
+          <Route path="/dashboard/plan" element={<DashboardPlan />} />
+          <Route path="/dashboard/plataforma" element={<DashboardPlataforma />} />
         </Route>
 
         <Route element={<PublicLayout />}>
@@ -109,13 +133,13 @@ function App() {
             path="/historia-clinica"
             element={<Navigate to="/mi-historia" replace />}
           />
-          <Route path="/valor-ortodoncia" element={<ValorOrtodoncia />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterRole />} />
           <Route path="/register/paciente" element={<RegisterPaciente />} />
           <Route path="/register/profesional" element={<RegisterProfesional />} />
           <Route path="/register/recepcion" element={<RegisterRecepcion />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/confirmar-email" element={<ConfirmarEmail />} />
           <Route path="/terminos" element={<Terminos />} />
           <Route path="/privacidad" element={<Privacidad />} />
           <Route path="/cookies" element={<Cookies />} />

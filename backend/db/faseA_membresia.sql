@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase A: Membresía y roles por clínica (multi-clínica real)
+-- Agenlu — Fase A: Membresía y roles por clínica (multi-clínica real)
 -- ---------------------------------------------------------------------------
 -- Ejecutar UNA vez en el SQL Editor de Supabase, DESPUÉS de fase3_turnos.sql.
 -- Es IDEMPOTENTE.

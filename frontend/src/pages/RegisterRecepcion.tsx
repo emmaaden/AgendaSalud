@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -28,6 +28,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function RegisterRecepcion() {
+  const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
   const {
     register,
@@ -42,7 +43,7 @@ export default function RegisterRecepcion() {
   async function onSubmit(values: FormValues) {
     setSubmitting(true)
     try {
-      await api.post("/auth/register", {
+      const res = await api.post<{ requiereConfirmacion?: boolean }>("/auth/register", {
         email: values.email,
         password: values.password,
         activationCode: values.activationCode.trim(),
@@ -54,6 +55,10 @@ export default function RegisterRecepcion() {
         aceptaTerminos: values.acepta,
         versionLegal: LEGAL_VERSION,
       })
+      if (res?.requiereConfirmacion) {
+        navigate("/confirmar-email", { state: { email: values.email } })
+        return
+      }
       toast.success("Cuenta creada")
       window.location.href = "/dashboard"
     } catch (err) {

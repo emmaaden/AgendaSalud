@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Pencil,
   Tags,
+  ClipboardList,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,9 +36,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Odontogram, type Diente } from "@/components/dashboard/Odontogram"
+import { FichaObraSocialDialog } from "@/components/dashboard/FichaObraSocialDialog"
 import { api, ApiError } from "@/lib/api"
 import { downloadPatientHistoryPdf, type Paciente } from "@/lib/patientPdf"
 import { useAuth } from "@/contexts/AuthContext"
+import { tieneFeature } from "@/lib/planes"
 import {
   COBERTURA_VACIA,
   CODIFICACION_VACIA,
@@ -361,6 +364,7 @@ function BuscarPaciente({
   area: string
   onBack: () => void
 }) {
+  const { user } = useAuth()
   const [dni, setDni] = useState("")
   const [loading, setLoading] = useState(false)
   const [paciente, setPaciente] = useState<Paciente | null>(null)
@@ -375,6 +379,7 @@ function BuscarPaciente({
   // Fase K: edición de la cobertura del paciente.
   const [editCob, setEditCob] = useState<Cobertura | null>(null)
   const [savingCob, setSavingCob] = useState(false)
+  const [fichaOs, setFichaOs] = useState(false)
 
   async function guardarCobertura() {
     if (!paciente || !editCob) return
@@ -499,10 +504,15 @@ function BuscarPaciente({
           <ArrowLeft /> Nueva búsqueda
         </Button>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link to={`/dashboard/autorizaciones?dni=${encodeURIComponent(paciente.dni)}`}>
-              <ShieldCheck /> Solicitar autorización
-            </Link>
+          {tieneFeature(user?.plan, "autorizaciones") && (
+            <Button variant="outline" asChild>
+              <Link to={`/dashboard/autorizaciones?dni=${encodeURIComponent(paciente.dni)}`}>
+                <ShieldCheck /> Solicitar autorización
+              </Link>
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setFichaOs(true)}>
+            <ClipboardList /> Ficha obra social
           </Button>
           <Button variant="outline" onClick={() => downloadPatientHistoryPdf(paciente)}>
             <Download /> Descargar PDF
@@ -632,6 +642,14 @@ function BuscarPaciente({
       ) : (
         <p className="mt-4 text-sm text-muted-foreground">No hay consultas registradas.</p>
       )}
+
+      <FichaObraSocialDialog
+        open={fichaOs}
+        onOpenChange={setFichaOs}
+        paciente={paciente}
+        idProfesional={user?.idRole}
+        odontologica={isOdonto || !!paciente.history?.some((e) => e.dientes?.length)}
+      />
 
       <Dialog open={!!editCob} onOpenChange={(o) => !o && setEditCob(null)}>
         <DialogContent>

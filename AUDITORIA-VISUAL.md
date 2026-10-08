@@ -1,4 +1,4 @@
-# Auditoría de bugs visuales — AgendaSalud (frontend)
+# Auditoría de bugs visuales — Agenlu (frontend)
 
 **Fecha:** 2026-09-25 · **Rama:** `dev` (`8b33330`) · **Alcance:** `frontend/src` completo (63 archivos, ~10.800 líneas)
 

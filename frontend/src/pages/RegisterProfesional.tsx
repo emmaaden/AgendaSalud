@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -49,6 +49,7 @@ const MODOS = [
 ]
 
 export default function RegisterProfesional() {
+  const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
   const [especialidades, setEspecialidades] = useState<Option[]>([])
 
@@ -84,7 +85,7 @@ export default function RegisterProfesional() {
   async function onSubmit(values: FormValues) {
     setSubmitting(true)
     try {
-      await api.post("/auth/register", {
+      const res = await api.post<{ requiereConfirmacion?: boolean }>("/auth/register", {
         email: values.email,
         password: values.password,
         activationCode: values.onboardingMode === "codigo" ? values.activationCode : "",
@@ -102,6 +103,10 @@ export default function RegisterProfesional() {
         aceptaTerminos: values.acepta,
         versionLegal: LEGAL_VERSION,
       })
+      if (res?.requiereConfirmacion) {
+        navigate("/confirmar-email", { state: { email: values.email } })
+        return
+      }
       toast.success("Cuenta profesional creada")
       window.location.href = "/dashboard"
     } catch (err) {

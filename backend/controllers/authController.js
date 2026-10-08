@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { slugify } = require('../utils/slug');
 const { getMembresiasActivas, roleSinProfesional } = require('../utils/membresias');
 const { columnasCobertura } = require('../utils/cobertura');
+const planes = require('../utils/planes');
 require('dotenv').config();
 
 // service_role: SALTEA la RLS. Se usa SOLO para operaciones sobre tablas.
@@ -76,6 +77,19 @@ exports.register = async (req, res) => {
             codigoRow = r.cod;
         }
 
+        // Fase L: unirse con código ocupa un lugar del plan de la clínica (profesionales,
+        // recepción) o requiere la función (auditoría). Se verifica ANTES de crear el
+        // usuario para no dejar cuentas a medias.
+        if (codigoRow) {
+            const bloqueo = await planes.verificarAlta(clinicaId, codigoRow.rol || 'profesional');
+            if (bloqueo) {
+                return res.status(bloqueo.status).json({
+                    error: `La clínica no puede sumar esta cuenta: ${bloqueo.error} Pedile al administrador que lo revise.`,
+                    code: bloqueo.code,
+                });
+            }
+        }
+
         // Creamos usuario en Supabase Auth (cliente anon: si el signUp devolviera sesión
         // —confirmación de email desactivada— no debe adjuntarse al cliente service_role,
         // porque los INSERT siguientes dejarían de saltear la RLS).
@@ -123,6 +137,8 @@ exports.register = async (req, res) => {
             if (!cli) throw cliErr || new Error('No se pudo crear la clínica');
             clinicaId = cli.id;
             esAdmin = true;
+            // Fase L: toda clínica nueva arranca con la prueba del plan completo.
+            await planes.crearPrueba(clinicaId);
         }
 
         const { data: persona_data, error: persona_error } = await supabase
@@ -228,7 +244,13 @@ exports.register = async (req, res) => {
             }
         }
 
-        res.json({ message: "Registro exitoso", user: { id: userId, email: user.email, role } });
+        // Con la confirmación de email activada, signUp no devuelve sesión: el usuario
+        // tiene que confirmar antes de poder iniciar sesión (el cliente se lo avisa).
+        res.json({
+            message: "Registro exitoso",
+            user: { id: userId, email: user.email, role },
+            requiereConfirmacion: !data.session,
+        });
 
     } catch (err) {
         console.error("Error detallado en registro:", err);
@@ -248,6 +270,14 @@ exports.login = async (req, res) => {
         });
 
         if (error) {
+            // Supabase solo devuelve `email_not_confirmed` con la contraseña correcta,
+            // así que avisarlo no revela si el email existe.
+            if (error.code === "email_not_confirmed") {
+                return res.status(403).json({
+                    error: "Todavía no confirmaste tu email. Revisá tu bandeja de entrada (y el spam).",
+                    code: "EMAIL_NO_CONFIRMADO",
+                });
+            }
             return res.status(401).json({ error: "Credenciales inválidas" });
         }
 
@@ -351,6 +381,26 @@ exports.login = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Error al iniciar sesión" });
+    }
+};
+
+// Reenvía el email de confirmación de la cuenta. Respuesta genérica siempre: no se
+// revela si el email existe ni si ya estaba confirmado (anti-enumeración).
+exports.reenviarConfirmacion = async (req, res) => {
+    const respuestaGenerica = {
+        message: 'Si el email tiene una cuenta pendiente de confirmar, te reenviamos el enlace.'
+    };
+    try {
+        const { email } = req.body;
+        const { error } = await supabaseAuth.auth.resend({ type: 'signup', email });
+        if (error) {
+            // Se loguea pero no se expone al cliente (incluye el límite de envíos de Supabase).
+            console.error('Error en resend de confirmación:', error.message);
+        }
+        return res.json(respuestaGenerica);
+    } catch (err) {
+        console.error('Error en reenviar-confirmacion:', err);
+        return res.json(respuestaGenerica);
     }
 };
 

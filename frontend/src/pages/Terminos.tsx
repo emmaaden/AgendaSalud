@@ -15,7 +15,7 @@ export default function Terminos() {
       title="Términos y condiciones"
       intro={
         <p>
-          Estos términos regulan el uso de AgendaSalud. Al crear una cuenta, reservar un
+          Estos términos regulan el uso de Agenlu. Al crear una cuenta, reservar un
           turno o contratar un plan, los aceptás. Si no estás de acuerdo, no uses el
           servicio. Nada de lo que dicen limita los derechos que te reconocen la Ley
           24.240 de Defensa del Consumidor y el Código Civil y Comercial.
@@ -23,15 +23,15 @@ export default function Terminos() {
       }
       sections={[
         {
-          title: "1. Qué es AgendaSalud",
+          title: "1. Qué es Agenlu",
           body: (
             <>
               <p>
-                AgendaSalud es una plataforma de software para reservar turnos y para
+                Agenlu es una plataforma de software para reservar turnos y para
                 que profesionales y clínicas gestionen su agenda e historias clínicas.
               </p>
               <p>
-                <strong>AgendaSalud no presta servicios médicos</strong>: la atención,
+                <strong>Agenlu no presta servicios médicos</strong>: la atención,
                 los diagnósticos, los tratamientos y los certificados son
                 responsabilidad exclusiva del profesional que los realiza.{" "}
                 <strong>
@@ -59,7 +59,7 @@ export default function Terminos() {
           title: "3. Turnos (pacientes)",
           body: (
             <ul>
-              <li>Reservar un turno en AgendaSalud es gratuito.</li>
+              <li>Reservar un turno en Agenlu es gratuito.</li>
               <li>
                 La disponibilidad la define cada profesional. El turno queda confirmado
                 cuando ves el mensaje de éxito en pantalla; además te enviamos el
@@ -71,7 +71,7 @@ export default function Terminos() {
               </li>
               <li>
                 El precio de la consulta, la cobertura y las condiciones de atención las
-                fija y cobra el profesional o la clínica, no AgendaSalud.
+                fija y cobra el profesional o la clínica, no Agenlu.
               </li>
             </ul>
           ),
@@ -88,8 +88,34 @@ export default function Terminos() {
                 . El precio es mensual y no cambia durante el período ya pagado.
               </li>
               <li>
-                La contratación y el medio de pago se acuerdan por WhatsApp o email; te
-                enviamos la confirmación por escrito.
+                Las clínicas nuevas tienen 14 días de prueba sin costo y sin medio de
+                pago. Para el paciente el servicio es siempre gratuito.
+              </li>
+              <li>
+                Si al terminar la prueba o el período pago no se contrata o renueva un
+                plan, la clínica queda en modo solo lectura: podés ver y exportar todos tus
+                datos, pero no cargar datos nuevos ni recibir turnos online. Exportar las
+                historias clínicas nunca depende del plan.
+              </li>
+              <li>
+                El plan se contrata desde el panel de la clínica y se paga con Mercado
+                Pago mediante débito automático, que se renueva en cada período (mensual o
+                anual) hasta que lo des de baja. También podés contratar por WhatsApp o
+                email; en ese caso te enviamos la confirmación por escrito.
+              </li>
+              <li>
+                Si cambiás de plan con el mismo período de pago, el cambio rige en el acto
+                y el nuevo precio se cobra desde el débito siguiente.
+              </li>
+              <li>
+                Si actualizamos el precio de tu plan, te avisamos por email con al menos 30
+                días de anticipación. Hasta esa fecha se te cobra el precio anterior, y si no
+                estás de acuerdo podés dar de baja la renovación antes, sin costo.
+              </li>
+              <li>
+                Si un débito no se puede cobrar, tenés 5 días de gracia para pagar desde el
+                panel con otro medio; después la clínica queda en solo lectura hasta que se
+                pague.
               </li>
               <li>
                 Podés arrepentirte dentro de los 10 días corridos y dar de baja el plan
@@ -132,7 +158,7 @@ export default function Terminos() {
           body: (
             <>
               <p>
-                El software, la marca AgendaSalud y su logo son de su titular. Los datos
+                El software, la marca Agenlu y su logo son de su titular. Los datos
                 y archivos que cargás siguen siendo tuyos (o de tu paciente): solo los
                 usamos para prestarte el servicio.
               </p>

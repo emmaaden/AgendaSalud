@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase 2: Multi-clínica (SaaS)
+-- Agenlu — Fase 2: Multi-clínica (SaaS)
 -- Proyecto Supabase: Emma Project
 -- ---------------------------------------------------------------------------
 -- Ejecutar UNA vez en el SQL Editor de Supabase. Es idempotente.

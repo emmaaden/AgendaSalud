@@ -1,6 +1,6 @@
-# AgendaSalud — Documento de Contexto y Hoja de Ruta (rama `dev`)
+# Agenlu — Documento de Contexto y Hoja de Ruta (rama `dev`)
 
-> Referencia técnica para llevar AgendaSalud a un producto vendible a clínicas y
+> Referencia técnica para llevar Agenlu a un producto vendible a clínicas y
 > profesionales de la salud.
 >
 > **Autor:** Emmanuel Denis · **Rama:** `dev` · **Actualizado:** 2026-09-14
@@ -95,6 +95,91 @@ que corresponde: `get-datos-prof` y avatars → `id`; `get-esp-prof`, `save-*` y
   WhatsApp (Twilio) sigue inactivo.
 
 ## 7. Changelog
+
+### 2026-10-07 — Ficha para la obra social y odontograma gráfico en los PDF
+- **Ficha para la obra social** (botón «Ficha obra social» en la ficha del paciente, Registro clínico):
+  PDF con encabezado de la clínica y el profesional (nombre, especialidad, matrícula), datos del
+  afiliado, odontograma (permanente + temporal) y registro de prestaciones (fecha, código, pieza,
+  caras, firma del paciente) con renglones en blanco y firma/sello del profesional. Sigue el modelo
+  de la ficha odontológica de Unimed. Se elige período, qué prácticas van (por defecto solo las del
+  profesional que la emite) y las caras, que se proponen a partir de lo que cambió en el odontograma
+  de esa consulta. Código en `lib/fichaObraSocialPdf.ts` + `components/dashboard/FichaObraSocialDialog.tsx`.
+- **Backend:** `GET /pacient/emisor` (clínica, profesional, especialidad, matrícula) y el historial de
+  `get-data-pacient` suma `fechaIso` e `idProfesional` por registro.
+- **Historia clínica en PDF:** el odontograma se dibuja con colores y símbolos como en la web
+  (`lib/odontogramaPdf.ts`) en lugar del listado de texto; las notas por diente siguen como texto.
+
+### 2026-10-07 — Fase M2: control diario, precios y pago atrasado
+- **Control diario** (`utils/controlSuscripciones.js`, al arrancar y cada 24 h; o
+  `POST /internal/control-suscripciones` con `x-cron-token`): aplica cambios de precio avisados,
+  manda avisos pendientes y sincroniza con MP los débitos con el período por vencer/vencido o el
+  próximo cobro pasado, y los intentos de pago pendientes de la última semana. Respaldo de los
+  webhooks: idempotente.
+- **Precios:** Plataforma → «Avisar y programar» lleva los débitos vigentes de un plan al precio de
+  hoy. Columnas `monto_nuevo`, `monto_nuevo_desde`, `aviso_precio_enviado_en`
+  (`db/faseM2_precios.sql`). Se avisa por email al admin; rige ≥ 30 días después del aviso (si sale
+  tarde, la fecha se corre) y **sin aviso no se aplica**. La página Plan muestra el cambio.
+- **Pago atrasado (gracia/vencida):** la página Plan muestra «Pagar ahora»; se paga por el checkout
+  con otro medio y el cobro es inmediato; al autorizarse se cancela el débito que fallaba. Ya no se
+  «cambia el monto» de un débito que está fallando (`puedeCambiarSinCheckout` exige estado activa).
+- **Términos:** aviso de 30 días ante cambios de precio y 5 días de gracia si un débito falla.
+
+### 2026-10-07 — Fase M: baja del débito automático
+- **Botón de baja (`/baja`):** si lo usa el admin de la clínica con la sesión iniciada y hay un
+  débito activo, se ofrece (marcado) cancelarlo en el acto; el backend lo cancela en Mercado Pago
+  dentro de `POST /api/solicitudes-consumo` (`cancelarDebito: true`) y la constancia/email dicen si
+  la baja quedó efectiva. Sin sesión, sigue siendo una solicitud con código y gestión manual.
+- **Plataforma:** botón «Cancelar débito en Mercado Pago» por clínica
+  (`POST /plataforma/clinicas/:id/cancelar-debito`) para las bajas que llegan por fuera del panel.
+- En todos los casos el plan sigue hasta el fin del período pago.
+- Antes: paginación de `/authorized_payments/search` (MP rechaza limit > ~15), validación de la URL de
+  vuelta (MP rechaza localhost), primer débito al terminar la prueba/lo pagado (`start_date`) y
+  sincronización automática de la página Plan con un intento de pago pendiente.
+
+### 2026-10-06 — Fase M: suscripción de las clínicas con Mercado Pago
+- **Cobro a la clínica, nunca al paciente.** Suscripciones de MP «sin plan asociado, con pago
+  pendiente» (`POST /preapproval`): el admin elige plan/ciclo/profesionales extra en
+  `/dashboard/plan`, paga en el checkout de MP y queda el débito automático (mensual o anual =
+  frecuencia 12 meses). Cliente HTTP propio en `utils/mercadopago.js` (sin SDK).
+- **Lógica en `utils/suscripcionMp.js`.** MP es la fuente de verdad: webhook
+  (`POST /api/pagos/mp/webhook`, firma `x-signature` validada con `MP_WEBHOOK_SECRET`), la vuelta
+  del checkout (`?pago=mp` → `/api/pagos/suscripcion/sincronizar`) y el botón del panel de
+  plataforma vuelven a leer el preapproval y sus cobros (`/authorized_payments/search`).
+- **Períodos:** al autorizarse el débito se aplica el plan con acceso provisorio (lo que quedaba de
+  la prueba/período o 3 días). Cada cobro aprobado se registra una vez (`suscripcion_pago`, UNIQUE por
+  id de MP) y extiende desde el mayor entre la fecha del cobro, el fin de lo ya pagado y el fin de la
+  prueba: pagar durante la prueba no pierde días.
+- **Cambios:** mismo ciclo con débito activo → `PUT` del monto y el plan rige ya (sin prorrateo); cambio
+  de ciclo → checkout nuevo y, al autorizarse, se cancela el débito anterior. Se valida que los miembros
+  activos entren en el plan elegido. Baja: `PUT status=cancelled`; el plan sigue hasta el fin del período.
+- **DB:** `db/faseM_mercadopago.sql` (columnas `mp_*`, `monto`, `renovacion_automatica`, `proximo_cobro`
+  en `suscripcion`; tablas `suscripcion_checkout` y `suscripcion_pago`, solo service_role).
+- **Legal:** Términos (débito automático, cambio de plan), Reembolsos (baja desde el panel, período
+  mensual o anual) y Privacidad (Mercado Pago como procesador de pagos de las clínicas).
+- **Pendiente:** credenciales de prueba de MP para el test de punta a punta, facturación ARCA de cada cobro.
+
+### 2026-10-06 — Fase L: planes, suscripciones y permisos por plan
+- **Modelo:** tablas `plan` (precio mensual/anual, profesionales incluidos, precio por profesional
+  extra, tope de recepción, `features text[]`) y `suscripcion` (una por clínica: plan, estado
+  `prueba|activa|vencida|cancelada`, ciclo, profesionales extra, `prueba_hasta`, `periodo_hasta`).
+  Se eliminó `clinica.plan`. Migración `db/faseL_planes.sql` (aplicada vía MCP).
+- **Permisos = rol ∩ plan.** Catálogo de funciones en `utils/planes.js` (espejo en
+  `frontend/src/lib/planes.ts`). `middleware/plan.js`: `requireFeature(f)` (402 `PLAN_FEATURE`),
+  `soloLectura` montado sobre los datos de la clínica (402 `PLAN_SOLO_LECTURA` en escrituras; los
+  POST de lectura están en una lista blanca) y `requirePlataforma`.
+- **Por plan:** Profesional = todo lo clínico + 1 recepción; Equipo = + catálogos propios y
+  recepción sin tope; Clínica = + autorizaciones previas y auditoría. Exportar HC nunca se limita.
+- **Sin plan gratis:** clínica nueva → 14 días de prueba del plan Clínica (en el registro y, para
+  clínicas viejas, en el primer uso). Vencida (o período pago + 5 días de gracia) → solo lectura y
+  sin turnos online (se ocultan sus profesionales del listado público y se rechaza la reserva).
+- **Asientos:** solo profesionales (admin + profesional). Se verifican al generar códigos (contando
+  los pendientes), al canjearlos en el registro y al reactivar/cambiar de rol un miembro.
+- **Activación manual** hasta integrar Mercado Pago: panel `/dashboard/plataforma` (env
+  `PLATAFORMA_ADMIN_EMAILS`) para activar/renovar suscripciones y editar precios. El admin de la
+  clínica ve plan, estado y uso en `/dashboard/plan` y contrata por WhatsApp.
+- **UI:** `/planes` lee el catálogo de la base (mensual/anual), aviso de prueba/pago pendiente/solo
+  lectura debajo del navbar, `FeatureGate` en Auditoría, Autorizaciones, Certificados y catálogos;
+  el navbar, el dictado y los roles/códigos ofrecidos se filtran por plan.
 
 ### 2026-10-06 — Cumplimiento legal y accesibilidad del sitio público
 - **Legal (AR):** páginas nuevas/reescritas de Privacidad (Ley 25.326, Ley 26.529, transferencia a

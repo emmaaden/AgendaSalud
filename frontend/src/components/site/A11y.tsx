@@ -19,7 +19,7 @@ export function SkipLink() {
   )
 }
 
-const BASE = "AgendaSalud"
+const BASE = "Agenlu"
 
 // Título por ruta (WCAG 2.4.2): cada página tiene un <title> propio, que es lo primero
 // que anuncia un lector de pantalla al navegar dentro del SPA.
@@ -33,6 +33,7 @@ const TITULOS: Record<string, string> = {
   "/register/profesional": "Registro profesional",
   "/register/recepcion": "Registro de recepción",
   "/forgot-password": "Recuperar contraseña",
+  "/confirmar-email": "Confirmá tu email",
   "/reset-password": "Nueva contraseña",
   "/mis-turnos": "Mis turnos",
   "/mi-perfil": "Mi perfil",
@@ -40,7 +41,6 @@ const TITULOS: Record<string, string> = {
   "/mis-certificados": "Mis certificados",
   "/mis-estudios": "Mis estudios",
   "/gestionar-turno": "Gestionar turno",
-  "/valor-ortodoncia": "Valor de ortodoncia",
   "/seleccionar-clinica": "Seleccionar clínica",
   "/terminos": "Términos y condiciones",
   "/privacidad": "Política de privacidad",
@@ -59,6 +59,8 @@ const TITULOS: Record<string, string> = {
   "/dashboard/estudios": "Estudios · Panel",
   "/dashboard/auditoria": "Auditoría · Panel",
   "/dashboard/autorizaciones": "Autorizaciones · Panel",
+  "/dashboard/plan": "Plan · Panel",
+  "/dashboard/plataforma": "Plataforma · Panel",
 }
 
 /** Actualiza document.title según la ruta actual. Montar una vez por layout. */

@@ -10,6 +10,7 @@
 
 const { supabase } = require('../config/supabaseClient');
 const { resolverObraSocial } = require('../utils/cobertura');
+const planes = require('../utils/planes');
 
 // GET /admin/miembros — profesionales/recepción/auditores/admins de la clínica activa.
 exports.listarMiembros = async (req, res) => {
@@ -85,6 +86,17 @@ exports.actualizarMiembro = async (req, res) => {
             .maybeSingle();
         if (tErr) return res.status(400).json({ error: tErr.message });
         if (!target) return res.status(404).json({ error: 'Miembro no encontrado en esta clínica.' });
+
+        // Fase L: reactivar a alguien, o pasarlo a un rol que ocupa otro tipo de lugar
+        // (p. ej. recepción → profesional), tiene que entrar en el plan.
+        const rolNuevo = rol !== undefined ? rol : target.rol;
+        const activoNuevo = activo !== undefined ? activo === true : target.activo;
+        const tipoLugar = (r) => (planes.ROLES_PROFESIONAL.includes(r) ? 'profesional' : r);
+        const ocupaLugarNuevo = activoNuevo && (!target.activo || tipoLugar(rolNuevo) !== tipoLugar(target.rol));
+        if (ocupaLugarNuevo) {
+            const bloqueo = await planes.verificarAlta(clinicaId, rolNuevo);
+            if (bloqueo) return res.status(bloqueo.status).json(bloqueo);
+        }
 
         // ¿La operación deja a este miembro sin ser admin activo?
         const quedaAdminActivo =

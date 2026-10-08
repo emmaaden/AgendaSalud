@@ -12,6 +12,8 @@ router.use(requireRole('profesional'));
 router.post('/regis-pacient', validate(schemas.pacient.regis), pacienteController.regisPacient);
 router.post('/save-data-pacient', validate(schemas.pacient.saveData), pacienteController.saveDataPacient);
 router.post('/get-data-pacient', validate(schemas.pacient.getData), pacienteController.getDataPacient);
+// Ficha para la obra social: datos del profesional que la emite.
+router.get('/emisor', pacienteController.getEmisor);
 // Fase K: cobertura del paciente (obra social del catálogo + afiliado + plan).
 router.put('/cobertura', validate(schemas.pacient.cobertura), pacienteController.actualizarCobertura);
 

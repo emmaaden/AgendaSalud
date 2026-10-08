@@ -16,7 +16,9 @@ const { filasParaRegistro, serializarDiente } = require('../utils/odontograma');
 const { registrarAcceso } = require('../utils/bitacora');
 const { serializarCodificacion, SELECT_CODIFICACION } = require('../utils/codificacion');
 
-const FORMATO = 'agendasalud.hc';
+const FORMATO = 'agenlu.hc';
+// Exports generados antes del cambio de nombre (AgendaSalud → Agenlu); se siguen aceptando al importar.
+const FORMATOS_ACEPTADOS = [FORMATO, 'agendasalud.hc'];
 const VERSION = '1.0';
 
 // Ids de pacientes dentro del alcance del usuario.
@@ -240,8 +242,8 @@ exports.importar = async (req, res) => {
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica activa.' });
 
         const doc = req.body;
-        if (!doc || doc.formato !== FORMATO || !Array.isArray(doc.pacientes)) {
-            return res.status(400).json({ error: 'Archivo inválido: no es un export de HC de AgendaSalud.' });
+        if (!doc || !FORMATOS_ACEPTADOS.includes(doc.formato) || !Array.isArray(doc.pacientes)) {
+            return res.status(400).json({ error: 'Archivo inválido: no es un export de HC de Agenlu.' });
         }
 
         // Fase K: catálogos para emparejar obra social y diagnósticos.

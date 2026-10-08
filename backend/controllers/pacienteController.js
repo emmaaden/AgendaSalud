@@ -320,7 +320,7 @@ exports.getDataPacient = async (req, res) => {
 
         const { data: registros, error: regError } = await db
             .from('registro_clinico')
-            .select(`id, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, auditoria_estado,
+            .select(`id, id_profesional, profesional_nombre, area, fecha, sintomas, diagnostico, tratamiento, auditoria_estado,
                 registro_diente(numero, condicion, cara, estado, notas), ${SELECT_CODIFICACION}`)
             .eq('id_paciente', paciente.id)
             .order('fecha', { ascending: true });
@@ -330,6 +330,9 @@ exports.getDataPacient = async (req, res) => {
             profesional: r.profesional_nombre || '',
             area: r.area || '',
             fecha: fmtFechaHora(r.fecha),
+            // Crudos para filtrar por período / profesional (ficha para la obra social).
+            fechaIso: r.fecha,
+            idProfesional: r.id_profesional || null,
             sintomas: r.sintomas || '',
             diagnostico: r.diagnostico || '',
             tratamiento: r.tratamiento || '',
@@ -366,6 +369,50 @@ exports.getDataPacient = async (req, res) => {
     } catch (err) {
         console.error('Error en get-data-pacient:', err);
         return res.status(500).json({ error: err.message || 'Error al obtener los datos del paciente.' });
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Emisor de la ficha para la obra social: clínica activa + profesional autenticado
+// (nombre, especialidad y matrícula). Encabeza la ficha que firma el profesional.
+// ---------------------------------------------------------------------------
+exports.getEmisor = async (req, res) => {
+    try {
+        const db = await getUserSupabase(req);
+        if (!db) return res.status(ERR_SESION.status).json(ERR_SESION.body);
+
+        const prof = await getProfContext(db, req.session);
+
+        let matricula = '';
+        if (prof.idProfesional) {
+            const { data } = await db
+                .from('profesional')
+                .select('matricula')
+                .eq('id', prof.idProfesional)
+                .maybeSingle();
+            matricula = (data && data.matricula) || '';
+        }
+
+        let clinica = '';
+        if (prof.clinicaId) {
+            const { data } = await db
+                .from('clinica')
+                .select('nombre')
+                .eq('id', prof.clinicaId)
+                .maybeSingle();
+            clinica = (data && data.nombre) || '';
+        }
+
+        return res.json({
+            clinica,
+            profesional: prof.nombre,
+            especialidad: prof.area,
+            matricula,
+            idProfesional: prof.idProfesional,
+        });
+    } catch (err) {
+        console.error('Error en emisor:', err);
+        return res.status(500).json({ error: 'No se pudieron obtener los datos del profesional.' });
     }
 };
 

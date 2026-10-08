@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase H: Odontograma profesional (por caras + estados)
+-- Agenlu — Fase H: Odontograma profesional (por caras + estados)
 -- ---------------------------------------------------------------------------
 -- Ejecutar UNA vez en el SQL Editor de Supabase. Es idempotente.
 --

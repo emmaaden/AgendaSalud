@@ -12,7 +12,7 @@ export default function Reembolsos() {
       intro={
         <p>
           Cómo funcionan el arrepentimiento, la baja y los reintegros de los planes
-          pagos de AgendaSalud. Esta política se suma a tus derechos como consumidor
+          pagos de Agenlu. Esta política se suma a tus derechos como consumidor
           (Ley 24.240 y Código Civil y Comercial) y nunca los reduce.
         </p>
       }
@@ -21,7 +21,7 @@ export default function Reembolsos() {
           title: "Pacientes",
           body: (
             <p>
-              Reservar turnos en AgendaSalud es gratuito: no te cobramos nada. Lo que
+              Reservar turnos en Agenlu es gratuito: no te cobramos nada. Lo que
               pagues por una consulta lo cobra el profesional o la clínica, y los
               reintegros de ese pago se rigen por sus condiciones. Si tenés un problema
               con ese cobro, reclamale a quien te lo cobró.
@@ -50,10 +50,19 @@ export default function Reembolsos() {
           title: "Baja del plan",
           body: (
             <ul>
-              <li>Podés dar de baja tu plan cuando quieras, sin penalidades.</li>
+              <li>
+                Podés dar de baja tu plan cuando quieras, sin penalidades: desde el panel
+                (Plan → «Dar de baja la renovación»), con el Botón de baja de servicio o
+                por el mismo medio por el que contrataste.
+              </li>
+              <li>
+                Si usás el Botón de baja con la sesión iniciada como administrador de la
+                clínica, el débito automático se cancela en el acto; sin sesión, lo
+                cancelamos nosotros y te confirmamos por email.
+              </li>
               <li>
                 La baja corta los cobros siguientes. El plan sigue activo hasta el final
-                del mes que ya pagaste; ese mes no se reintegra, salvo lo indicado en
+                del período (mes o año) que ya pagaste; ese período no se reintegra, salvo lo indicado en
                 «Fallas del servicio».
               </li>
               <li>

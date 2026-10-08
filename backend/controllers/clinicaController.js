@@ -4,6 +4,7 @@
 // Fase 2c: opera con el cliente por-JWT (RLS por clinica_id a nivel Postgres).
 const { getUserSupabase } = require('../middleware/userSupabase');
 const { resolverObraSocial } = require('../utils/cobertura');
+const planes = require('../utils/planes');
 
 // Código legible sin caracteres ambiguos (0/O, 1/I).
 function generarCodigoAleatorio() {
@@ -24,7 +25,7 @@ exports.info = async (req, res) => {
 
         const { data, error } = await db
             .from('clinica')
-            .select('nombre, plan, slug')
+            .select('nombre, slug')
             .eq('id', clinicaId)
             .maybeSingle();
         if (error) return res.status(400).json({ error: error.message });
@@ -45,6 +46,10 @@ exports.generarCodigo = async (req, res) => {
         if (!clinicaId) return res.status(400).json({ error: 'No tenés una clínica asignada.' });
 
         const rol = ['recepcion', 'auditor'].includes(req.body?.rol) ? req.body.rol : 'profesional';
+
+        // Fase L: cada código reserva un lugar del plan (y el de auditor requiere la función).
+        const bloqueo = await planes.verificarAlta(clinicaId, rol, { contarCodigos: true });
+        if (bloqueo) return res.status(bloqueo.status).json(bloqueo);
         let alcance = rol === 'auditor' ? (String(req.body?.alcanceObraSocial || '').trim() || null) : null;
         // Fase K: alcance por obra social del catálogo (preferido sobre el texto).
         let alcanceId = null;

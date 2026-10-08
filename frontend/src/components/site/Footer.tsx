@@ -18,7 +18,6 @@ const columns = [
       { to: "/turnos", label: "Reservar turno" },
       { to: "/planes", label: "Planes" },
       { to: "/mi-historia", label: "Mi historia clínica" },
-      { to: "/valor-ortodoncia", label: "Valor de ortodoncia" },
     ],
   },
   {

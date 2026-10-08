@@ -2,13 +2,16 @@ const express = require('express');
 const router = express.Router();
 const catalogoController = require('../controllers/catalogoController');
 const { requireRolClinica } = require('../middleware/auth');
+const { requireFeature } = require('../middleware/plan');
 const { validate } = require('../middleware/validate');
 const schemas = require('../validators/schemas');
 
 // Fase K: catálogos de obras sociales, CIE-10 y prácticas.
 // Lectura: staff de la clínica activa y auditor. Escritura: solo el admin.
 const leer = requireRolClinica('admin', 'profesional', 'recepcion', 'auditor');
-const admin = requireRolClinica('admin');
+// Fase L: los catálogos PROPIOS (alta/edición) son del plan Equipo en adelante; leer
+// el catálogo (global + propio) lo puede cualquier plan.
+const admin = [requireRolClinica('admin'), requireFeature('catalogos')];
 
 // Público (registro del paciente, sin sesión): solo el catálogo global.
 router.get('/obras-sociales/publicas', catalogoController.obrasSocialesPublicas);
