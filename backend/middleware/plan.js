@@ -44,7 +44,6 @@ function requireFeature(feature) {
 // POST que solo LEEN (consultas heredadas con body). No se bloquean en solo lectura.
 const POST_DE_LECTURA = new Set([
     '/pacient/get-data-pacient',
-    '/ortodoncia/get-data',
 ]);
 
 // Solo lectura: con la suscripción vencida, el staff puede leer y exportar, pero no

@@ -79,6 +79,9 @@ module.exports = {
         forgotPassword: z.object({
             email: z.email('Email inválido'),
         }),
+        reenviarConfirmacion: z.object({
+            email: z.email('Email inválido'),
+        }),
         saveArea: z.object({
             especialidad: idFlexible,
         }),
@@ -214,10 +217,6 @@ module.exports = {
             endHour: z.string().min(1, 'Hora de fin requerida').max(8),
         }),
         delete: z.object({ id: idFlexible }),
-    },
-
-    ortodoncia: {
-        getData: z.object({ dni }),
     },
 
     calendar: {

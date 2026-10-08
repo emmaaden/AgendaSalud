@@ -13,7 +13,6 @@ const pacienteRoutes = require('./routes/pacienteRoutes'); // Fase 1: historia c
 const especialidadesRoutes = require('./routes/especialidadesRoutes');
 const profesionalRoutes = require('./routes/profesionalRoutes');
 const avatarsRoutes = require('./routes/avatarsRoutes');
-const ortPacienteRoutes = require('./routes/ortPacienteRoutes');
 const publicRoutes = require('./routes/publicRoutes'); // Fase 1: /professionals, /api/get-hours
 const clinicaRoutes = require('./routes/clinicaRoutes'); // Fase 2: gestión de clínica
 const adminRoutes = require('./routes/adminRoutes'); // Fase B: administración (miembros)
@@ -198,7 +197,7 @@ if (isProd) {
 // datos de la CLÍNICA; quedan afuera /auth, el perfil propio (/profesional, /avatars),
 // /admin (dar de baja miembros para volver al cupo) y todo lo del paciente.
 app.use([
-    '/hour', '/pacient', '/ortodoncia', '/clinica', '/certificados', '/hc', '/staff',
+    '/hour', '/pacient', '/clinica', '/certificados', '/hc', '/staff',
     '/dictado', '/auditoria', '/catalogos', '/autorizaciones',
 ], soloLectura);
 
@@ -208,7 +207,6 @@ app.use('/pacient', pacienteRoutes); // Fase 1: historia clínica (rol profesion
 app.use('/especialidades', especialidadesRoutes); // público: usado en el registro
 app.use('/profesional', profesionalRoutes);
 app.use('/avatars', avatarsRoutes);
-app.use('/ortodoncia', ortPacienteRoutes);
 app.use('/clinica', clinicaRoutes); // Fase 2: gestión de clínica (rol profesional)
 app.use('/admin', adminRoutes); // Fase B: administración de la clínica (solo admin)
 app.use('/certificados', certificadoRoutes); // Fase C: certificados médicos
@@ -624,7 +622,7 @@ if (require('./utils/mercadopago').configurado()) {
 if (isProd) {
     const API_PREFIXES = [
         '/auth', '/hour', '/pacient', '/especialidades', '/profesional',
-        '/avatars', '/ortodoncia', '/clinica', '/clinica-publica',
+        '/avatars', '/clinica', '/clinica-publica',
         '/admin', '/certificados', '/hc', '/staff', '/estudios', '/auditoria',
         '/catalogos', '/autorizaciones',
         '/professionals', '/available-slots', '/create-event',

@@ -15,7 +15,7 @@ export const FEATURES = {
   agenda: "Agenda, turnos online y recordatorios por email",
   historia_clinica: "Historia clínica con CIE-10 y obras sociales",
   certificados: "Certificados médicos con firma",
-  odontologia: "Odontograma por caras y ortodoncia",
+  odontologia: "Odontograma por caras",
   dictado: "Dictado por voz en la consulta",
   estudios: "Estudios que comparten los pacientes",
   importar_hc: "Importación de historias clínicas",

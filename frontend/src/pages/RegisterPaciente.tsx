@@ -65,7 +65,7 @@ export default function RegisterPaciente() {
     setSubmitting(true)
     try {
       const { acepta, ...datos } = values
-      await api.post("/auth/register", {
+      const res = await api.post<{ requiereConfirmacion?: boolean }>("/auth/register", {
         ...datos,
         direccion: datos.direccion?.trim() || undefined,
         ...coberturaPayload(cobertura),
@@ -73,6 +73,10 @@ export default function RegisterPaciente() {
         aceptaTerminos: acepta,
         versionLegal: LEGAL_VERSION,
       })
+      if (res?.requiereConfirmacion) {
+        navigate("/confirmar-email", { state: { email: values.email } })
+        return
+      }
       toast.success("Cuenta creada con éxito")
       navigate("/")
     } catch (err) {

@@ -149,7 +149,6 @@ const RUTAS_PUBLICAS = [
     { path: '/register/paciente', changefreq: 'yearly', priority: '0.5' },
     { path: '/register/profesional', changefreq: 'yearly', priority: '0.5' },
     { path: '/login', changefreq: 'yearly', priority: '0.3' },
-    { path: '/valor-ortodoncia', changefreq: 'yearly', priority: '0.3' },
     { path: '/terminos', changefreq: 'yearly', priority: '0.3' },
     { path: '/privacidad', changefreq: 'yearly', priority: '0.3' },
     { path: '/cookies', changefreq: 'yearly', priority: '0.3' },
@@ -162,9 +161,9 @@ const RUTAS_PUBLICAS = [
 const RUTAS_PRIVADAS = [
     '/dashboard', '/mis-turnos', '/mi-perfil', '/mi-historia', '/mis-certificados',
     '/mis-estudios', '/gestionar-turno', '/reset-password', '/seleccionar-clinica',
-    '/forgot-password', '/register/recepcion',
+    '/forgot-password', '/confirmar-email', '/register/recepcion',
     // API (no son páginas)
-    '/api/', '/auth/', '/hour/', '/pacient/', '/profesional/', '/avatars/', '/ortodoncia/',
+    '/api/', '/auth/', '/hour/', '/pacient/', '/profesional/', '/avatars/',
     '/clinica/', '/admin/', '/certificados/', '/hc/', '/staff/', '/estudios/', '/dictado/',
     '/auditoria/', '/catalogos/', '/autorizaciones/', '/internal/', '/available-slots',
     '/create-event',

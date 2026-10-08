@@ -244,7 +244,13 @@ exports.register = async (req, res) => {
             }
         }
 
-        res.json({ message: "Registro exitoso", user: { id: userId, email: user.email, role } });
+        // Con la confirmación de email activada, signUp no devuelve sesión: el usuario
+        // tiene que confirmar antes de poder iniciar sesión (el cliente se lo avisa).
+        res.json({
+            message: "Registro exitoso",
+            user: { id: userId, email: user.email, role },
+            requiereConfirmacion: !data.session,
+        });
 
     } catch (err) {
         console.error("Error detallado en registro:", err);
@@ -264,6 +270,14 @@ exports.login = async (req, res) => {
         });
 
         if (error) {
+            // Supabase solo devuelve `email_not_confirmed` con la contraseña correcta,
+            // así que avisarlo no revela si el email existe.
+            if (error.code === "email_not_confirmed") {
+                return res.status(403).json({
+                    error: "Todavía no confirmaste tu email. Revisá tu bandeja de entrada (y el spam).",
+                    code: "EMAIL_NO_CONFIRMADO",
+                });
+            }
             return res.status(401).json({ error: "Credenciales inválidas" });
         }
 
@@ -367,6 +381,26 @@ exports.login = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Error al iniciar sesión" });
+    }
+};
+
+// Reenvía el email de confirmación de la cuenta. Respuesta genérica siempre: no se
+// revela si el email existe ni si ya estaba confirmado (anti-enumeración).
+exports.reenviarConfirmacion = async (req, res) => {
+    const respuestaGenerica = {
+        message: 'Si el email tiene una cuenta pendiente de confirmar, te reenviamos el enlace.'
+    };
+    try {
+        const { email } = req.body;
+        const { error } = await supabaseAuth.auth.resend({ type: 'signup', email });
+        if (error) {
+            // Se loguea pero no se expone al cliente (incluye el límite de envíos de Supabase).
+            console.error('Error en resend de confirmación:', error.message);
+        }
+        return res.json(respuestaGenerica);
+    } catch (err) {
+        console.error('Error en reenviar-confirmacion:', err);
+        return res.json(respuestaGenerica);
     }
 };
 

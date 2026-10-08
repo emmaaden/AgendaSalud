@@ -19,6 +19,7 @@ const RegisterPaciente = lazy(() => import("@/pages/RegisterPaciente"))
 const RegisterProfesional = lazy(() => import("@/pages/RegisterProfesional"))
 const RegisterRecepcion = lazy(() => import("@/pages/RegisterRecepcion"))
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"))
+const ConfirmarEmail = lazy(() => import("@/pages/ConfirmarEmail"))
 const Terminos = lazy(() => import("@/pages/Terminos"))
 const Privacidad = lazy(() => import("@/pages/Privacidad"))
 const Cookies = lazy(() => import("@/pages/Cookies"))
@@ -34,7 +35,6 @@ const MiHistoria = lazy(() => import("@/pages/MiHistoria"))
 const MisCertificados = lazy(() => import("@/pages/MisCertificados"))
 const MisEstudios = lazy(() => import("@/pages/MisEstudios"))
 const MiPerfil = lazy(() => import("@/pages/MiPerfil"))
-const ValorOrtodoncia = lazy(() => import("@/pages/ValorOrtodoncia"))
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"))
 const SeleccionarClinica = lazy(() => import("@/pages/SeleccionarClinica"))
 
@@ -133,13 +133,13 @@ function App() {
             path="/historia-clinica"
             element={<Navigate to="/mi-historia" replace />}
           />
-          <Route path="/valor-ortodoncia" element={<ValorOrtodoncia />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RegisterRole />} />
           <Route path="/register/paciente" element={<RegisterPaciente />} />
           <Route path="/register/profesional" element={<RegisterProfesional />} />
           <Route path="/register/recepcion" element={<RegisterRecepcion />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/confirmar-email" element={<ConfirmarEmail />} />
           <Route path="/terminos" element={<Terminos />} />
           <Route path="/privacidad" element={<Privacidad />} />
           <Route path="/cookies" element={<Cookies />} />
