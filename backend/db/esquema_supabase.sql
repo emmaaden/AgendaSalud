@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Esquema Supabase (rama dev, modelo "persona")
+-- Agenlu — Esquema Supabase (rama dev, modelo "persona")
 -- Deducido del código: controllers + frontend de la rama dev.
 -- ---------------------------------------------------------------------------
 -- MODELO CENTRAL: una tabla `persona` con los datos comunes (dni, nombre,

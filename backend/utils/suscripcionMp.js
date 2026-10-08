@@ -130,7 +130,7 @@ async function iniciarContratacion({ clinicaId, clinicaNombre, personaId, planId
     if (!payerEmail) throw new ErrorNegocio(400, 'Ingresá el email de tu cuenta de Mercado Pago.');
     const inicio = await fechaPrimerCobro(clinicaId, sus);
     const pre = await mp.crearSuscripcion({
-        reason: `AgendaSalud · Plan ${plan.nombre} (${ciclo}) · ${clinicaNombre || 'Clínica'}`.slice(0, 250),
+        reason: `Agenlu · Plan ${plan.nombre} (${ciclo}) · ${clinicaNombre || 'Clínica'}`.slice(0, 250),
         externalReference: clinicaId,
         payerEmail,
         monto,
@@ -409,10 +409,10 @@ async function enviarAvisosPrecio() {
         const texto = `Hola,\n\nTe avisamos que desde el ${fechaLarga(desde)} el plan ${plan ? plan.nombre : ''} de ${clinica} `
             + `pasa de ${formatoPesos(Number(s.monto))} a ${formatoPesos(Number(s.monto_nuevo))} por ${periodo}. `
             + 'Hasta esa fecha se te sigue cobrando el precio actual.\n\n'
-            + 'Si no estás de acuerdo, podés dar de baja la renovación antes, sin costo, desde el panel (Plan → «Dar de baja la renovación»).\n\nAgendaSalud';
+            + 'Si no estás de acuerdo, podés dar de baja la renovación antes, sin costo, desde el panel (Plan → «Dar de baja la renovación»).\n\nAgenlu';
         const ok = await sendMail({
             to: destinos.join(','),
-            subject: `Cambio de precio de tu plan desde el ${fechaLarga(desde)} - AgendaSalud`,
+            subject: `Cambio de precio de tu plan desde el ${fechaLarga(desde)} - Agenlu`,
             text: texto,
             // El nombre de la clínica lo carga el usuario: se escapa en el HTML.
             html: texto.split('\n\n').map((p) => `<p>${p.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join(''),

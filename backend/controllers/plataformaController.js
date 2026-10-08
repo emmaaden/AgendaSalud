@@ -1,4 +1,4 @@
-// Panel de la plataforma (Fase L). Solo el equipo de AgendaSalud
+// Panel de la plataforma (Fase L). Solo el equipo de Agenlu
 // (PLATAFORMA_ADMIN_EMAILS). Hasta integrar Mercado Pago, la activación y la
 // renovación de los planes se hacen a mano desde acá.
 //

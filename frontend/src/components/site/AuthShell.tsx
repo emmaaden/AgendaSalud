@@ -50,7 +50,7 @@ export function AuthShell({
           )}
         </div>
         <p className="relative text-xs text-primary-foreground/85">
-          © {new Date().getFullYear()} AgendaSalud
+          © {new Date().getFullYear()} Agenlu
         </p>
       </aside>
 

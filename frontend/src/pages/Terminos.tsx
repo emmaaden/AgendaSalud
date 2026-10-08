@@ -15,7 +15,7 @@ export default function Terminos() {
       title="Términos y condiciones"
       intro={
         <p>
-          Estos términos regulan el uso de AgendaSalud. Al crear una cuenta, reservar un
+          Estos términos regulan el uso de Agenlu. Al crear una cuenta, reservar un
           turno o contratar un plan, los aceptás. Si no estás de acuerdo, no uses el
           servicio. Nada de lo que dicen limita los derechos que te reconocen la Ley
           24.240 de Defensa del Consumidor y el Código Civil y Comercial.
@@ -23,15 +23,15 @@ export default function Terminos() {
       }
       sections={[
         {
-          title: "1. Qué es AgendaSalud",
+          title: "1. Qué es Agenlu",
           body: (
             <>
               <p>
-                AgendaSalud es una plataforma de software para reservar turnos y para
+                Agenlu es una plataforma de software para reservar turnos y para
                 que profesionales y clínicas gestionen su agenda e historias clínicas.
               </p>
               <p>
-                <strong>AgendaSalud no presta servicios médicos</strong>: la atención,
+                <strong>Agenlu no presta servicios médicos</strong>: la atención,
                 los diagnósticos, los tratamientos y los certificados son
                 responsabilidad exclusiva del profesional que los realiza.{" "}
                 <strong>
@@ -59,7 +59,7 @@ export default function Terminos() {
           title: "3. Turnos (pacientes)",
           body: (
             <ul>
-              <li>Reservar un turno en AgendaSalud es gratuito.</li>
+              <li>Reservar un turno en Agenlu es gratuito.</li>
               <li>
                 La disponibilidad la define cada profesional. El turno queda confirmado
                 cuando ves el mensaje de éxito en pantalla; además te enviamos el
@@ -71,7 +71,7 @@ export default function Terminos() {
               </li>
               <li>
                 El precio de la consulta, la cobertura y las condiciones de atención las
-                fija y cobra el profesional o la clínica, no AgendaSalud.
+                fija y cobra el profesional o la clínica, no Agenlu.
               </li>
             </ul>
           ),
@@ -158,7 +158,7 @@ export default function Terminos() {
           body: (
             <>
               <p>
-                El software, la marca AgendaSalud y su logo son de su titular. Los datos
+                El software, la marca Agenlu y su logo son de su titular. Los datos
                 y archivos que cargás siguen siendo tuyos (o de tu paciente): solo los
                 usamos para prestarte el servicio.
               </p>

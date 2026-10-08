@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase M2: actualización de precios de los débitos vigentes
+-- Agenlu — Fase M2: actualización de precios de los débitos vigentes
 -- ---------------------------------------------------------------------------
 -- Ejecutar UNA vez en el SQL Editor de Supabase, DESPUÉS de faseM_mercadopago.sql.
 -- Es IDEMPOTENTE.

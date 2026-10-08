@@ -478,9 +478,9 @@ app.post('/create-event', createEventLimiter, validate(schemas.calendar.createEv
             : `Ver o cancelar tus turnos: ${baseUrl}/mis-turnos`;
         sendMail({
             to: email,
-            subject: 'Confirmación de tu turno - Agenda Salud',
-            text: `Hola,\n\nTu turno fue agendado para el ${fechaLocal} hs.\n${summary || ''}\n\n${gestionText}\n\nGracias por usar Agenda Salud.`,
-            html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${escapeHtml(summary)}</p>${gestionHtml}<p>Gracias por usar Agenda Salud.</p>`,
+            subject: 'Confirmación de tu turno - Agenlu',
+            text: `Hola,\n\nTu turno fue agendado para el ${fechaLocal} hs.\n${summary || ''}\n\n${gestionText}\n\nGracias por usar Agenlu.`,
+            html: `<p>Hola,</p><p>Tu turno fue <strong>agendado</strong> para el <strong>${fechaLocal} hs</strong>.</p><p>${escapeHtml(summary)}</p>${gestionHtml}<p>Gracias por usar Agenlu.</p>`,
         }).catch(err => console.error('Error enviando email de confirmación:', err.message));
 
         res.json({ success: true });
@@ -538,9 +538,9 @@ async function sendUpcomingReminders() {
         try {
             await sendMail({
                 to: t.paciente_email,
-                subject: 'Recordatorio de tu turno - Agenda Salud',
-                text: `Hola,\n\nTe recordamos tu turno${con}${esp} para el ${fechaLocal} hs.\n\nAgenda Salud.`,
-                html: `<p>Hola,</p><p>Te recordamos tu turno${con}${esp} para el <strong>${fechaLocal} hs</strong>.</p><p>Agenda Salud.</p>`,
+                subject: 'Recordatorio de tu turno - Agenlu',
+                text: `Hola,\n\nTe recordamos tu turno${con}${esp} para el ${fechaLocal} hs.\n\nAgenlu.`,
+                html: `<p>Hola,</p><p>Te recordamos tu turno${con}${esp} para el <strong>${fechaLocal} hs</strong>.</p><p>Agenlu.</p>`,
             });
             await supabase.from('turno').update({ recordatorio_enviado: true }).eq('id', t.id);
             sent++;

@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase L: Planes, suscripciones y permisos por plan
+-- Agenlu — Fase L: Planes, suscripciones y permisos por plan
 -- ---------------------------------------------------------------------------
 -- Ejecutar UNA vez en el SQL Editor de Supabase, DESPUÉS de faseK_auditoria2.sql.
 -- Es IDEMPOTENTE.

@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase 2d: saneamiento de la base (seguridad + normalización)
+-- Agenlu — Fase 2d: saneamiento de la base (seguridad + normalización)
 -- ---------------------------------------------------------------------------
 -- Aplicada vía Supabase MCP el 2026-09-15. Idempotente.
 -- Basada en una revisión completa (advisors de seguridad/performance + chequeos

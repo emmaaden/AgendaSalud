@@ -1,5 +1,5 @@
 -- ===========================================================================
--- AgendaSalud — Fase G: FIX de RLS — exigir membresía ACTIVA en las políticas tenant
+-- Agenlu — Fase G: FIX de RLS — exigir membresía ACTIVA en las políticas tenant
 -- ---------------------------------------------------------------------------
 -- Ejecutar UNA vez en el SQL Editor de Supabase, DESPUÉS de faseF_sin_calendar.sql.
 -- Es IDEMPOTENTE (usa DROP POLICY IF EXISTS + CREATE).

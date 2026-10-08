@@ -1,6 +1,6 @@
-# AgendaSalud — Documento de Contexto y Hoja de Ruta (rama `dev`)
+# Agenlu — Documento de Contexto y Hoja de Ruta (rama `dev`)
 
-> Referencia técnica para llevar AgendaSalud a un producto vendible a clínicas y
+> Referencia técnica para llevar Agenlu a un producto vendible a clínicas y
 > profesionales de la salud.
 >
 > **Autor:** Emmanuel Denis · **Rama:** `dev` · **Actualizado:** 2026-09-14

@@ -1,4 +1,4 @@
-# AgendaSalud — Plan de mejoras (roles por clínica, administración y certificados)
+# Agenlu — Plan de mejoras (roles por clínica, administración y certificados)
 
 > Hoja de ruta por **fases** para tres mejoras pedidas. Cada fase es un entregable
 > independiente que se puede correr y verificar antes de pasar a la siguiente.
@@ -275,7 +275,7 @@ el paciente ve y descarga solo los suyos; un paciente no puede acceder a los de 
 
 **Objetivo (cumplimiento legal):** poder **exportar** e **importar** la información de HC.
 Marco: **Ley 26.529** (derecho del paciente a copia de su HC), **Ley 27.706** (digitalización),
-**Res. 1840/2018** (interoperabilidad). Formato de export **JSON estructurado** (`agendasalud.hc` v1.0),
+**Res. 1840/2018** (interoperabilidad). Formato de export **JSON estructurado** (`agenlu.hc` v1.0; se siguen importando los `agendasalud.hc`),
 portable y re-importable, + **PDF** legible.
 
 **Decisiones:** export JSON + PDF; alcance del profesional = **solo pacientes que atendió**
